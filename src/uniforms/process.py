@@ -26,7 +26,7 @@ import sys
 __all__ = []
 __version__ = 0.1
 __date__ = '2016-05-23'
-__updated__ = '$Date: Fri Apr 29 01:10:07 2016 +1000$'.split(' ', 1)[1]
+__updated__ = '$Date$'.split(' ', 1)[1]
 
 DEBUG_RUN = 0
 TEST_RUN = 0
