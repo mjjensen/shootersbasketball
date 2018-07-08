@@ -6,6 +6,7 @@ Created on 7 Jul. 2018
 from collections import Mapping
 import json
 from logging import getLogger
+import os
 import re
 import urllib2
 
@@ -16,7 +17,8 @@ from sqlalchemy.orm.session import Session
 
 _logger = getLogger(__name__)
 _config = {
-    'teamsdb_url': 'sqlite:///teams.sqlite3',
+    'db_file':     'teams.sqlite3',  # leave out if no file backing db
+    'db_url':      'sqlite:///teams.sqlite3',
     'wwc_url_fmt': 'https://online.justice.vic.gov.au/wwccu/checkstatus.doj'
                    '?viewSequence=1&cardnumber={}&lastname={}'
                    '&pageAction=Submit&Submit=submit',
@@ -48,12 +50,18 @@ class SbciTeamsDB(object):
                 elif verbose:
                     _logger.error('contents of "config.json" are unsuitable!')
         except (IOError, ValueError) as e:
-            if verbose:
+            if verbose > 1:
                 _logger.warning('exception reading "config.json": %s', str(e))
 
         self.Base = automap_base()
 
-        self.engine = create_engine(_config['teamsdb_url'])
+        if 'db_file' in _config:
+            db_file = _config['db_file']
+            if not os.access(db_file, os.R_OK | os.W_OK):
+                raise RuntimeError('cannot access DB file ({}) for R/W!'
+                                   .format(db_file))
+
+        self.engine = create_engine(_config['db_url'])
 
         self.Base.prepare(self.engine, reflect=True)
 

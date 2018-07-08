@@ -83,7 +83,7 @@ USAGE
             raise(e)
         indent = len(program_name) * " "
         sys.stderr.write(program_name + ": " + repr(e) + "\n")
-        sys.stderr.write(indent + "  for help use --help")
+        sys.stderr.write(indent + "  for help use --help\n")
         return os.EX_USAGE
 
     verbose = args.verbose
@@ -138,7 +138,7 @@ USAGE
         _logger.exception('Exception')
         indent = len(program_name) * " "
         sys.stderr.write(program_name + ": " + repr(e) + "\n")
-        sys.stderr.write(indent + "  for help use --help")
+        sys.stderr.write(indent + "  for help use --help\n")
         return os.EX_USAGE
 
 
