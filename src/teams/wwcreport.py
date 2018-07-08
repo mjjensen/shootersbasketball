@@ -172,7 +172,9 @@ USAGE
                     if year - yob >= 18:
                         print('{} {} ({}) is no longer Under 18!'
                               .format(firstname, lastname, person.id))
-                worksheet.write(row, col + 6, person.wwc_expiry)
+                    worksheet.write(row, col + 6, 'Under 18')
+                else:
+                    worksheet.write(row, col + 6, person.wwc_expiry)
                 worksheet.write(row, col + 7, 'No')
 
             worksheet.write(row, 0, 'Shooters Basketball Club')
