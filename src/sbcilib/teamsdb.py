@@ -3,15 +3,16 @@ Created on 7 Jul. 2018
 
 @author: jen117
 '''
-from collections import Mapping
+from collections import Mapping, namedtuple
+from enum import IntEnum
 import json
 from logging import getLogger
 import os
 import re
+from sqlalchemy.ext.automap import automap_base
 import urllib2
 
 from sqlalchemy.engine import create_engine
-from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.orm.session import Session
 
 
@@ -22,18 +23,16 @@ _config = {
     'wwc_url_fmt': 'https://online.justice.vic.gov.au/wwccu/checkstatus.doj'
                    '?viewSequence=1&cardnumber={}&lastname={}'
                    '&pageAction=Submit&Submit=submit',
-    'wwc_num_re':  '^(\\d{7}(\\d|[Aa]))(-\\d{1,2})?$',
-    'wwc_skip_re': '^(|Under\\s*18|VIT\\s*\\d{6}|N/A|[Pp]ending)$',
-    'wwc_res_re':  '^('
-                   '(Working.*expires on (\\d{2}) ([A-Z][a-z]{2}) (\\d{4})\.)'
-                   '|'
-                   '(Working.*no longer current.*)'
-                   '|'
-                   '(This family.*do not match.*)'
-                   ')$',
-    'wwc_res_inds': [2, 6, 7],
-    'wwc_exp_inds': [5, 4, 3],
 }
+
+
+WWCCheckStatus = IntEnum('WWCCheckStatus', ' '.join([
+    'UNKNOWN', 'EMPTY', 'UNDER18', 'TEACHER', 'BADNUMBER',
+    'FAILED', 'SUCCESS', 'EXPIRED', 'INVALID', 'BADRESPONSE'
+]))
+
+
+WWCCheckResult = namedtuple('WWCCheckResult', ['status', 'message', 'expiry'])
 
 
 class SbciTeamsDB(object):
@@ -81,6 +80,17 @@ class SbciTeamsDB(object):
 
         self._wwc_checked = {}
 
+    _wwc_number_pattern = re.compile(r'^(\d{7}(\d|A))(-\d{1,2})?$', re.I)
+    _wwc_result_pattern = re.compile(
+        r'^('
+        '(Working.*expires on (\d{2}) ([A-Z][a-z]{2}) (\d{4})\.)'
+        '|'
+        '(Working.*no longer current.*)'
+        '|'
+        '(This family.*do not match.*)'
+        ')$'
+    )
+
     def person_check_wwc(self, person, verbose=0):
         '''TODO'''
 
@@ -91,64 +101,82 @@ class SbciTeamsDB(object):
         wwcn = person.wwc_number
 
         if id == 0:
-            self._wwc_checked[id] = (
-                True,
-                'Skipping placeholder person "{}"'.format(name),
+            self._wwc_checked[id] = WWCCheckResult(
+                WWCCheckStatus.UNKNOWN,
+                'Skipping - Placeholder ID',
                 None
             )
             return self._wwc_checked[id]
 
-        m = re.match(_config['wwc_num_re'], wwcn)
-        if not m:
-            if not re.match(_config['wwc_skip_re'], wwcn):
-                self._wwc_checked[id] = (
-                    False,
-                    'Bad wwc card number for {}: {}'.format(name, wwcn),
+        if wwcn == '':
+            self._wwc_checked[id] = WWCCheckResult(
+                WWCCheckStatus.EMPTY,
+                'Skipping - Empty WWC Number',
+                None
+            )
+            return self._wwc_checked[id]
+
+        m = SbciTeamsDB._wwc_number_pattern.match(wwcn)
+
+        if m is None:
+            if wwcn == 'Under 18':
+                self._wwc_checked[id] = WWCCheckResult(
+                    WWCCheckStatus.UNDER18,
+                    'Skipping - Under 18 (DoB: {})'.format(person.dob),
                     None
                 )
-                return self._wwc_checked[id]
+            elif wwcn.startswith('VIT'):
+                self._wwc_checked[id] = WWCCheckResult(
+                    WWCCheckStatus.TEACHER,
+                    'Skipping - Victorian Teacher ({})'.format(wwcn),
+                    None
+                )
             else:
-                self._wwc_checked[id] = (
-                    True,
-                    'Skip wwc card number for {}: {}'.format(name, wwcn),
+                self._wwc_checked[id] = WWCCheckResult(
+                    WWCCheckStatus.BADNUMBER,
+                    'Skipping - Bad WWC Number ({})'.format(wwcn),
                     None
                 )
-                return self._wwc_checked[id]
+            return self._wwc_checked[id]
 
         cardnumber = m.group(1).upper()
         lastname = '%20'.join(name.split()[1:])
 
-        wwc_url = _config['wwc_url_fmt'].format(cardnumber, lastname)
-        contents = urllib2.urlopen(wwc_url).read()
+        try:
+            wwc_url = _config['wwc_url_fmt'].format(cardnumber, lastname)
+            contents = urllib2.urlopen(wwc_url).read()
+        except BaseException:
+            self._wwc_checked[id] = WWCCheckResult(
+                WWCCheckStatus.TEACHER,
+                'Web Transaction Failed!',
+                None
+            )
+            return self._wwc_checked[id]
 
         for line in contents.splitlines():
 
-            m = re.match(_config['wwc_res_re'], line)
+            m = SbciTeamsDB._wwc_result_pattern.match(line)
             if not m:
                 continue
 
-            success, expired, notvalid = m.group(*_config['wwc_res_inds'])
+            success, expired, notvalid = m.group(2, 6, 7)
 
-            if success:
+            if success is not None:
                 if verbose > 1:
                     print('success response = {}'.format(success))
-                self._wwc_checked[id] = (
-                    True,
-                    'WWC number for ({},{}) is valid ({}, {}, {})'
-                    .format(cardnumber, lastname,
-                            name, person.mobile, person.email),
-                    '-'.join(m.group(*_config['wwc_exp_inds']))
+                self._wwc_checked[id] = WWCCheckResult(
+                    WWCCheckStatus.SUCCESS,
+                    'WWC Check Succeeded',
+                    '-'.join(m.group(5, 4, 3))
                 )
                 return self._wwc_checked[id]
 
             if expired:
                 if verbose > 1:
                     print('expired response = {}'.format(expired))
-                self._wwc_checked[id] = (
-                    False,
-                    'WWC number for ({},{}) has EXPIRED! ({}, {}, {})'
-                    .format(cardnumber, lastname,
-                            name, person.mobile, person.email),
+                self._wwc_checked[id] = WWCCheckResult(
+                    WWCCheckStatus.EXPIRED,
+                    'WWC Number ({}) has Expired'.format(wwcn),
                     None
                 )
                 return self._wwc_checked[id]
@@ -156,20 +184,19 @@ class SbciTeamsDB(object):
             if notvalid:
                 if verbose > 1:
                     print('notvalid response = {}'.format(notvalid))
-                self._wwc_checked[id] = (
-                    False,
-                    'WWC number for ({},{}) is NOT VALID! ({}, {}, {})'
-                    .format(cardnumber, lastname,
-                            name, person.mobile, person.email),
+                self._wwc_checked[id] = WWCCheckResult(
+                    WWCCheckStatus.EXPIRED,
+                    'WWC Number ({}) with Lastname ({}) NOT VALID'
+                    .format(wwcn, lastname),
                     None
                 )
                 return self._wwc_checked[id]
 
         if verbose > 1:
             print('bad response = {}'.format(contents))
-        self._wwc_checked[id] = (
-            False,
-            'Bad http response from url "{}"'.format(wwc_url),
+        self._wwc_checked[id] = WWCCheckResult(
+            WWCCheckStatus.BADRESPONSE,
+            'WWC Check Service returned BAD response',
             None
         )
         return self._wwc_checked[id]
