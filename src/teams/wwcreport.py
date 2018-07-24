@@ -172,9 +172,14 @@ USAGE
 
                 if status == WWCCheckStatus.SUCCESS:
                     print('{}, expiry={}'.format(status.name, expiry))
+                    expiry = str(datetime.strptime(expiry, '%Y-%b-%d').date())
+                    if person.wwc_expiry != expiry:
+                        print('NEED TO UPDATE WWC EXPIRY for {} ({}): {} => {}'
+                              .format(person.name, person.id,
+                                      person.wwc_expiry, expiry))
                 elif status == WWCCheckStatus.UNDER18:
                     if person.dob is None:
-                        msg = 'Unknwon DoB!'
+                        msg = 'Unknown DoB!'
                     else:
                         dob = datetime.strptime(person.dob, '%Y-%m-%d').date()
                         diff = relativedelta(today, dob)
@@ -185,6 +190,17 @@ USAGE
                     print('{}, {}'.format(status.name, msg))
                 else:
                     print('{}, {}'.format(status.name, message))
+
+            def bv_mpd_signed(person):
+                bv_mpd_signed = 'No'
+                try:
+                    bv_mpd_expiry = datetime.strptime(person.bv_mpd_expiry,
+                                                      '%Y-%m-%d').date()
+                    if bv_mpd_expiry > date.today():
+                        bv_mpd_signed = 'Yes'
+                except (TypeError, ValueError):
+                    pass
+                return bv_mpd_signed
 
             def date_massage(s):
                 m = re.match(r'^(\d{2})/(\d{2})/(\d{4})$', s)
@@ -201,14 +217,10 @@ USAGE
                 worksheet.write(row, col + 4, person.mobile)
                 worksheet.write(row, col + 5, person.wwc_number)
                 if person.wwc_number == 'Under 18':
-                    yob = int(person.dob.split('-')[0])
-                    if today.year - yob >= 18:
-                        print('{} {} ({}) is no longer Under 18!'
-                              .format(firstname, lastname, person.id))
                     worksheet.write(row, col + 6, 'Under 18')
                 else:
                     worksheet.write(row, col + 6, person.wwc_expiry)
-                worksheet.write(row, col + 7, 'No')
+                worksheet.write(row, col + 7, bv_mpd_signed(person))
 
             worksheet.write(row, 0, 'Shooters Basketball Club')
             worksheet.write(row, 1, team.team_name)
