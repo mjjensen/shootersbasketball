@@ -18,7 +18,6 @@ import csv
 from datetime import datetime
 from logging import getLogger, basicConfig
 import os
-from sqlalchemy.sql.expression import update
 import sys
 from traceback import print_exception, format_exc
 
@@ -160,21 +159,28 @@ USAGE
                                         maybe_dup.date, date
                                     )
                                 )
-                                stmt = update(db.Trybooking).where(
-                                    db.Trybooking.id == maybe_dup.id
-                                ).values(date=date)
-                                db.engine.connect().execute(stmt)
+                                maybe_dup.date = date
+                                db.dbsession.commit()
                             found_dup = True
 
                     if not found_dup:
                         print(
                             'NEW RECORD: {},{},{},{},{}'.format(
-                                date, ttype,
+                                date, str(ttype),
                                 description.encode('utf-8'),
                                 debit, credit
-                            )
+                            ), end=''
                         )
-                        # db.dbsession.add()
+                        newrec = db.Trybooking(
+                            date=date,
+                            type=ttype.csvvalue,
+                            description=description.encode('utf-8'),
+                            debit=debit,
+                            credit=credit
+                        )
+                        db.dbsession.add(newrec)
+                        db.dbsession.flush()
+                        print(' => ID{}'.format(newrec.id))
 
         return os.EX_OK
 
