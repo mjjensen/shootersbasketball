@@ -15,11 +15,14 @@ from __future__ import print_function
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 import csv
+from datetime import datetime
 from logging import getLogger, basicConfig
 import os
+from sqlalchemy.sql.expression import update
 import sys
+from traceback import print_exception, format_exc
 
-from sbcilib.financedb import SbciFinanceDB
+from sbcilib.financedb import SbciFinanceDB, SbciTransactionType
 
 
 __all__ = []
@@ -29,7 +32,7 @@ __updated__ = '$Date$'.split()[0]
 
 _logger = getLogger(__file__)
 
-DEBUG_RUN = 0
+DEBUG_RUN = 1
 TEST_RUN = 0
 PROFILE_RUN = 0
 
@@ -95,20 +98,84 @@ USAGE
         print("CSV file list = {}".format(args.csvlist))
 
     try:
-        db = SbciFinanceDB(args.verbose)
-        print('{}'.format(repr(db)))
+        try:
+            db = SbciFinanceDB(args.verbose)
+        except UnicodeEncodeError:
+            print_exception(*sys.exc_info())
+            raise
+
+        # for r in db.trybooking_query.limit(10).all():
+        #     print(
+        #         '{}({}),{}({}),{}({}),{}({}),{}({})'.format(
+        #               r.date, type(r.date),
+        #               r.type, type(r.type),
+        #               r.description, type(r.description),
+        #               r.debit, type(r.debit),
+        #               r.credit, type(r.credit),
+        #         )
+        #     )
+
         for csvfile in args.csvlist:
+
             with open(csvfile) as fd:
+
+                # skip crap at start of file
                 pos = fd.tell()
+                skipped_lines = 0
                 while not fd.readline().startswith('Date'):
                     pos = fd.tell()
+                    skipped_lines += 1
                 fd.seek(pos)
+
                 reader = csv.DictReader(fd)
                 for d in reader:
-                    if d['Transaction'] == '' and d['Description'] == '' \
-                      and d['Date'].startswith('Total'):
+                    if d['Date'].startswith('Total'):
                         break
-                    print('{}'.format(d))
+
+                    # 26Apr2016 02:07 PM
+                    date, ttype, description, debit, credit = (
+                        datetime.strptime(d['Date'], '%d%b%Y %H:%M %p'),
+                        SbciTransactionType.by_csvvalue(d['Transaction']),
+                        unicode(d['Description'], encoding='latin-1'),
+                        float(d['Debit'].replace(',', '')),
+                        float(d['Credit'].replace(',', '')),
+                    )
+
+                    maybe_dups = db.trybooking_query.filter(
+                        db.Trybooking.type == ttype.csvvalue,
+                        db.Trybooking.description == description,
+                        db.Trybooking.debit == debit,
+                        db.Trybooking.credit == credit
+                    ).all()
+
+                    found_dup = False
+                    for maybe_dup in maybe_dups:
+                        if maybe_dup.date.date() == date.date():
+                            # print('DUPLICATE!! {}'.format(maybe_dup))
+                            if found_dup:
+                                raise RuntimeError('matched more than one!')
+                            if maybe_dup.date != date:
+                                print(
+                                    'Updated date: {} => {}'.format(
+                                        maybe_dup.date, date
+                                    )
+                                )
+                                stmt = update(db.Trybooking).where(
+                                    db.Trybooking.id == maybe_dup.id
+                                ).values(date=date)
+                                db.engine.connect().execute(stmt)
+                            found_dup = True
+
+                    if not found_dup:
+                        print(
+                            'NEW RECORD: {},{},{},{},{}'.format(
+                                date, ttype,
+                                description.encode('utf-8'),
+                                debit, credit
+                            )
+                        )
+                        # db.dbsession.add()
+
         return os.EX_OK
 
     except KeyboardInterrupt:
@@ -117,6 +184,7 @@ USAGE
 
     except Exception as e:
         if DEBUG_RUN or TEST_RUN:
+            print(format_exc())
             raise(e)
         indent = len(program_name) * " "
         sys.stderr.write(program_name + ": " + repr(e) + "\n")

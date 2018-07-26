@@ -4,6 +4,7 @@ Created on 7 Jul. 2018
 @author: jen117
 '''
 from collections import Mapping
+from enum import unique, IntEnum
 import json
 from logging import getLogger
 import os
@@ -18,6 +19,36 @@ _config = {
     'db_file':     'finance.sqlite3',  # leave out if no file backing db
     'db_url':      'sqlite:///finance.sqlite3',
 }
+
+
+@unique
+class SbciTransactionType(IntEnum):
+    '''TODO'''
+    NOTSET = 0, None, None
+    BOOKING = 1, True, 'Booking'
+    TRANSFER = 2, False, 'Fund Transfer'
+    CHARGE = 3, False, 'Gateway Charge'
+    RCHARGE = 4, True, 'Refunded PG Charge'
+    RBOOKING = 5, False, 'Refunded Tickets'
+
+    def __new__(cls, value, is_credit, csvvalue):
+        obj = int.__new__(cls, value)
+        obj._value_ = value
+        obj.is_credit = is_credit
+        obj.csvvalue = csvvalue
+        return obj
+
+    def __int__(self):
+        return self.value
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def by_csvvalue(cls, csvvalue):
+        for t in SbciTransactionType:
+            if t.csvvalue == csvvalue:
+                return t
 
 
 class SbciFinanceDB(object):

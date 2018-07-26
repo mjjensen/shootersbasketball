@@ -147,11 +147,11 @@ USAGE
                 continue
 
             competition = db.competitions_query.get(team.competition_id)
-            competition_name = db.competition_longname(competition)
             team_manager = db.people_query.get(team.team_manager_id)
             coach = db.people_query.get(team.coach_id)
             asst_coach = db.people_query.get(team.asst_coach_id)
 
+            competition_name = db.competition_longname(competition)
             if verbose:
                 print('{}, {}:'.format(team.team_name, competition_name))
 
