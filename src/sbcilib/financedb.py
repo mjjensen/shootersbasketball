@@ -93,3 +93,10 @@ class SbciFinanceDB(object):
         self.cheques_query = self.dbsession.query(self.Cheques)
         self.transactions_query = self.dbsession.query(self.Transactions)
         self.trybooking_query = self.dbsession.query(self.Trybooking)
+
+    def trybooking_format(self, record):
+        return '({},{},{},{},{},{})'.format(
+            record.id, record.date,
+            record.type, record.description,
+            record.debit, record.credit
+        )
