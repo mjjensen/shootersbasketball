@@ -4,6 +4,7 @@ Created on 7 Jul. 2018
 @author: jen117
 '''
 from collections import Mapping, namedtuple
+from datetime import date
 from enum import IntEnum
 import json
 from logging import getLogger
@@ -203,7 +204,7 @@ class SbciTeamsDB(object):
 
     def competition_shortname(self, competition):
         '''TODO'''
-        if competition.gender is 'F':
+        if competition.gender == 'F':
             gender = 'G'
         else:
             gender = 'B'
@@ -211,9 +212,20 @@ class SbciTeamsDB(object):
 
     def competition_longname(self, competition):
         '''TODO'''
-        if competition.gender is 'F':
+        if competition.gender == 'F':
             gender = 'Girls'
         else:
             gender = 'Boys'
         return 'Under ' + str(competition.age_group) + ' ' + gender + \
                ' Section ' + str(competition.section)
+
+    def end_of_season(self):
+        '''TODO'''
+        today = date.today()
+        end_of_summer = date(today.year, 3, 31)  # near enough is good enough
+        if today <= end_of_summer:
+            return end_of_summer
+        end_of_winter = date(today.year, 9, 30)  # near enough is good enough
+        if today <= end_of_winter:
+            return end_of_winter
+        return date(today.year + 1, 3, 31)
