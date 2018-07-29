@@ -5,12 +5,14 @@ Created on 7 Jul. 2018
 '''
 from collections import Mapping, namedtuple
 from datetime import date
+from dateutil.relativedelta import relativedelta
 from enum import IntEnum
 import json
 from logging import getLogger
 import os
 import re
 from sqlalchemy.ext.automap import automap_base
+from time import strptime
 import urllib2
 
 from sqlalchemy.engine import create_engine
@@ -119,6 +121,14 @@ class SbciTeamsDB(object):
             )
             return self._wwc_checked[id]
 
+        if self.person_is_under18(person):
+            self._wwc_checked[id] = WWCCheckResult(
+                WWCCheckStatus.UNDER18,
+                'Skipping - Under 18 (DoB: {})'.format(person.dob.date()),
+                None
+            )
+            return self._wwc_checked[id]
+
         if wwcn == '':
             self._wwc_checked[id] = WWCCheckResult(
                 WWCCheckStatus.EMPTY,
@@ -130,13 +140,7 @@ class SbciTeamsDB(object):
         m = SbciTeamsDB._wwc_number_pattern.match(wwcn)
 
         if m is None:
-            if wwcn == 'Under 18':
-                self._wwc_checked[id] = WWCCheckResult(
-                    WWCCheckStatus.UNDER18,
-                    'Skipping - Under 18 (DoB: {})'.format(person.dob),
-                    None
-                )
-            elif wwcn.startswith('VIT'):
+            if wwcn.startswith('VIT'):
                 self._wwc_checked[id] = WWCCheckResult(
                     WWCCheckStatus.TEACHER,
                     'Skipping - Victorian Teacher ({})'.format(wwcn),
@@ -172,16 +176,6 @@ class SbciTeamsDB(object):
 
             success, expired, notvalid = m.group(2, 6, 7)
 
-            if success is not None:
-                if verbose > 1:
-                    print('success response = {}'.format(success))
-                self._wwc_checked[id] = WWCCheckResult(
-                    WWCCheckStatus.SUCCESS,
-                    'WWC Check Succeeded',
-                    '-'.join(m.group(5, 4, 3))
-                )
-                return self._wwc_checked[id]
-
             if expired:
                 if verbose > 1:
                     print('expired response = {}'.format(expired))
@@ -203,6 +197,16 @@ class SbciTeamsDB(object):
                 )
                 return self._wwc_checked[id]
 
+            if success is not None:
+                if verbose > 1:
+                    print('success response = {}'.format(success))
+                self._wwc_checked[id] = WWCCheckResult(
+                    WWCCheckStatus.SUCCESS,
+                    'WWC Check Succeeded',
+                    date(*strptime('-'.join(m.group(5, 4, 3)), '%Y-%b-%d')[:3])
+                )
+                return self._wwc_checked[id]
+
         if verbose > 1:
             print('bad response = {}'.format(contents))
         self._wwc_checked[id] = WWCCheckResult(
@@ -211,6 +215,11 @@ class SbciTeamsDB(object):
             None
         )
         return self._wwc_checked[id]
+
+    def person_is_under18(self, person):
+        '''TODO'''
+        diff = relativedelta(self.end_of_season(), person.dob)
+        return (diff.years < 18)
 
     def competition_shortname(self, competition):
         '''TODO'''

@@ -97,44 +97,96 @@ USAGE
     try:
         db = SbciTeamsDB(verbose)
 
-        csvrecords = MembersReadCSV('reportdata-members.csv', verbose)
+        member_records = MembersReadCSV('reportdata-members.csv', verbose)
 
         for team in sorted(db.teams_query.all(), key=lambda x: x.team_name):
             if team.active != 'true':
                 continue
 
             competition = db.competitions_query.get(team.competition_id)
-            team_manager = db.people_query.get(team.team_manager_id)
+            competition_longname = db.competition_longname(competition)
+
             coach = db.people_query.get(team.coach_id)
             asst_coach = db.people_query.get(team.asst_coach_id)
+            team_manager = db.people_query.get(team.team_manager_id)
 
-            competition_name = db.competition_longname(competition)
             if verbose:
-                print('{}, {}:'.format(team.team_name, competition_name))
+                print('{}, {}:'.format(team.team_name, competition_longname))
 
-            people = [
-                (coach, PersonRole.COACH),
-                (team_manager, PersonRole.TEAM_MANAGER),
-                (asst_coach, PersonRole.ASSISTANT_COACH),
+            team_roles = [
+                (PersonRole.COACH, coach),
+                (PersonRole.TEAM_MANAGER, team_manager),
+                (PersonRole.ASSISTANT_COACH, asst_coach),
             ]
 
-            for person, role in people:
+            for role, person in team_roles:
                 if person.id == 0:
                     continue
 
-                csvmatches = []
-                for csvrecord in csvrecords:
-                    name = csvrecord.first_name + ' ' + csvrecord.family_name
+                member_matches = []
+                for record in member_records:
+                    name = record.first_name + ' ' + record.family_name
                     if name.lower() == person.name.lower():
-                        csvmatches.append(csvrecord)
+                        member_matches.append(record)
 
-                nmatches = len(csvmatches)
+                nmatches = len(member_matches)
                 if nmatches == 0:
                     raise RuntimeError('{} has no SportsTG record!'
                                        .format(person.name))
                 elif nmatches > 1:
                     raise RuntimeError('{} matches more than 1 SportsTG record!'
                                        .format(person.name))
+
+                member_record = member_matches[0]
+                need_update = False
+                if verbose > 0:
+                    result = '{}: {}'.format(role.alt_value, person.name)
+
+                if person.email != member_record.email:
+                    if verbose > 0:
+                        result += ' +EMAIL'
+                    need_update = True
+
+                if person.mobile != member_record.mobile:
+                    if verbose > 0:
+                        result += ' +MOBILE'
+                    need_update = True
+
+                if not db.person_is_under18(person):
+
+                    if person.wwc_number != member_record.wwc_check_number:
+                        if verbose > 0:
+                            result += ' +WWCNUM'
+                        need_update = True
+
+                    if (person.wwc_expiry.date() !=
+                            member_record.wwc_check_expiry):
+                        if verbose > 0:
+                            result += ' +WWCEXP'
+                        need_update = True
+
+                if person.dob.date() != member_record.date_of_birth:
+                    if verbose > 0:
+                        result += ' +DOB'
+                    need_update = True
+
+                need_role_update = False
+                if role == PersonRole.COACH:
+                    need_role_update = (member_record.season_coach != 'Yes')
+                if role == PersonRole.TEAM_MANAGER:
+                    need_role_update = (member_record.season_misc != 'Yes')
+                if need_role_update:
+                    if verbose > 0:
+                        result += ' +{}'.format(role.name)
+                    need_update = True
+
+                if verbose > 0:
+                    if need_update:
+                        print('**', end='')
+                    print('\t{}.'.format(result))
+                elif need_update:
+                    print('\t{}: {} NEEDS UPDATE!'
+                          .format(role.alt_value, person.name))
 
         return os.EX_OK
 

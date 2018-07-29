@@ -15,7 +15,6 @@ from __future__ import print_function
 
 from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from datetime import datetime
-from dateutil.relativedelta import relativedelta
 from logging import getLogger, basicConfig
 import os
 import re
@@ -145,21 +144,22 @@ USAGE
                 continue
 
             competition = db.competitions_query.get(team.competition_id)
-            team_manager = db.people_query.get(team.team_manager_id)
+            competition_longname = db.competition_longname(competition)
+
             coach = db.people_query.get(team.coach_id)
             asst_coach = db.people_query.get(team.asst_coach_id)
+            team_manager = db.people_query.get(team.team_manager_id)
 
-            competition_name = db.competition_longname(competition)
             if verbose:
-                print('{}, {}:'.format(team.team_name, competition_name))
+                print('{}, {}:'.format(team.team_name, competition_longname))
 
-            people = [
-                (coach, PersonRole.COACH),
-                (team_manager, PersonRole.TEAM_MANAGER),
-                (asst_coach, PersonRole.ASSISTANT_COACH),
+            team_roles = [
+                (PersonRole.COACH, coach),
+                (PersonRole.TEAM_MANAGER, team_manager),
+                (PersonRole.ASSISTANT_COACH, asst_coach),
             ]
 
-            for person, role in people:
+            for role, person in team_roles:
                 if person.id == 0:
                     continue
 
@@ -170,22 +170,10 @@ USAGE
 
                 if status == WWCCheckStatus.SUCCESS:
                     print('{}, expiry={}'.format(status.name, expiry))
-                    expiry = str(datetime.strptime(expiry, '%Y-%b-%d').date())
-                    if person.wwc_expiry != expiry:
+                    if person.wwc_expiry.date() != expiry:
                         print('NEED TO UPDATE WWC EXPIRY for {} ({}): {} => {}'
                               .format(person.name, person.id,
                                       person.wwc_expiry, expiry))
-                elif status == WWCCheckStatus.UNDER18:
-                    if person.dob is None:
-                        msg = 'Unknown DoB!'
-                    else:
-                        dob = datetime.strptime(person.dob, '%Y-%m-%d').date()
-                        diff = relativedelta(db.end_of_season(), dob)
-                        if diff.years >= 18:
-                            msg = 'But is, or will be, OLDER THAN 18!!'
-                        else:
-                            msg = 'Dob = {}'.format(person.dob)
-                    print('{}, {}'.format(status.name, msg))
                 else:
                     print('{}, {}'.format(status.name, message))
 
@@ -214,15 +202,12 @@ USAGE
                 worksheet.write(row, col + 3, person.email)
                 worksheet.write(row, col + 4, person.mobile)
                 worksheet.write(row, col + 5, person.wwc_number)
-                if person.wwc_number == 'Under 18':
-                    worksheet.write(row, col + 6, 'Under 18')
-                else:
-                    worksheet.write(row, col + 6, person.wwc_expiry)
+                worksheet.write(row, col + 6, person.wwc_expiry)
                 worksheet.write(row, col + 7, bv_mpd_signed(person))
 
             worksheet.write(row, 0, 'Shooters Basketball Club')
             worksheet.write(row, 1, team.team_name)
-            worksheet.write(row, 2, competition_name)
+            worksheet.write(row, 2, competition_longname)
             write_one_person(row, 3, coach)
             write_one_person(row, 11, team_manager)
 

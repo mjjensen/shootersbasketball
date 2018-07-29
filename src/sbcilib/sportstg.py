@@ -3,8 +3,12 @@ Created on 29 Jul. 2018
 
 @author: jen117
 '''
+from __future__ import print_function
+
 from collections import OrderedDict, namedtuple
 import csv
+from datetime import date
+from time import strptime
 
 
 _members_columnmap = OrderedDict((
@@ -64,6 +68,20 @@ _members_columnmap = OrderedDict((
 ))
 
 
+_members_date_columns = (
+    'date_of_birth',
+    'wwc_check_expiry',
+    'first_registered',
+    'last_registered',
+    'registered_until',
+    'last_updated',
+    'date_player_created_in_season',
+    'date_coach_created_in_season',
+    'date_misc_created_in_season',
+    'date_regoform_last_used_in_season',
+)
+
+
 MembersRecord = namedtuple('STGMembersRecord', _members_columnmap.viewvalues())
 
 
@@ -71,7 +89,7 @@ def MembersReadCSV(csvfile, verbose=0):
     '''TODO'''
 
     if verbose > 0:
-        print('Reading Members CSV file: {} ...'.format(csvfile))
+        print('Reading Members CSV file: {} ... '.format(csvfile), end='')
 
     records = []
     first_column_name = next(iter(_members_columnmap))
@@ -86,11 +104,19 @@ def MembersReadCSV(csvfile, verbose=0):
             if d[first_column_name] == ' rows ':
                 break
 
-            record = MembersRecord(**{
+            data = {
                 _members_columnmap[k]: unicode(d[k], encoding='utf-8')
                 if type(d[k]) is str else d[k]
                 for k in _members_columnmap
-            })
+            }
+
+            for k in _members_date_columns:
+                if data[k] == '':
+                    data[k] = None
+                elif data[k] is not None:
+                    data[k] = date(*strptime(data[k], '%d/%m/%Y')[:3])
+
+            record = MembersRecord(**data)
 
             if verbose > 1:
                 print('{}'.format(record))
