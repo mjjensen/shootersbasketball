@@ -199,7 +199,9 @@ USAGE
                     print('{}, {}'.format(status.name, message))
 
             def bv_mpd_signed(person):
-                if (person.bv_mpd_expiry is not None and
+                if db.person_is_under18(person):
+                    return 'Under 18'
+                elif (person.bv_mpd_expiry is not None and
                         person.bv_mpd_expiry.date() > db.end_of_season()):
                     return 'Yes'
                 else:
