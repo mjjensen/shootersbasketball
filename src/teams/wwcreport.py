@@ -23,7 +23,7 @@ import sys
 
 import xlsxwriter
 
-from sbcilib.teamsdb import SbciTeamsDB, WWCCheckStatus
+from sbcilib.teamsdb import SbciTeamsDB, WWCCheckStatus, PersonRole
 
 
 __all__ = []
@@ -154,17 +154,17 @@ USAGE
                 print('{}, {}:'.format(team.team_name, competition_name))
 
             people = [
-                (coach, 'Coach'),
-                (team_manager, 'Team Manager'),
-                (asst_coach, 'Assistant Coach'),
+                (coach, PersonRole.COACH),
+                (team_manager, PersonRole.TEAM_MANAGER),
+                (asst_coach, PersonRole.ASSISTANT_COACH),
             ]
 
-            for person, label in people:
+            for person, role in people:
                 if person.id == 0:
                     continue
 
                 print('\t{}: {}, WWC Verification: ... '
-                      .format(person.name, label), end='')
+                      .format(person.name, role.alt_value), end='')
 
                 status, message, expiry = db.person_check_wwc(person, verbose)
 

@@ -143,7 +143,7 @@ USAGE
 
                     csvrecord = CSVRecord(
                         date,
-                        SbciTransactionType.by_csvvalue(d['Transaction']),
+                        SbciTransactionType.by_csv_value(d['Transaction']),
                         unicode(d['Description'], encoding='latin-1'),
                         float(d['Debit'].replace(',', '')),
                         float(d['Credit'].replace(',', '')),
@@ -157,7 +157,7 @@ USAGE
         for csvrecord in sorted(csvrecords, key=lambda r: r.date):
 
             maybe_dups = db.trybooking_query.filter(
-                db.Trybooking.type == csvrecord.ttype.csvvalue,
+                db.Trybooking.type == csvrecord.ttype.csv_value,
                 db.Trybooking.description.like(csvrecord.description + '%'),
                 db.Trybooking.debit == csvrecord.debit,
                 db.Trybooking.credit == csvrecord.credit
@@ -204,7 +204,7 @@ USAGE
                         print('NEW RECORD: {}'.format(csvrecord), end='')
                     dbrec = db.Trybooking(
                         date=csvrecord.date,
-                        type=csvrecord.ttype.csvvalue,
+                        type=csvrecord.ttype.csv_value,
                         description=csvrecord.description.encode('utf-8'),
                         debit=csvrecord.debit,
                         credit=csvrecord.credit

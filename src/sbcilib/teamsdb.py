@@ -16,6 +16,8 @@ import urllib2
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm.session import Session
 
+from sbcilib.utils import SbciEnum
+
 
 _logger = getLogger(__name__)
 _config = {
@@ -34,6 +36,14 @@ WWCCheckStatus = IntEnum('WWCCheckStatus', ' '.join([
 
 
 WWCCheckResult = namedtuple('WWCCheckResult', ['status', 'message', 'expiry'])
+
+
+class PersonRole(SbciEnum):
+    '''TODO'''
+
+    COACH = 1, 'Coach'
+    ASSISTANT_COACH = 2, 'Assistant Coach'
+    TEAM_MANAGER = 3, 'Team Manager'
 
 
 class SbciTeamsDB(object):

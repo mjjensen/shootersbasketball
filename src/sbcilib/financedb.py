@@ -4,7 +4,6 @@ Created on 7 Jul. 2018
 @author: jen117
 '''
 from collections import Mapping
-from enum import unique, IntEnum
 import json
 from logging import getLogger
 import os
@@ -12,6 +11,8 @@ from sqlalchemy.ext.automap import automap_base
 
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm.session import Session
+
+from sbcilib.utils import SbciEnum
 
 
 _logger = getLogger(__name__)
@@ -21,34 +22,24 @@ _config = {
 }
 
 
-@unique
-class SbciTransactionType(IntEnum):
+class SbciTransactionType(SbciEnum):
     '''TODO'''
-    NOTSET = 0, None, None
+
     BOOKING = 1, True, 'Booking'
     TRANSFER = 2, False, 'Fund Transfer'
     CHARGE = 3, False, 'Gateway Charge'
     RCHARGE = 4, True, 'Refunded PG Charge'
     RBOOKING = 5, False, 'Refunded Tickets'
 
-    def __new__(cls, value, is_credit, csvvalue):
-        obj = int.__new__(cls, value)
-        obj._value_ = value
+    def __new__(cls, value, is_credit, csv_value):
+        obj = cls.__real_new__(value, csv_value)
         obj.is_credit = is_credit
-        obj.csvvalue = csvvalue
+        obj.csv_value = csv_value
         return obj
 
-    def __int__(self):
-        return self.value
-
-    def __str__(self):
-        return self.name
-
     @classmethod
-    def by_csvvalue(cls, csvvalue):
-        for t in SbciTransactionType:
-            if t.csvvalue == csvvalue:
-                return t
+    def by_csv_value(cls, csv_value):
+        return cls.by_alt_value(csv_value)
 
 
 class SbciFinanceDB(object):
