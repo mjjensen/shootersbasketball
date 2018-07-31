@@ -13,8 +13,7 @@
     appbuilder.add_view(MyModelView, "My View", icon="fa-folder-open-o",
     category="My Category", category_icon='fa-envelope')
 """
-from flask import flash
-from flask import render_template
+from flask import flash, render_template
 from flask_appbuilder import BaseView, SimpleFormView, expose, has_access
 from flask_appbuilder.fieldwidgets import BS3TextFieldWidget
 from flask_appbuilder.forms import DynamicForm
