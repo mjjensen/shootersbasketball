@@ -1,4 +1,15 @@
-# coding: utf-8
+from flask import render_template
+from flask_appbuilder.models.sqla.interface import SQLAInterface
+from flask_appbuilder import BaseView, ModelView, expose, has_access
+from flask_appbuilder.forms import DynamicForm
+from wtforms.fields.core import StringField
+from wtforms.validators import DataRequired
+from flask_appbuilder.fieldwidgets import BS3TextFieldWidget
+from flask_appbuilder.views import SimpleFormView
+from flask.helpers import flash
+from app import appbuilder, db
+from app.models import Competitions, People, Venues, Teams, Sessions
+
 """
     Create your Views::
 
@@ -11,32 +22,8 @@
 
 
     appbuilder.add_view(MyModelView, "My View", icon="fa-folder-open-o",
-    category="My Category", category_icon='fa-envelope')
+        category="My Category", category_icon='fa-envelope')
 """
-from flask import flash, render_template
-from flask_appbuilder import BaseView, SimpleFormView, expose, has_access
-from flask_appbuilder.fieldwidgets import BS3TextFieldWidget
-from flask_appbuilder.forms import DynamicForm
-from flask_appbuilder.models.sqla.interface import SQLAInterface
-from flask_appbuilder.views import ModelView
-from flask_babel import lazy_gettext as _
-from wtforms import StringField
-from wtforms.validators import DataRequired
-
-from app import appbuilder, db
-from app.models import Team, Person, TSession, Competition
-
-
-@appbuilder.app.errorhandler(404)
-def page_not_found(_e):
-    """
-        Application wide 404 error handler
-    """
-    return render_template('404.html', base_template=appbuilder.base_template,
-                           appbuilder=appbuilder), 404
-
-
-db.create_all()
 
 
 class MyView(BaseView):
@@ -91,19 +78,12 @@ class MyFormView(SimpleFormView):
         flash(self.message % (form), 'info')
 
 
-class TeamModelView(ModelView):
-    datamodel = SQLAInterface(Team)
-    related_views = [CompetitionModelView, TeamManagerModelView,
-                     CoachModelView, AsstCoachModelView,
-                     CurTSessionModelView, OldTSessionModelView]
+class CompetitionsModelView(ModelView):
+    datamodel = SQLAInterface(Competitions)
 
 
-class CompetitionModelView(ModelView):
-    datamodel = SQLAInterface(Competition)
-
-
-class PersonModelView(ModelView):
-    datamodel = SQLAInterface(Person)
+class PeopleModelView(ModelView):
+    datamodel = SQLAInterface(People)
 
     list_columns = ['name', 'email', 'mobile', 'wwc_number', 'wwc_expiry',
                     'postal_address', 'photo', 'dob', 'bv_mpd_expiry']
@@ -123,28 +103,39 @@ class PersonModelView(ModelView):
                      ]
 
 
-class TeamManagerModelView(PersonModelView):
+class TeamManagerModelView(PeopleModelView):
     pass
 
 
-class CoachModelView(PersonModelView):
+class CoachModelView(PeopleModelView):
     pass
 
 
-class AsstCoachModelView(PersonModelView):
+class AsstCoachModelView(PeopleModelView):
     pass
 
 
-class TSessionModelView(ModelView):
-    datamodel = SQLAInterface(TSession)
+class SessionsModelView(ModelView):
+    datamodel = SQLAInterface(Sessions)
 
 
-class CurTSessionModelView(TSessionModelView):
+class CurTSessionModelView(SessionsModelView):
     pass
 
 
-class OldTSessionModelView(TSessionModelView):
+class OldTSessionModelView(SessionsModelView):
     pass
+
+
+class VenuesModelView(Venues):
+    pass
+
+
+class TeamsModelView(ModelView):
+    datamodel = SQLAInterface(Teams)
+    related_views = [CompetitionsModelView, TeamManagerModelView,
+                     CoachModelView, AsstCoachModelView,
+                     CurTSessionModelView, OldTSessionModelView]
 
 
 appbuilder.add_view(MyView, 'Method1', category='My View')
@@ -154,6 +145,19 @@ appbuilder.add_view(MyFormView, "My form View", icon="fa-group",
                     label=_('My form View'), category="My Forms",
                     category_icon="fa-cogs")
 
-appbuilder.add_view(TeamModelView, "List Teams",
+appbuilder.add_view(TeamsModelView, "List Teams",
                     icon="fa-folder-open-o", category="Teams",
                     category_icon="fa-envelope")
+
+"""
+    Application wide 404 error handler
+"""
+
+
+@appbuilder.app.errorhandler(404)
+def page_not_found(_e):
+    return render_template('404.html', base_template=appbuilder.base_template,
+                           appbuilder=appbuilder), 404
+
+
+db.create_all()

@@ -3,6 +3,8 @@ Created on 7 Jul. 2018
 
 @author: jen117
 '''
+from __future__ import print_function
+
 from collections import Mapping
 import json
 from logging import getLogger

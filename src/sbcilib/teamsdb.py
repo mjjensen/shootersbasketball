@@ -3,10 +3,10 @@ Created on 7 Jul. 2018
 
 @author: jen117
 '''
+from __future__ import print_function
+
 from collections import Mapping, namedtuple
 from datetime import date
-from dateutil.relativedelta import relativedelta
-from enum import IntEnum
 import json
 from logging import getLogger
 import os
@@ -15,6 +15,8 @@ from sqlalchemy.ext.automap import automap_base
 from time import strptime
 import urllib2
 
+from dateutil.relativedelta import relativedelta
+from enum import IntEnum
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm.session import Session
 
@@ -51,7 +53,7 @@ class PersonRole(SbciEnum):
 class SbciTeamsDB(object):
     '''TODO'''
 
-    def __init__(self, verbose=False, *args, **kwds):
+    def __init__(self, verbose=False, config=None, *args, **kwds):
         super(SbciTeamsDB, self).__init__(*args, **kwds)
 
         try:
@@ -64,6 +66,9 @@ class SbciTeamsDB(object):
         except (IOError, ValueError) as e:
             if verbose > 1:
                 _logger.warning('exception reading "config.json": %s', str(e))
+
+        if config is not None:
+            _config.update(config)
 
         self.Base = automap_base()
 
@@ -82,6 +87,11 @@ class SbciTeamsDB(object):
         self.Venues = self.Base.classes.venues
         self.Teams = self.Base.classes.teams
         self.Sessions = self.Base.classes.sessions
+
+        if verbose > 0:
+            for cls in (self.Competitions, self.People, self.Venues,
+                        self.Teams, self.Sessions):
+                print('{} = {}'.format(cls.__name__, dir(cls)))
 
         self.dbsession = Session(self.engine)
 
