@@ -1,6 +1,8 @@
 import logging
+import os
 from flask import Flask
 from flask_appbuilder import SQLA, AppBuilder
+from sqlalchemy.ext.automap import automap_base
 
 """
  Logging configuration
@@ -12,13 +14,14 @@ logging.getLogger().setLevel(logging.DEBUG)
 app = Flask(__name__)
 app.config.from_object('config')
 db = SQLA(app)
+db.Model = automap_base(db.Model)
 appbuilder = AppBuilder(app, db.session)
 
 
 from sbcilib.teamsdb import SbciTeamsDB  # @IgnorePep8
 teamsdb = SbciTeamsDB(config={
-    'db_file': 'app.db',
-    'db_url': 'sqlite:///app.db'
+    'db_teams_file': app.config['TEAMS_FILE'],
+    'db_teams_url':  'sqlite:///' + app.config['TEAMS_FILE'],
 })
 
 """"""

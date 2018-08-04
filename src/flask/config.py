@@ -2,8 +2,12 @@ import os
 
 from flask_appbuilder.security.manager import AUTH_DB
 
-
 basedir = os.path.abspath(os.path.dirname(__file__))
+
+TEAMS_FILE = \
+    os.getenv('HOME') + \
+    '/basketball/shooters/FoxSportsPulse/2018-winter/teams.sqlite3'
+
 
 # Your App secret key
 SECRET_KEY = '\2\1thisismyscretkey\1\2\e\y\y\h'
@@ -12,6 +16,10 @@ SECRET_KEY = '\2\1thisismyscretkey\1\2\e\y\y\h'
 SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(basedir, 'app.db')
 # SQLALCHEMY_DATABASE_URI = 'mysql://myapp@localhost/myapp'
 # SQLALCHEMY_DATABASE_URI = 'postgresql://root:password@localhost/myapp'
+
+SQLALCHEMY_BINDS = {
+    'teamsdb': 'sqlite:///' + TEAMS_FILE,
+}
 
 # Flask-WTF flag for CSRF
 CSRF_ENABLED = True
