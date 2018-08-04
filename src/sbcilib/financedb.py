@@ -19,8 +19,8 @@ from sbcilib.utils import SbciEnum
 
 _logger = getLogger(__name__)
 _config = {
-    'db_file':     'finance.sqlite3',  # leave out if no file backing db
-    'db_url':      'sqlite:///finance.sqlite3',
+    'db_finance_file': 'finance.sqlite3',  # leave out if no file backing db
+    'db_finance_url':  'sqlite:///finance.sqlite3',
 }
 
 
@@ -63,13 +63,13 @@ class SbciFinanceDB(object):
 
         self.Base = automap_base()
 
-        if 'db_file' in _config:
-            db_file = _config['db_file']
-            if not os.access(db_file, os.R_OK | os.W_OK):
+        if 'db_finance_file' in _config:
+            db_finance_file = _config['db_finance_file']
+            if not os.access(db_finance_file, os.R_OK | os.W_OK):
                 raise RuntimeError('cannot access DB file ({}) for R/W!'
-                                   .format(db_file))
+                                   .format(db_finance_file))
 
-        self.engine = create_engine(_config['db_url'])
+        self.engine = create_engine(_config['db_finance_url'])
 
         self.Base.prepare(self.engine, reflect=True)
 

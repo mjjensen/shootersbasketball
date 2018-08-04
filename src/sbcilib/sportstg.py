@@ -11,7 +11,7 @@ from datetime import date
 from time import strptime
 
 
-_members_columnmap = OrderedDict((
+_members_colmap = OrderedDict((
     ('FIBA ID Number',                    'fiba_id'),
     ('Member ID',                         'member_id'),
     ('Member No.',                        'member_no'),
@@ -82,7 +82,28 @@ _members_date_columns = (
 )
 
 
-MembersRecord = namedtuple('STGMembersRecord', _members_columnmap.viewvalues())
+_players_colmap = OrderedDict((
+    ('FIBA ID Number',     'fiba_id_number'),
+    ('Member ID',          'member_id'),
+    ('Member No.',         'member_number'),
+    ('First Name',         'first_name'),
+    ('Family Name',        'family_name'),
+    ('Gender',             'gender'),
+    ('Competition Season', 'competition_season'),
+    ('Competition Name',   'competition_name'),
+    ('Team Name',          'team_name'),
+    ('Season',             'season'),
+))
+
+
+_players_date_columns = (
+)
+
+
+MembersRecord = namedtuple('MembersRecord', _members_colmap.values())
+
+
+PlayersRecord = namedtuple('PlayersRecord', _players_colmap.values())
 
 
 def MembersReadCSV(csvfile, verbose=0):
@@ -92,7 +113,7 @@ def MembersReadCSV(csvfile, verbose=0):
         print('Reading Members CSV file: {} ... '.format(csvfile), end='')
 
     records = []
-    first_column_name = next(iter(_members_columnmap))
+    first_column_name = next(iter(_members_colmap))
 
     with open(csvfile) as fd:
 
@@ -105,9 +126,9 @@ def MembersReadCSV(csvfile, verbose=0):
                 break
 
             data = {
-                _members_columnmap[k]: unicode(d[k], encoding='utf-8')
+                _members_colmap[k]: unicode(d[k], encoding='utf-8')
                 if type(d[k]) is str else d[k]
-                for k in _members_columnmap
+                for k in _members_colmap
             }
 
             for k in _members_date_columns:
@@ -124,6 +145,53 @@ def MembersReadCSV(csvfile, verbose=0):
             records.append(record)
 
     if verbose > 0:
-        print('{} CSV records read.'.format(len(records)))
+        print('{} member records read.'.format(len(records)))
 
     return records
+
+
+def PlayersReadCSV(csvfile, verbose=0):
+    '''TODO'''
+
+    if verbose > 0:
+        print('Reading Players CSV file: {} ... '.format(csvfile), end='')
+
+    records = []
+    first_column_name = next(iter(_players_colmap))
+
+    with open(csvfile) as fd:
+
+        reader = csv.DictReader(fd)
+
+        for d in reader:
+
+            # SportsTG puts crap at the end ...
+            if d[first_column_name] == ' rows ':
+                break
+
+            data = {
+                _players_colmap[k]: unicode(d[k], encoding='utf-8')
+                if type(d[k]) is str else d[k]
+                for k in _players_colmap
+            }
+
+            for k in _players_date_columns:
+                if data[k] == '':
+                    data[k] = None
+                elif data[k] is not None:
+                    data[k] = date(*strptime(data[k], '%d/%m/%Y')[:3])
+
+            record = PlayersRecord(**data)
+
+            if verbose > 1:
+                print('{}'.format(record))
+
+            records.append(record)
+
+    if verbose > 0:
+        print('{} player records read.'.format(len(records)))
+
+    return records
+
+
+__all__ = ['MembersRecord', 'MembersReadCSV', 'PlayersRecord', 'PlayersReadCSV']

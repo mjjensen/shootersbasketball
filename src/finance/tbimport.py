@@ -23,6 +23,7 @@ import sys
 from traceback import format_exc
 
 from sbcilib.financedb import SbciFinanceDB, SbciTransactionType
+from sbcilib.trybooking import TBXactReadCSV
 
 
 __all__ = []
@@ -115,41 +116,8 @@ USAGE
         db = SbciFinanceDB(args.verbose)
 
         csvrecords = []
-
         for csvfile in args.csvlist:
-            if args.verbose > 0:
-                print('Reading CSV file: {} ...'.format(csvfile))
-
-            with open(csvfile) as fd:
-
-                # skip crap at start of file
-                pos = fd.tell()
-                skipped_lines = 0
-                while not fd.readline().startswith('Date'):
-                    pos = fd.tell()
-                    skipped_lines += 1
-                fd.seek(pos)
-
-                reader = csv.DictReader(fd)
-                for d in reader:
-                    if d['Date'].startswith('Total'):
-                        break
-
-                    # 26Apr2016 02:07 PM or 27Jul18 4:36 PM
-                    try:
-                        date = datetime.strptime(d['Date'], '%d%b%Y %H:%M %p')
-                    except ValueError:
-                        date = datetime.strptime(d['Date'], '%d%b%y %H:%M %p')
-
-                    csvrecord = CSVRecord(
-                        date,
-                        SbciTransactionType.by_csv_value(d['Transaction']),
-                        unicode(d['Description'], encoding='latin-1'),
-                        float(d['Debit'].replace(',', '')),
-                        float(d['Credit'].replace(',', '')),
-                    )
-
-                    csvrecords.append(csvrecord)
+            csvrecords.extend(TBXactReadCSV(csvfile, args.verbose))
 
         if args.verbose > 0:
             print('All CSV files read - storing data ...')

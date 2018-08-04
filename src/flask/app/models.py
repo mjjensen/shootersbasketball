@@ -18,7 +18,7 @@ from sqlalchemy.sql.schema import CheckConstraint
 from app import teamsdb
 
 
-class Competitions(teamsdb.Competitions, AuditMixin, Model):
+class Competitions(AuditMixin, Model):
     __table__ = 'competitions'
     __table_args__ = (
         CheckConstraint(u'age_group in (9,10,12,14,16,18,20,21)'),
@@ -28,14 +28,14 @@ class Competitions(teamsdb.Competitions, AuditMixin, Model):
     )
 
 
-class People(teamsdb.People, AuditMixin, Model):
+class People(AuditMixin, Model):
     __table__ = 'people'
     __table_args__ = (
         {'extend_existing': True}
     )
 
 
-class Venues(teamsdb.Venues, AuditMixin, Model):
+class Venues(AuditMixin, Model):
     __table__ = 'venues'
     __table_args__ = (
         CheckConstraint(u'max_teams in (0,1,2)'),
@@ -43,7 +43,7 @@ class Venues(teamsdb.Venues, AuditMixin, Model):
     )
 
 
-class Teams(teamsdb.Teams, AuditMixin, Model):
+class Teams(AuditMixin, Model):
     __table__ = 'teams'
     __table_args__ = (
         CheckConstraint(u"active in ('false','true')"),
@@ -76,7 +76,7 @@ class Teams(teamsdb.Teams, AuditMixin, Model):
     )
 
 
-class Sessions(teamsdb.Sessions, AuditMixin, Model):
+class Sessions(AuditMixin, Model):
     __table__ = 'sessions'
     __table_args__ = (
         CheckConstraint(u"active in ('false', 'true')"),

@@ -25,11 +25,8 @@ from sbcilib.utils import SbciEnum
 
 _logger = getLogger(__name__)
 _config = {
-    'db_file':     'teams.sqlite3',  # leave out if no file backing db
-    'db_url':      'sqlite:///teams.sqlite3',
-    'wwc_url_fmt': 'https://online.justice.vic.gov.au/wwccu/checkstatus.doj'
-                   '?viewSequence=1&cardnumber={}&lastname={}'
-                   '&pageAction=Submit&Submit=submit',
+    'db_teams_file': 'teams.sqlite3',  # leave out if no file backing db
+    'db_teams_url':  'sqlite:///teams.sqlite3',
 }
 
 
@@ -72,13 +69,13 @@ class SbciTeamsDB(object):
 
         self.Base = automap_base()
 
-        if 'db_file' in _config:
-            db_file = _config['db_file']
-            if not os.access(db_file, os.R_OK | os.W_OK):
+        if 'db_teams_file' in _config:
+            db_teams_file = _config['db_teams_file']
+            if not os.access(db_teams_file, os.R_OK | os.W_OK):
                 raise RuntimeError('cannot access DB file ({}) for R/W!'
-                                   .format(db_file))
+                                   .format(db_teams_file))
 
-        self.engine = create_engine(_config['db_url'])
+        self.engine = create_engine(_config['db_teams_url'])
 
         self.Base.prepare(self.engine, reflect=True)
 
@@ -103,6 +100,9 @@ class SbciTeamsDB(object):
 
         self._wwc_checked = {}
 
+    _wwc_url_fmt = 'https://online.justice.vic.gov.au/wwccu/checkstatus.doj' \
+                   '?viewSequence=1&cardnumber={}&lastname={}' \
+                   '&pageAction=Submit&Submit=submit'
     _wwc_number_pattern = re.compile(r'^(\d{7}(\d|A))(-\d{1,2})?$', re.I)
     _wwc_result_pattern = re.compile(
         r'^('
@@ -168,7 +168,7 @@ class SbciTeamsDB(object):
         lastname = '%20'.join(name.split()[1:])
 
         try:
-            wwc_url = _config['wwc_url_fmt'].format(cardnumber, lastname)
+            wwc_url = SbciTeamsDB._wwc_url_fmt.format(cardnumber, lastname)
             contents = urllib2.urlopen(wwc_url).read()
         except BaseException:
             self._wwc_checked[id] = WWCCheckResult(

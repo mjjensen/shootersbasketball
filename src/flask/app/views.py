@@ -119,11 +119,11 @@ class SessionsModelView(ModelView):
     datamodel = SQLAInterface(Sessions)
 
 
-class CurTSessionModelView(SessionsModelView):
+class CurSessionModelView(SessionsModelView):
     pass
 
 
-class OldTSessionModelView(SessionsModelView):
+class OldSessionModelView(SessionsModelView):
     pass
 
 
@@ -135,7 +135,7 @@ class TeamsModelView(ModelView):
     datamodel = SQLAInterface(Teams)
     related_views = [CompetitionsModelView, TeamManagerModelView,
                      CoachModelView, AsstCoachModelView,
-                     CurTSessionModelView, OldTSessionModelView]
+                     CurSessionModelView, OldSessionModelView]
 
 
 appbuilder.add_view(MyView, 'Method1', category='My View')
