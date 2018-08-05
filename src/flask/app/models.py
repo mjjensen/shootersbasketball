@@ -1,6 +1,7 @@
 from flask_appbuilder import Model
-from flask_appbuilder.models.mixins import AuditMixin
-# from sqlalchemy.orm import relationship, backref
+from flask_appbuilder.models.mixins import AuditMixin, FileColumn, ImageColumn
+from sqlalchemy import Column, Integer, String, ForeignKey
+from sqlalchemy.orm import relationship, backref
 from app import db, app
 """
 
@@ -12,11 +13,10 @@ AuditMixin will add automatic timestamp of created and modified by who
 """
 
 
-print 'running db.reflect()'
 db.reflect(app=app)
 
 
-class Competitions(AuditMixin, Model):
+class Competitions(Model):
     __bind_key__ = 'teamsdb'
     __tablename__ = 'competitions'
     __table_args__ = (
@@ -27,7 +27,7 @@ class Competitions(AuditMixin, Model):
     )
 
 
-class People(AuditMixin, Model):
+class People(Model):
     __bind_key__ = 'teamsdb'
     __tablename__ = 'people'
     __table_args__ = (
@@ -35,7 +35,7 @@ class People(AuditMixin, Model):
     )
 
 
-class Venues(AuditMixin, Model):
+class Venues(Model):
     __bind_key__ = 'teamsdb'
     __tablename__ = 'venues'
     __table_args__ = (
@@ -44,7 +44,7 @@ class Venues(AuditMixin, Model):
     )
 
 
-class Teams(AuditMixin, Model):
+class Teams(Model):
     __bind_key__ = 'teamsdb'
     __tablename__ = 'teams'
     __table_args__ = (
@@ -53,33 +53,34 @@ class Teams(AuditMixin, Model):
                            u"('','C','T','CT','N','CN','TN','CTN')"),
         {'extend_existing': True}
     )
+
 #     competition = relationship(
 #         'Competitions', backref=backref('competition_teams', lazy=True),
-#         foreign_keys=[teamsdb.Teams.competition_id]  # @UndefinedVariable
+#         foreign_keys=[Teams.competition_id]  # @UndefinedVariable
 #     )
 #     team_manager = relationship(
 #         'People', backref=backref('team_manager_teams', lazy=True),
-#         foreign_keys=[teamsdb.Teams.team_manager_id]  # @UndefinedVariable
+#         foreign_keys=[Teams.team_manager_id]  # @UndefinedVariable
 #     )
 #     coach = relationship(
 #         'People', backref=backref('coach_teams', lazy=True),
-#         foreign_keys=[teamsdb.Teams.coach_id]  # @UndefinedVariable
+#         foreign_keys=[Teams.coach_id]  # @UndefinedVariable
 #     )
 #     asst_coach = relationship(
 #         'People', backref=backref('asst_coach_teams', lazy=True),
-#         foreign_keys=[teamsdb.Teams.asst_coach_id]  # @UndefinedVariable
+#         foreign_keys=[Teams.asst_coach_id]  # @UndefinedVariable
 #     )
 #     session = relationship(
 #         'Sessions', backref=backref('session_teams', lazy=True),
-#         foreign_keys=[teamsdb.Teams.session_id]  # @UndefinedVariable
+#         foreign_keys=[Teams.session_id]  # @UndefinedVariable
 #     )
 #     old_session = relationship(
 #         'Sessions', backref=backref('old_session_teams', lazy=True),
-#         foreign_keys=[teamsdb.Teams.old_session_id]  # @UndefinedVariable
+#         foreign_keys=[Teams.old_session_id]  # @UndefinedVariable
 #     )
 
 
-class Sessions(AuditMixin, Model):
+class Sessions(Model):
     __bind_key__ = 'teamsdb'
     __tablename__ = 'sessions'
     __table_args__ = (
@@ -94,7 +95,8 @@ class Sessions(AuditMixin, Model):
                            u"'8.00pm','8.15pm','8.30pm','9.00pm','9.15pm')"),
         {'extend_existing': True}
     )
+
 #     venue = relationship(
 #         'Venues', backref=backref('venue_sessions', lazy=True),
-#         foreign_keys=[teamsdb.Sessions.venue_id]  # @UndefinedVariable
+#         foreign_keys=[Sessions.venue_id]  # @UndefinedVariable
 #     )
