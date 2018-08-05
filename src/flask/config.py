@@ -8,6 +8,9 @@ TEAMS_FILE = \
     os.getenv('HOME') + \
     '/basketball/shooters/FoxSportsPulse/2018-winter/teams.sqlite3'
 
+FINANCE_FILE = \
+    os.getenv('HOME') + \
+    '/basketball/shooters/Finance/finance.sqlite3'
 
 # Your App secret key
 SECRET_KEY = '\2\1thisismyscretkey\1\2\e\y\y\h'
@@ -18,7 +21,8 @@ SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(basedir, 'app.db')
 # SQLALCHEMY_DATABASE_URI = 'postgresql://root:password@localhost/myapp'
 
 SQLALCHEMY_BINDS = {
-    'teamsdb': 'sqlite:///' + TEAMS_FILE,
+    'teamsdb':   'sqlite:///' + TEAMS_FILE,
+    'financedb': 'sqlite:///' + FINANCE_FILE,
 }
 
 # Flask-WTF flag for CSRF
