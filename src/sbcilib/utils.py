@@ -30,6 +30,10 @@ class SbciEnum(IntEnum):
 
     @classmethod
     def by_alt_value(cls, alt_value):
+        if alt_value is None:
+            return None
         for e in cls:
             if e.alt_value == alt_value:
                 return e
+        else:
+            raise RuntimeError('{} not a valid SbciEnum!'.format(alt_value))

@@ -32,6 +32,7 @@ class SbciTransactionType(SbciEnum):
     CHARGE = 3, False, 'Gateway Charge'
     RCHARGE = 4, True, 'Refunded PG Charge'
     RBOOKING = 5, False, 'Refunded Tickets'
+    BANKVERIFY = 6, False, 'Bank Verification'
 
     def __new__(cls, value, is_credit, csv_value):
         obj = cls.__real_new__(value, csv_value)
@@ -88,8 +89,9 @@ class SbciFinanceDB(object):
         self.trybooking_query = self.dbsession.query(self.Trybooking)
 
     def trybooking_format(self, record):
-        return '({},{},{},{},{},{})'.format(
+        return '({},{},{},{},{},{},{},{})'.format(
             record.id, record.date,
-            record.type, record.description,
+            record.xact, record.booking_id,
+            record.description, record.customer,
             record.debit, record.credit
         )

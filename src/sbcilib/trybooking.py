@@ -24,7 +24,7 @@ _tbrego_colmap = OrderedDict((
     ('Booking Country',                 'country'),
     ('Booking Telephone',               'telephone'),
     ('Booking Email',                   'email'),
-    ('Booking ID',                      'id'),
+    ('Booking ID',                      'booking_id'),
     ('Number of Tickets',               'number_of_tickets'),
     ('Payment Received',                'payment_received'),
     ('Discount Amount',                 'discount_amount'),
@@ -102,10 +102,10 @@ def TBRegoReadCSV(csvfile, verbose=0):
 
 _tbxact_colmap = OrderedDict((
     ('Date', 'date'),
-    ('Transaction', 'type'),
-    ('Booking ID', 'id'),
-    ('Description', 'desc'),
-    ('Customer', 'cust'),
+    ('Transaction', 'xact'),
+    ('Booking ID', 'booking_id'),
+    ('Description', 'description'),
+    ('Customer', 'customer'),
     ('Debit', 'debit'),
     ('Credit', 'credit'),
 ))
@@ -157,8 +157,8 @@ def TBXactReadCSV(csvfile, verbose=0):
                     st = strptime(data['date'], '%d%b%Y %I:%M %p')
                 except ValueError:
                     st = strptime(data['date'], '%d%b%y %I:%M %p')
-                data['date'] = datetime(st[:6])
-            data['type'] = SbciTransactionType.by_csv_value(data['type'])
+                data['date'] = datetime(*st[:6])
+            data['xact'] = SbciTransactionType.by_csv_value(data['xact'])
             data['debit'] = float(data['debit'].replace(',', ''))
             data['credit'] = float(data['credit'].replace(',', ''))
 

@@ -6,7 +6,7 @@ basedir = os.path.abspath(os.path.dirname(__file__))
 
 TEAMS_FILE = \
     os.getenv('HOME') + \
-    '/basketball/shooters/FoxSportsPulse/2018-winter/teams.sqlite3'
+    '/basketball/shooters/SportsTG/2018-winter/teams.sqlite3'
 
 FINANCE_FILE = \
     os.getenv('HOME') + \
