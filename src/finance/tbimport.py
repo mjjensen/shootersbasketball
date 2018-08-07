@@ -17,7 +17,6 @@ from argparse import ArgumentParser, RawDescriptionHelpFormatter
 from logging import getLogger, basicConfig
 import os
 import sys
-from traceback import format_exc
 
 from sbcilib.financedb import SbciFinanceDB
 from sbcilib.trybooking import TBXactReadCSV
@@ -105,15 +104,27 @@ USAGE
 
     try:
         db = SbciFinanceDB(args.verbose)
+    except BaseException as e:
+        print('Caught exception {} opening database'
+              .format(e), file=sys.stderr)
+        return os.EX_SOFTWARE
 
+    try:
         csvrecords = []
         for csvfile in args.csvlist:
             csvrecords.extend(TBXactReadCSV(csvfile, args.verbose))
+    except BaseException as e:
+        print('Caught exception {} reading CSV files'
+              .format(e), file=sys.stderr)
+        return os.EX_SOFTWARE
 
-        if args.verbose > 0:
-            print('All CSV files read - storing data ...')
+    try:
+        duplicates = 0
 
-        for csvrecord in sorted(csvrecords, key=lambda r: r.date):
+        for csvrecord in sorted(csvrecords, key=lambda r: r.date.date()):
+
+            if args.verbose > 2:
+                print('CSV Record: {}'.format(csvrecord))
 
             maybe_dups = db.trybooking_query.filter(
                 db.Trybooking.xact == csvrecord.xact.csv_value,
@@ -128,16 +139,17 @@ USAGE
             prev_dup = None
 
             for maybe_dup in maybe_dups:
+
+                if args.verbose > 2:
+                    print('Compare with: {} ...'.format(maybe_dup))
+
                 if maybe_dup.date.date() == csvrecord.date.date():
-                    if args.verbose > 1:
-                        print('DUPLICATE!! {}'.format(csvrecord))
 
                     if found_dup:
                         raise RuntimeError(
-                            'matched more than one! {},{},{}'.format(
+                            'matched more than one! {} and {}'.format(
                                 db.trybooking_format(prev_dup),
-                                db.trybooking_format(maybe_dup),
-                                csvrecord
+                                db.trybooking_format(maybe_dup)
                             )
                         )
 
@@ -150,13 +162,17 @@ USAGE
                             if args.verbose > 0:
                                 print('Updated date: {} => {}'
                                       .format(maybe_dup.date, csvrecord.date))
+
                             maybe_dup.date = csvrecord.date
-                            db.dbsession.commit()
 
                     found_dup = True
                     prev_dup = maybe_dup
 
-            if not found_dup:
+            if found_dup:
+                if args.verbose > 1:
+                    print('DUPLICATE!! {}'.format(csvrecord))
+                duplicates += 1
+            else:
                 if args.dryrun:
                     if args.verbose > 0:
                         print('(dryrun) NEW RECORD: {}'.format(csvrecord))
@@ -165,30 +181,25 @@ USAGE
                         print('NEW RECORD: {}'.format(csvrecord), end='')
                     dbrec = db.Trybooking(
                         date=csvrecord.date,
-                        type=csvrecord.xact.csv_value,
+                        xact=csvrecord.xact.csv_value,
+                        booking_id=csvrecord.booking_id,
                         description=csvrecord.description.encode('utf-8'),
+                        customer=csvrecord.customer,
                         debit=csvrecord.debit,
                         credit=csvrecord.credit
                     )
                     db.dbsession.add(dbrec)
-                    db.dbsession.flush()
                     if args.verbose > 0:
-                        print(' => ID{}'.format(dbrec.id))
+                        print(' => ID {}'.format(dbrec.id))
 
+        db.dbsession.commit()
         return os.EX_OK
 
-    except KeyboardInterrupt:
-        # handle keyboard interrupt
-        return os.EX_OK
-
-    except Exception as e:
-        if DEBUG_RUN or TEST_RUN:
-            print(format_exc())
-            raise(e)
-        indent = len(program_name) * " "
-        sys.stderr.write(program_name + ": " + repr(e) + "\n")
-        sys.stderr.write(indent + "  for help use --help\n")
-        return os.EX_USAGE
+    except BaseException as e:
+        print('Caught exception {} while updating database.'
+              .format(e), file=sys.stderr)
+        db.dbsession.rollback()
+        return os.EX_SOFTWARE
 
 
 if __name__ == "__main__":
