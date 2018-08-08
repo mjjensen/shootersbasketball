@@ -14,35 +14,12 @@ from sqlalchemy.ext.automap import automap_base
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm.session import Session
 
-from sbcilib.utils import SbciEnum
-
 
 _logger = getLogger(__name__)
 _config = {
     'db_finance_file': 'finance.sqlite3',  # leave out if no file backing db
     'db_finance_url':  'sqlite:///finance.sqlite3',
 }
-
-
-class SbciTransactionType(SbciEnum):
-    '''TODO'''
-
-    BOOKING = 1, True, 'Booking'
-    TRANSFER = 2, False, 'Fund Transfer'
-    CHARGE = 3, False, 'Gateway Charge'
-    RCHARGE = 4, True, 'Refunded PG Charge'
-    RBOOKING = 5, False, 'Refunded Tickets'
-    BANKVERIFY = 6, False, 'Bank Verification'
-
-    def __new__(cls, value, is_credit, csv_value):
-        obj = cls.__real_new__(value, csv_value)
-        obj.is_credit = is_credit
-        obj.csv_value = csv_value
-        return obj
-
-    @classmethod
-    def by_csv_value(cls, csv_value):
-        return cls.by_alt_value(csv_value)
 
 
 class SbciFinanceDB(object):
