@@ -5,179 +5,178 @@ Created on 4 Aug. 2018
 '''
 from __future__ import print_function
 
-from collections import deque, OrderedDict, namedtuple
+from collections import deque, namedtuple
 import csv
-from datetime import date, datetime
+from datetime import datetime
 from time import strptime
 
 from sbcilib.utils import SbciEnum, latin1_str, postcode_str, currency_str,\
-    date_str
+    date_str, phone_str, email_str, posint_str, time_str, boolean_str,\
+    SbciColumnDesc, datetime_str
 
-
-_c = namedtuple('_c', ['name', 'func', 'head'])
 
 _tbreg_cols = (
-    _c(
+    SbciColumnDesc(
         'first_name',
         lambda v: latin1_str(v),
         'Booking First Name'
     ),
-    _c(
+    SbciColumnDesc(
         'last_name',
         lambda v: latin1_str(v),
         'Booking Last Name'
     ),
-    _c(
+    SbciColumnDesc(
         'address_1',
         lambda v: latin1_str(v),
         'Booking Address 1'
     ),
-    _c(
+    SbciColumnDesc(
         'address_2',
         lambda v: latin1_str(v),
         'Booking Address 2'
     ),
-    _c(
+    SbciColumnDesc(
         'suburb',
         lambda v: latin1_str(v),
         'Booking Suburb'
     ),
-    _c(
+    SbciColumnDesc(
         'state',
         lambda v: latin1_str(v),
         'Booking State'
     ),
-    _c(
+    SbciColumnDesc(
         'post_code',
         lambda v: postcode_str(v),
         'Booking Post Code'
     ),
-    _c(
+    SbciColumnDesc(
         'country',
         lambda v: latin1_str(v),
         'Booking Country'
     ),
-    _c(
+    SbciColumnDesc(
         'telephone',
         lambda v: phone_str(v),
         'Booking Telephone'
     ),
-    _c(
+    SbciColumnDesc(
         'email',
         lambda v: email_str(v),
         'Booking Email'
     ),
-    _c(
+    SbciColumnDesc(
         'booking_id',
         lambda v: latin1_str(v),
         'Booking ID'
     ),
-    _c(
+    SbciColumnDesc(
         'number_of_tickets',
-        lambda v: number_str(v),
+        lambda v: posint_str(v),
         'Number of Tickets'
     ),
-    _c(
+    SbciColumnDesc(
         'payment_received',
         lambda v: currency_str(v),
         'Payment Received'
     ),
-    _c(
+    SbciColumnDesc(
         'discount_amount',
         lambda v: currency_str(v),
         'Discount Amount'
     ),
-    _c(
+    SbciColumnDesc(
         'processing_fees',
         lambda v: currency_str(v),
         'Processing Fees'
     ),
-    _c(
+    SbciColumnDesc(
         'box_office_fees',
         lambda v: currency_str(v),
         'Box Office Fees'
     ),
-    _c(
+    SbciColumnDesc(
         'box_office_quicksale',
-        lambda v: latin1_str(v),
+        lambda v: boolean_str(v),
         'Box Office Quicksale'
     ),
-    _c(
+    SbciColumnDesc(
         'date_booked',
         lambda v: date_str(v, '%d/%m/%Y'),
         'Date Booked (GMT+10:00)'
     ),
-    _c(
+    SbciColumnDesc(
         'time_booked',
         lambda v: time_str(v),
         'Time Booked'
     ),
-    _c(
+    SbciColumnDesc(
         'permission_to_contact',
         lambda v: latin1_str(v),
         'Permission to Contact'
     ),
-    _c(
+    SbciColumnDesc(
         'ticket_type',
         lambda v: latin1_str(v),
         'Ticket Type'
     ),
-    _c(
+    SbciColumnDesc(
         'ticket_price',
         lambda v: currency_str(v),
         'Ticket Price (AUD)'
     ),
-    _c(
+    SbciColumnDesc(
         'discount_code',
         lambda v: latin1_str(v),
         'Promotion[Discount] Code'
     ),
-    _c(
+    SbciColumnDesc(
         'section',
         lambda v: latin1_str(v),
         'Section'
     ),
-    _c(
+    SbciColumnDesc(
         'ticket_number',
         lambda v: latin1_str(v),
         'Ticket Number'
     ),
-    _c(
+    SbciColumnDesc(
         'seat_row',
         lambda v: latin1_str(v),
         'Seat Row'
     ),
-    _c(
+    SbciColumnDesc(
         'seat_number',
         lambda v: latin1_str(v),
         'Seat Number'
     ),
-    _c(
+    SbciColumnDesc(
         'refunded_misc',
         lambda v: latin1_str(v),
         'Refunded Misc'
     ),
-    _c(
+    SbciColumnDesc(
         'refunded_amount',
         lambda v: currency_str(v),
         'Ticket Refunded Amount'
     ),
-    _c(
+    SbciColumnDesc(
         'status',
         lambda v: latin1_str(v),
         'Ticket Status'
     ),
-    _c(
+    SbciColumnDesc(
         'void',
         lambda v: latin1_str(v),
         'Void'
     ),
-    _c(
+    SbciColumnDesc(
         'player_first_name',
         lambda v: latin1_str(v),
         'Ticket Data: Player First Name'
     ),
-    _c(
+    SbciColumnDesc(
         'player_family_name',
         lambda v: latin1_str(v),
         'Ticket Data: Player Family Name'
@@ -199,7 +198,7 @@ def TBRegReadCSV(csvfile, verbose=0, reverse=False):
     '''TODO'''
 
     if verbose > 0:
-        print('Reading Commbank Transaction CSV file: {} ... '
+        print('Reading Trybooking Registration CSV file: {} ... '
               .format(csvfile), end='')
 
     records = deque()
@@ -216,11 +215,11 @@ def TBRegReadCSV(csvfile, verbose=0, reverse=False):
 
         reader = csv.reader(fd)
 
-        headers = next(reader)
+        headings = next(reader)
 
-        for c, h in zip(_tbreg_cols, headers):
+        for c, h in zip(_tbreg_cols, headings):
             if h != c.head:
-                raise RuntimeError('column header mismatch! ("%s"!="%s")'
+                raise RuntimeError('column heading mismatch! ("%s" != "%s")'
                                    % (h, c.head))
 
         for row in reader:
@@ -244,105 +243,46 @@ def TBRegReadCSV(csvfile, verbose=0, reverse=False):
     return records
 
 
-_tbrego_colmap = OrderedDict((
-    ('Booking First Name',              'first_name'),
-    ('Booking Last Name',               'last_name'),
-    ('Booking Address 1',               'address_1'),
-    ('Booking Address 2',               'address_2'),
-    ('Booking Suburb',                  'suburb'),
-    ('Booking State',                   'state'),
-    ('Booking Post Code',               'post_code'),
-    ('Booking Country',                 'country'),
-    ('Booking Telephone',               'telephone'),
-    ('Booking Email',                   'email'),
-    ('Booking ID',                      'booking_id'),
-    ('Number of Tickets',               'number_of_tickets'),
-    ('Payment Received',                'payment_received'),
-    ('Discount Amount',                 'discount_amount'),
-    ('Processing Fees',                 'processing_fees'),
-    ('Box Office Fees',                 'box_office_fees'),
-    ('Box Office Quicksale',            'box_office_quicksale'),
-    ('Date Booked (GMT+10:00)',         'date_booked'),
-    ('Time Booked',                     'time_booked'),
-    ('Permission to Contact',           'permission_to_contact'),
-    ('Ticket Type',                     'ticket_type'),
-    ('Ticket Price (AUD)',              'ticket_price'),
-    ('Promotion[Discount] Code',        'discount_code'),
-    ('Section',                         'section'),
-    ('Ticket Number',                   'ticket_number'),
-    ('Seat Row',                        'seat_row'),
-    ('Seat Number',                     'seat_number'),
-    ('Refunded Misc',                   'refunded_misc'),
-    ('Ticket Refunded Amount',          'refunded_amount'),
-    ('Ticket Status',                   'status'),
-    ('Void',                            'void'),
-    ('Ticket Data: Player First Name',  'player_first_name'),
-    ('Ticket Data: Player Family Name', 'player_family_name'),
-))
-
-TBRegoRecord = namedtuple('TBRegoRecord', _tbrego_colmap.values())
-
-
-def TBRegoReadCSV(csvfile, verbose=0):
-    '''TODO'''
-
-    if verbose > 0:
-        print('Reading Trybooking Registration CSV file: {} ... '
-              .format(csvfile), end='')
-
-    records = []
-    first_column_name = next(iter(_tbrego_colmap))
-
-    with open(csvfile) as fd:
-
-        if fd.read(2) != '\ufeff':
-            fd.seek(0)
-
-        reader = csv.DictReader(fd)
-
-        for d in reader:
-
-            # SportsTG puts crap at the end ...
-            if d[first_column_name] == ' rows ':
-                break
-
-            data = {
-                _tbrego_colmap[k]: unicode(d[k], encoding='latin-1')
-                if type(d[k]) is str else d[k]
-                for k in _tbrego_colmap
-            }
-
-            if data['date_booked'] == '':
-                data['date_booked'] = None
-            elif data['date_booked'] is not None:
-                st = strptime(data['date_booked'], '%d/%m/%Y')
-                data['date_booked'] = date(*st[:3])
-
-            record = TBRegoRecord(**data)
-
-            if verbose > 1:
-                print('{}'.format(record))
-
-            records.append(record)
-
-    if verbose > 0:
-        print('{} tbrego records read.'.format(len(records)))
-
-    return records
+_tbtrx_cols = (
+    SbciColumnDesc(
+        'date',
+        lambda v: datetime_str(v, '%d%b%Y %I:%M %p'),
+        'Date'
+    ),
+    SbciColumnDesc(
+        'trxtype',
+        lambda v: latin1_str(v),
+        'Transaction'
+    ),
+    SbciColumnDesc(
+        'booking_id',
+        lambda v: latin1_str(v),
+        'Booking ID'
+    ),
+    SbciColumnDesc(
+        'description',
+        lambda v: latin1_str(v),
+        'Description'
+    ),
+    SbciColumnDesc(
+        'customer',
+        lambda v: latin1_str(v),
+        'Customer'
+    ),
+    SbciColumnDesc(
+        'debit',
+        lambda v: currency_str(v),
+        'Debit'
+    ),
+    SbciColumnDesc(
+        'credit',
+        lambda v: currency_str(v),
+        'Credit'
+    ),
+)
 
 
-_tbxact_colmap = OrderedDict((
-    ('Date', 'date'),
-    ('Transaction', 'xact'),
-    ('Booking ID', 'booking_id'),
-    ('Description', 'description'),
-    ('Customer', 'customer'),
-    ('Debit', 'debit'),
-    ('Credit', 'credit'),
-))
-
-
-class TBXactType(SbciEnum):
+class TBTrxType(SbciEnum):
     '''TODO'''
 
     BOOKING = 1, True, 'Booking'
@@ -363,18 +303,18 @@ class TBXactType(SbciEnum):
         return cls.by_alt_value(csv_value)
 
 
-TBXactRecord = namedtuple('TBXactRecord', _tbxact_colmap.values())
+TBTrxRecord = namedtuple('TBTrxRecord', c.name for c in _tbtrx_cols)
 
 
-def TBXactReadCSV(csvfile, verbose=0):
+def TBTrxReadCSV(csvfile, verbose=0, reverse=False):
     '''TODO'''
 
     if verbose > 0:
         print('Reading Trybooking Transaction CSV file: {} ... '
               .format(csvfile), end='')
 
-    records = []
-    first_column_name = next(iter(_tbxact_colmap))
+    records = deque()
+    first_column_name = next(iter(_tbtrx_cols)).head
 
     with open(csvfile) as fd:
 
@@ -386,45 +326,34 @@ def TBXactReadCSV(csvfile, verbose=0):
             skipped_lines += 1
         fd.seek(pos)
 
-        reader = csv.DictReader(fd)
+        reader = csv.reader(fd)
 
-        for d in reader:
+        headings = next(reader)
 
-            # skip crap at end of file ...
-            if d[first_column_name].startswith('Total'):
-                break
+        for c, h in zip(_tbtrx_cols, headings):
+            if h != c.head:
+                raise RuntimeError('column heading mismatch! ("%s" != "%s")'
+                                   % (h, c.head))
 
-            data = {
-                _tbxact_colmap[k]: unicode(d[k], encoding='latin-1')
-                if type(d[k]) is str else d[k]
-                for k in _tbxact_colmap
-            }
+        for row in reader:
 
-            # massage ...
-            if data['date'] == '':
-                data['date'] = None
-            elif data['date'] is not None:
-                # 26Apr2016 02:07 PM or 27Jul18 4:36 PM
-                try:
-                    st = strptime(data['date'], '%d%b%Y %I:%M %p')
-                except ValueError:
-                    st = strptime(data['date'], '%d%b%y %I:%M %p')
-                data['date'] = datetime(*st[:6])
-            data['xact'] = TBXactType.by_csv_value(data['xact'])
-            data['debit'] = float(data['debit'].replace(',', ''))
-            data['credit'] = float(data['credit'].replace(',', ''))
+            if verbose > 2:
+                print('row={}'.format(row))
 
-            record = TBXactRecord(**data)
+            record = TBTrxRecord(*(c.func(v) for c, v in zip(_tbtrx_cols, row)))
 
             if verbose > 1:
                 print('{}'.format(record))
 
-            records.append(record)
+            if reverse:
+                records.append(record)
+            else:
+                records.appendleft(record)
 
     if verbose > 0:
-        print('{} tbxact records read.'.format(len(records)))
+        print('{} tbtrx records read.'.format(len(records)))
 
     return records
 
 
-__all__ = ['TBRegoRecord', 'TBRegoReadCSV', 'TBXactRecord', 'TBXactReadCSV']
+__all__ = ['TBRegRecord', 'TBRegReadCSV', 'TBTrxRecord', 'TBTrxReadCSV']

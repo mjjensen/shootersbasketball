@@ -5,10 +5,15 @@ Created on 29 Jul. 2018
 '''
 from __future__ import print_function
 
-from datetime import date
-from time import strptime
+from collections import namedtuple
+from datetime import datetime
+import json
+import re
 
 from enum import unique, IntEnum
+
+
+SbciColumnDesc = namedtuple('SbciColumnDesc', ['name', 'func', 'head'])
 
 
 @unique
@@ -39,27 +44,61 @@ class SbciEnum(IntEnum):
             if e.alt_value == alt_value:
                 return e
         else:
-            raise RuntimeError('{} not a valid SbciEnum!'.format(alt_value))
+            raise ValueError('{} not a valid SbciEnum!'.format(alt_value))
 
 
-def date_str(s, fmt='%Y-%m-%d'):
+def _prepare_str(s, allow_none):
     '''TODO'''
     if s is None:
-        return None
+        if allow_none:
+            return None
+        raise ValueError('string is None!')
     stmp = s.strip()
-    if stmp == '':
+    if s == '':
+        if allow_none:
+            return None
+        raise ValueError('string is empty!')
+    return stmp
+
+
+def date_str(s, fmt='%Y-%m-%d', allow_none=True):
+    '''TODO'''
+    stmp = _prepare_str(s, allow_none)
+    if stmp is None:
         return None
-    return date(*(strptime(stmp, fmt)[:3]))
+    return datetime.strptime(stmp, fmt).date()
 
 
-def latin1_str(s):
+def time_str(s, fmt='%I:%M:%S %p', allow_none=True):
     '''TODO'''
-    return unicode(s.strip(), encoding='latin-1')
+    stmp = _prepare_str(s, allow_none)
+    if stmp is None:
+        return None
+    return datetime.strptime(stmp, fmt).time()
 
 
-def currency_str(s):
+def datetime_str(s, fmt='%Y-%m-%d %H:%M:%S.%f', allow_none=True):
     '''TODO'''
-    return float(s.strip().replace(',', ''))
+    stmp = _prepare_str(s, allow_none)
+    if stmp is None:
+        return None
+    return datetime.strptime(stmp, fmt)
+
+
+def latin1_str(s, allow_none=True):
+    '''TODO'''
+    stmp = _prepare_str(s, allow_none)
+    if stmp is None:
+        return None
+    return unicode(stmp, encoding='latin-1')
+
+
+def currency_str(s, allow_none=True):
+    '''TODO'''
+    stmp = _prepare_str(s, allow_none)
+    if stmp is None:
+        return None
+    return float(stmp.replace(',', ''))
 
 
 name2postcode = {
@@ -104,12 +143,76 @@ name2postcode = {
 postcode2name = {postcode: name for name, postcode in name2postcode.viewitems()}
 
 
-def postcode_str(s):
+def postcode_str(s, allow_none=True):
     '''TODO'''
-    stmp = s.strip()
-    if not stmp.isdigit():
-        raise RuntimeError('not a valid postcode! (%s)' % s)
+    stmp = posint_str(s, allow_none)
+    if stmp is None:
+        return None
     postcode = int(stmp)
     if postcode not in postcode2name:
-        raise RuntimeError('not a known postcode! (%s)' % s)
+        raise RuntimeError('not a known postcode! (%r)' % s)
     return postcode
+
+
+_phone_fixups = {}
+try:
+    with open('../misc/phone_fixups.json') as fd:
+        _phone_fixups.extend(json.load(fd))
+except BaseException:
+    pass
+_phone_pattern = re.compile(r'^\+?(61|0)?')
+
+
+def phone_str(s, allow_none=True):
+    '''TODO'''
+    stmp = _prepare_str(s, allow_none)
+    if stmp is None:
+        return None
+    for r in ' \t\r\n-()[].':
+        stmp = stmp.replace(r, '')
+    if stmp.startswith('+61'):
+        stmp = '0' + stmp[3:]
+    if stmp.startswith(('3', '4')):
+        stmp = '0' + stmp
+    if stmp in _phone_fixups:
+        return _phone_fixups[stmp]
+    if _phone_pattern.match(stmp) is None:
+        raise RuntimeError('not a valid phone number! (%r)' % s)
+    return stmp
+
+
+_email_pattern = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
+
+
+def email_str(s, allow_none=True):
+    '''TODO'''
+    stmp = _prepare_str(s, allow_none)
+    if stmp is None:
+        return None
+    if _email_pattern.match(stmp) is None:
+        raise RuntimeError('not a valid email address! (%r)' % s)
+    return stmp
+
+
+def posint_str(s, allow_none=True):
+    '''TODO'''
+    stmp = _prepare_str(s, allow_none)
+    if stmp is None:
+        return None
+    if not stmp.isdigit():
+        raise RuntimeError('not a valid positive integer! (%r)' % s)
+    return stmp
+
+
+def boolean_str(s, allow_none=True):
+    '''TODO'''
+    stmp = _prepare_str(s, allow_none)
+    if stmp is None:
+        return None
+    if stmp.lower() in ('t', 'true', 'y', 'yes', 'on'):
+        return True
+    if stmp.lower() in ('f', 'false', 'n', 'no', 'off'):
+        return False
+    if not stmp.isdigit():
+        raise RuntimeError('not a valid boolean string! (%r)' % s)
+    return (int(stmp) != 0)
