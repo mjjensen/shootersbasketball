@@ -23,17 +23,17 @@ _cbtrx_cols = (
 )
 
 
-class CBTrxRecord(namedtuple('CBTrxRecord', (n for n, f in _cbtrx_cols))):
+class CBTrxCSVRecord(namedtuple('CBTrxCSVRecord', (n for n, f in _cbtrx_cols))):
     __slots__ = ()
 
     def __getitem__(self, index):
         try:
-            return super(CBTrxRecord, self).__getitem__(index)
+            return super(CBTrxCSVRecord, self).__getitem__(index)
         except TypeError:
             return getattr(self, index)
 
 
-def CBTrxReadCSV(csvfile, verbose=0, reverse=False):
+def CBTrxCSVRead(csvfile, verbose=0, reverse=False):
     '''TODO'''
 
     if verbose > 0:
@@ -51,7 +51,8 @@ def CBTrxReadCSV(csvfile, verbose=0, reverse=False):
             if verbose > 2:
                 print('row={}'.format(row))
 
-            record = CBTrxRecord(*(f(v) for (n, f), v in zip(_cbtrx_cols, row)))
+            record = CBTrxCSVRecord(*(f(v)
+                                      for (n, f), v in zip(_cbtrx_cols, row)))
 
             if verbose > 1:
                 print('{}'.format(record))
@@ -67,4 +68,4 @@ def CBTrxReadCSV(csvfile, verbose=0, reverse=False):
     return records
 
 
-__all__ = ['CBTrxRecord', 'CBTrxReadCSV']
+__all__ = ['CBTrxCSVRecord', 'CBTrxCSVRead']

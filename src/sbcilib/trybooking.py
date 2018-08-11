@@ -7,8 +7,6 @@ from __future__ import print_function
 
 from collections import deque, namedtuple
 import csv
-from datetime import datetime
-from time import strptime
 
 from sbcilib.utils import SbciEnum, latin1_str, postcode_str, currency_str,\
     date_str, phone_str, email_str, posint_str, time_str, boolean_str,\
@@ -184,17 +182,18 @@ _tbreg_cols = (
 )
 
 
-class TBRegRecord(namedtuple('TBRegRecord', (c.name for c in _tbreg_cols))):
+class TBRegCSVRecord(namedtuple('TBRegCSVRecord',
+                                (c.name for c in _tbreg_cols))):
     __slots__ = ()
 
     def __getitem__(self, index):
         try:
-            return super(TBRegRecord, self).__getitem__(index)
+            return super(TBRegCSVRecord, self).__getitem__(index)
         except TypeError:
             return getattr(self, index)
 
 
-def TBRegReadCSV(csvfile, verbose=0, reverse=False):
+def TBRegCSVRead(csvfile, verbose=0, reverse=False):
     '''TODO'''
 
     if verbose > 0:
@@ -227,7 +226,8 @@ def TBRegReadCSV(csvfile, verbose=0, reverse=False):
             if verbose > 2:
                 print('row={}'.format(row))
 
-            record = TBRegRecord(*(c.func(v) for c, v in zip(_tbreg_cols, row)))
+            record = TBRegCSVRecord(*(c.func(v)
+                                      for c, v in zip(_tbreg_cols, row)))
 
             if verbose > 1:
                 print('{}'.format(record))
@@ -246,11 +246,11 @@ def TBRegReadCSV(csvfile, verbose=0, reverse=False):
 _tbtrx_cols = (
     SbciColumnDesc(
         'date',
-        lambda v: datetime_str(v, '%d%b%Y %I:%M %p'),
+        lambda v: datetime_str(v, '%d%b%y %I:%M %p'),
         'Date'
     ),
     SbciColumnDesc(
-        'trxtype',
+        'type',
         lambda v: latin1_str(v),
         'Transaction'
     ),
@@ -280,9 +280,10 @@ _tbtrx_cols = (
         'Credit'
     ),
 )
+_tbtrx_del = (9, 7, 6, 5, 2)
 
 
-class TBTrxType(SbciEnum):
+class TBTrxCSVType(SbciEnum):
     '''TODO'''
 
     BOOKING = 1, True, 'Booking'
@@ -303,10 +304,18 @@ class TBTrxType(SbciEnum):
         return cls.by_alt_value(csv_value)
 
 
-TBTrxRecord = namedtuple('TBTrxRecord', c.name for c in _tbtrx_cols)
+class TBTrxCSVRecord(namedtuple('TBTrxCSVRecord',
+                                (c.name for c in _tbtrx_cols))):
+    __slots__ = ()
+
+    def __getitem__(self, index):
+        try:
+            return super(TBTrxCSVRecord, self).__getitem__(index)
+        except TypeError:
+            return getattr(self, index)
 
 
-def TBTrxReadCSV(csvfile, verbose=0, reverse=False):
+def TBTrxCSVRead(csvfile, verbose=0, reverse=False):
     '''TODO'''
 
     if verbose > 0:
@@ -329,6 +338,8 @@ def TBTrxReadCSV(csvfile, verbose=0, reverse=False):
         reader = csv.reader(fd)
 
         headings = next(reader)
+        for c in _tbtrx_del:
+            del headings[c]
 
         for c, h in zip(_tbtrx_cols, headings):
             if h != c.head:
@@ -337,10 +348,17 @@ def TBTrxReadCSV(csvfile, verbose=0, reverse=False):
 
         for row in reader:
 
+            for c in _tbtrx_del:
+                del row[c]
+
+            if row[0].startswith('Total'):
+                break
+
             if verbose > 2:
                 print('row={}'.format(row))
 
-            record = TBTrxRecord(*(c.func(v) for c, v in zip(_tbtrx_cols, row)))
+            record = TBTrxCSVRecord(*(c.func(v)
+                                      for c, v in zip(_tbtrx_cols, row)))
 
             if verbose > 1:
                 print('{}'.format(record))
@@ -356,4 +374,5 @@ def TBTrxReadCSV(csvfile, verbose=0, reverse=False):
     return records
 
 
-__all__ = ['TBRegRecord', 'TBRegReadCSV', 'TBTrxRecord', 'TBTrxReadCSV']
+__all__ = ['TBRegCSVRecord', 'TBRegCSVRead',
+           'TBTrxCSVType', 'TBTrxCSVRecord', 'TBTrxCSVRead']
