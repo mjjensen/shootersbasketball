@@ -5,12 +5,12 @@ Created on 29 Jul. 2018
 '''
 from __future__ import print_function
 
-from collections import OrderedDict, namedtuple
+from collections import deque
+from collections import namedtuple
 import csv
-from datetime import date
-from time import strptime
 
-from sbcilib.utils import SbciColumnDesc, latin1_str
+from sbcilib.utils import SbciColumnDesc, latin1_str, date_str, phone_str, \
+    email_str, postcode_str, boolean_str, posint_str
 
 
 _stgmem_cols = (
@@ -46,7 +46,7 @@ _stgmem_cols = (
     ),
     SbciColumnDesc(
         'date_of_birth',
-        lambda v: latin1_str(v),
+        lambda v: date_str(v, '%d/%m/%Y'),
         'Date of Birth'
     ),
     SbciColumnDesc(
@@ -71,12 +71,12 @@ _stgmem_cols = (
     ),
     SbciColumnDesc(
         'parent1_mobile',
-        lambda v: latin1_str(v),
+        lambda v: phone_str(v),
         'Parent/Guardian 1 Mobile'
     ),
     SbciColumnDesc(
         'parent1_email',
-        lambda v: latin1_str(v),
+        lambda v: email_str(v),
         'Parent/Guardian 1 Email'
     ),
     SbciColumnDesc(
@@ -96,12 +96,12 @@ _stgmem_cols = (
     ),
     SbciColumnDesc(
         'parent2_mobile',
-        lambda v: latin1_str(v),
+        lambda v: phone_str(v),
         'Parent/Guardian 2 Mobile'
     ),
     SbciColumnDesc(
         'parent2_email',
-        lambda v: latin1_str(v),
+        lambda v: email_str(v),
         'Parent/Guardian 2 Email'
     ),
     SbciColumnDesc(
@@ -121,27 +121,27 @@ _stgmem_cols = (
     ),
     SbciColumnDesc(
         'postal_code',
-        lambda v: latin1_str(v),
+        lambda v: postcode_str(v),
         'Postal Code'
     ),
     SbciColumnDesc(
         'phone_home',
-        lambda v: latin1_str(v),
+        lambda v: phone_str(v),
         'Telephone Number (Home)'
     ),
     SbciColumnDesc(
         'phone_work',
-        lambda v: latin1_str(v),
+        lambda v: phone_str(v),
         'Telephone Number (Work)'
     ),
     SbciColumnDesc(
         'mobile',
-        lambda v: latin1_str(v),
+        lambda v: phone_str(v),
         'Telephone Number (Mobile)'
     ),
     SbciColumnDesc(
         'email',
-        lambda v: latin1_str(v),
+        lambda v: email_str(v),
         'Email'
     ),
     SbciColumnDesc(
@@ -156,7 +156,7 @@ _stgmem_cols = (
     ),
     SbciColumnDesc(
         'wwc_check_expiry',
-        lambda v: latin1_str(v),
+        lambda v: date_str(v, '%d/%m/%Y'),
         'WWC Check Expiry'
     ),
     SbciColumnDesc(
@@ -171,22 +171,22 @@ _stgmem_cols = (
     ),
     SbciColumnDesc(
         'first_registered',
-        lambda v: latin1_str(v),
+        lambda v: date_str(v, '%d/%m/%Y'),
         'First Registered'
     ),
     SbciColumnDesc(
         'last_registered',
-        lambda v: latin1_str(v),
+        lambda v: date_str(v, '%d/%m/%Y'),
         'Last Registered'
     ),
     SbciColumnDesc(
         'registered_until',
-        lambda v: latin1_str(v),
+        lambda v: date_str(v, '%d/%m/%Y'),
         'Registered Until'
     ),
     SbciColumnDesc(
         'last_updated',
-        lambda v: latin1_str(v),
+        lambda v: date_str(v, '%d/%m/%Y'),
         'Last Updated'
     ),
     SbciColumnDesc(
@@ -196,37 +196,37 @@ _stgmem_cols = (
     ),
     SbciColumnDesc(
         'season_player',
-        lambda v: latin1_str(v),
+        lambda v: boolean_str(v),
         'Season Player ?'
     ),
     SbciColumnDesc(
         'season_player_financial',
-        lambda v: latin1_str(v),
+        lambda v: boolean_str(v),
         'Season Player Financial ?'
     ),
     SbciColumnDesc(
         'date_player_created_in_season',
-        lambda v: latin1_str(v),
+        lambda v: date_str(v, '%d/%m/%Y'),
         'Date Player created in Season'
     ),
     SbciColumnDesc(
         'season_coach',
-        lambda v: latin1_str(v),
+        lambda v: boolean_str(v),
         'Season Coach'
     ),
     SbciColumnDesc(
         'date_coach_created_in_season',
-        lambda v: latin1_str(v),
+        lambda v: date_str(v, '%d/%m/%Y'),
         'Date Coach created in Season'
     ),
     SbciColumnDesc(
         'season_misc',
-        lambda v: latin1_str(v),
+        lambda v: boolean_str(v),
         'Season Misc'
     ),
     SbciColumnDesc(
         'date_misc_created_in_season',
-        lambda v: latin1_str(v),
+        lambda v: date_str(v, '%d/%m/%Y'),
         'Date Misc created in Season'
     ),
     SbciColumnDesc(
@@ -236,12 +236,12 @@ _stgmem_cols = (
     ),
     SbciColumnDesc(
         'date_regoform_last_used_in_season',
-        lambda v: latin1_str(v),
+        lambda v: date_str(v, '%d/%m/%Y'),
         'Date RegoForm last used in Season'
     ),
     SbciColumnDesc(
         'club_default_number',
-        lambda v: latin1_str(v),
+        lambda v: posint_str(v),
         'Club Default Number'
     ),
     SbciColumnDesc(
@@ -285,132 +285,68 @@ _stgmem_cols = (
         'Team Name'
     ),
 )
+_stgmem_del = (54, )
 
 
-_members_date_columns = (
-    'date_of_birth',
-    'wwc_check_expiry',
-    'first_registered',
-    'last_registered',
-    'registered_until',
-    'last_updated',
-    'date_player_created_in_season',
-    'date_coach_created_in_season',
-    'date_misc_created_in_season',
-    'date_regoform_last_used_in_season',
-)
+class STGMembersCSVRecord(namedtuple('STGMembersCSVRecord',
+                                     (c.name for c in _stgmem_cols))):
+    __slots__ = ()
+
+    def __getitem__(self, index):
+        try:
+            return super(STGMembersCSVRecord, self).__getitem__(index)
+        except TypeError:
+            return getattr(self, index)
 
 
-_players_colmap = OrderedDict((
-    ('FIBA ID Number',     'fiba_id_number'),
-    ('Member ID',          'member_id'),
-    ('Member No.',         'member_number'),
-    ('First Name',         'first_name'),
-    ('Family Name',        'family_name'),
-    ('Gender',             'gender'),
-    ('Competition Season', 'competition_season'),
-    ('Competition Name',   'competition_name'),
-    ('Team Name',          'team_name'),
-    ('Season',             'season'),
-))
-
-
-_players_date_columns = (
-)
-
-
-MembersRecord = namedtuple('MembersRecord', _members_colmap.values())
-
-
-PlayersRecord = namedtuple('PlayersRecord', _players_colmap.values())
-
-
-def MembersReadCSV(csvfile, verbose=0):
+def STGMembersCSVRead(csvfile, verbose=0, reverse=False):
     '''TODO'''
 
     if verbose > 0:
-        print('Reading Members CSV file: {} ... '.format(csvfile), end='')
+        print('Reading SportsTG Members CSV file: {} ... '
+              .format(csvfile), end='')
 
-    records = []
-    first_column_name = next(iter(_members_colmap))
+    records = deque()
 
     with open(csvfile) as fd:
 
-        reader = csv.DictReader(fd)
+        reader = csv.reader(fd)
 
-        for d in reader:
+        headings = next(reader)
+        for c in _stgmem_del:
+            del headings[c]
 
-            # SportsTG puts crap at the end ...
-            if d[first_column_name] == ' rows ':
+        for c, h in zip(_stgmem_cols, headings):
+            if h != c.head:
+                raise RuntimeError('column heading mismatch! ("%s" != "%s")'
+                                   % (h, c.head))
+
+        for row in reader:
+
+            for c in _stgmem_del:
+                del row[c]
+
+            if row[0].endswith(' rows '):
                 break
 
-            data = {
-                _members_colmap[k]: unicode(d[k], encoding='utf-8')
-                if type(d[k]) is str else d[k]
-                for k in _members_colmap
-            }
+            if verbose > 2:
+                print('row={}'.format(row))
 
-            for k in _members_date_columns:
-                if data[k] == '':
-                    data[k] = None
-                elif data[k] is not None:
-                    data[k] = date(*strptime(data[k], '%d/%m/%Y')[:3])
-
-            record = MembersRecord(**data)
+            record = STGMembersCSVRecord(*(c.func(v)
+                                           for c, v in zip(_stgmem_cols, row)))
 
             if verbose > 1:
                 print('{}'.format(record))
 
-            records.append(record)
+            if reverse:
+                records.append(record)
+            else:
+                records.appendleft(record)
 
     if verbose > 0:
-        print('{} member records read.'.format(len(records)))
+        print('{} records read.'.format(len(records)))
 
     return records
 
 
-def PlayersReadCSV(csvfile, verbose=0):
-    '''TODO'''
-
-    if verbose > 0:
-        print('Reading Players CSV file: {} ... '.format(csvfile), end='')
-
-    records = []
-    first_column_name = next(iter(_players_colmap))
-
-    with open(csvfile) as fd:
-
-        reader = csv.DictReader(fd)
-
-        for d in reader:
-
-            # SportsTG puts crap at the end ...
-            if d[first_column_name] == ' rows ':
-                break
-
-            data = {
-                _players_colmap[k]: unicode(d[k], encoding='utf-8')
-                if type(d[k]) is str else d[k]
-                for k in _players_colmap
-            }
-
-            for k in _players_date_columns:
-                if data[k] == '':
-                    data[k] = None
-                elif data[k] is not None:
-                    data[k] = date(*strptime(data[k], '%d/%m/%Y')[:3])
-
-            record = PlayersRecord(**data)
-
-            if verbose > 1:
-                print('{}'.format(record))
-
-            records.append(record)
-
-    if verbose > 0:
-        print('{} player records read.'.format(len(records)))
-
-    return records
-
-
-__all__ = ['MembersRecord', 'MembersReadCSV', 'PlayersRecord', 'PlayersReadCSV']
+__all__ = ['STGMembersCSVRecord', 'STGMembersCSVRead']

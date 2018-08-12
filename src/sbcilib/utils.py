@@ -129,6 +129,7 @@ name2postcode = {
     'Balwyn North':              3104,
     'Bulleen':                   3105,
     'Doncaster':                 3108,
+    'Camberwell':                3124,
     'Camberwell East':           3126,
     'Canterbury':                3126,
     'Box Hill South':            3128,
@@ -136,6 +137,7 @@ name2postcode = {
     'Carrum':                    3197,
     'Albert Park':               3206,
     'South Morang':              3752,
+    'Como, WA':                  6152,
     'Little Lonsdale St, Vic':   8011,
 }
 

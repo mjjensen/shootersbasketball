@@ -90,37 +90,36 @@ USAGE
 
     verbose = args.verbose
     if verbose > 0:
-        print("Verbose mode on")
+        print("Verbose mode on (level = {})".format(verbose))
 
     try:
         db = SbciTeamsDB(verbose)
 
         try:
             for team in db.teams_query.all():
-                if not team.active:
+                if team.active != 'true':
                     continue
 
-                team_manager = db.people_query.get(team.team_manager_id)
-                coach = db.people_query.get(team.coach_id)
-                asst_coach = db.people_query.get(team.asst_coach_id)
-
                 if verbose:
-                    competition = db.competitions_query.get(team.competition_id)
                     print('{}, {}: coach {}, asst_coach {}, team manager {}'
                           .format(team.team_name,
-                                  db.competition_shortname(competition),
-                                  coach.name, asst_coach.name,
-                                  team_manager.name))
+                                  db.competition_shortname(team.competition),
+                                  team.coach.name
+                                  if team.coach is not None else "None",
+                                  team.asst_coach.name
+                                  if team.asst_coach is not None else "None",
+                                  team.team_manager.name
+                                  if team.team_manager is not None else "None"))
 
-                r, m, e = db.person_check_wwc(coach, verbose)
+                r, m, e = db.person_check_wwc(team.coach, verbose)
                 if not r:
                     print('WWC check failed: {}'.format(m))
 
-                r, m, e = db.person_check_wwc(asst_coach, verbose)
+                r, m, e = db.person_check_wwc(team.asst_coach, verbose)
                 if not r:
                     print('WWC check failed: {}'.format(m))
 
-                r, m, e = db.person_check_wwc(team_manager, verbose)
+                r, m, e = db.person_check_wwc(team.team_manager, verbose)
                 if not r:
                     print('WWC check failed: {}'.format(m))
 

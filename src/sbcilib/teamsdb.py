@@ -11,6 +11,8 @@ import json
 from logging import getLogger
 import os
 import re
+from sqlalchemy import event
+from sqlalchemy.engine.base import Engine
 from sqlalchemy.ext.automap import automap_base
 from time import strptime
 import urllib2
@@ -31,12 +33,20 @@ _config = {
 
 
 WWCCheckStatus = IntEnum('WWCCheckStatus', ' '.join([
-    'UNKNOWN', 'EMPTY', 'UNDER18', 'TEACHER', 'BADNUMBER',
+    'NONE', 'UNKNOWN', 'EMPTY', 'UNDER18', 'TEACHER', 'BADNUMBER',
     'FAILED', 'SUCCESS', 'EXPIRED', 'INVALID', 'BADRESPONSE'
 ]))
 
 
-WWCCheckResult = namedtuple('WWCCheckResult', ['status', 'message', 'expiry'])
+class WWCCheckResult(namedtuple('WWCCheckResult',
+                                ['status', 'message', 'expiry'])):
+    __slots__ = ()
+
+    def __getitem__(self, index):
+        try:
+            return super(WWCCheckResult, self).__getitem__(index)
+        except TypeError:
+            return getattr(self, index)
 
 
 class PersonRole(SbciEnum):
@@ -45,6 +55,54 @@ class PersonRole(SbciEnum):
     COACH = 1, 'Coach'
     ASSISTANT_COACH = 2, 'Assistant Coach'
     TEAM_MANAGER = 3, 'Team Manager'
+
+
+@event.listens_for(Engine, "connect")
+def _set_sqlite_pragma(dbapi_connection, _connection_record):
+    # Will force sqlite constraint foreign keys
+
+    # print('_set_sqlite_pragma: enabling foreign keys, conn={}, rec={}'
+    #       .format(dbapi_connection, connection_record), file=sys.stderr)
+    cursor = dbapi_connection.cursor()
+    cursor.execute('PRAGMA foreign_keys=ON')
+    cursor.close()
+
+
+def _classname_for_table(_base, tablename, _table):
+    # print('classname_for_table: base={}, tablename={}, table={}'
+    #       .format(base.__name__, tablename, table), file=sys.stderr)
+    return str(tablename)
+
+
+def _name_for_scalar_relationship(_base, _local_cls, referred_cls, constraint):
+    # print('name_for_scalar_relationship: '
+    #       'base={}, local_cls={}, referred_cls={}, constraint={}'
+    #       .format(base.__name__, local_cls.__name__,
+    #               referred_cls.__name__, constraint), file=sys.stderr)
+    # print('constraint.column_keys={}'.format(constraint.column_keys),
+    #       file=sys.stderr)
+    # return referred_cls.__name__.lower()
+    id_col = constraint.column_keys[0]
+    if not id_col.endswith('_id'):
+        _logger.warning('column name does not end with "_id"!')
+        return referred_cls.__name__.lower()
+    return id_col[:-3]
+
+
+def _name_for_collection_relationship(
+        _base, _local_cls, referred_cls, constraint):
+    # print('name_for_collection_relationship: '
+    #       'base={}, local_cls={}, referred_cls={}, constraint={}'
+    #       .format(base.__name__, local_cls.__name__,
+    #               referred_cls.__name__, constraint), file=sys.stderr)
+    # print('constraint.column_keys={}'.format(constraint.column_keys),
+    #       file=sys.stderr)
+    # return referred_cls.__name__.lower() + "_collection"
+    id_col = constraint.column_keys[0]
+    if not id_col.endswith('_id'):
+        _logger.warning('column name does not end with "_id"!')
+        return referred_cls.__name__.lower() + '_collection'
+    return id_col[:-3] + '_collection'
 
 
 class SbciTeamsDB(object):
@@ -77,7 +135,12 @@ class SbciTeamsDB(object):
 
         self.engine = create_engine(_config['db_teams_url'])
 
-        self.Base.prepare(self.engine, reflect=True)
+        self.Base.prepare(
+            self.engine, reflect=True,
+            classname_for_table=_classname_for_table,
+            name_for_scalar_relationship=_name_for_scalar_relationship,
+            name_for_collection_relationship=_name_for_collection_relationship
+        )
 
         self.Competitions = self.Base.classes.competitions
         self.People = self.Base.classes.people
@@ -85,7 +148,7 @@ class SbciTeamsDB(object):
         self.Teams = self.Base.classes.teams
         self.Sessions = self.Base.classes.sessions
 
-        if verbose > 0:
+        if verbose > 1:
             for cls in (self.Competitions, self.People, self.Venues,
                         self.Teams, self.Sessions):
                 print('{} = {}'.format(cls.__name__, dir(cls)))
@@ -116,6 +179,13 @@ class SbciTeamsDB(object):
 
     def person_check_wwc(self, person, verbose=0):
         '''TODO'''
+
+        if person is None:
+            return WWCCheckResult(
+                WWCCheckStatus.NONE,
+                'Skipping - Value is None',
+                None
+            )
 
         id = person.id  # @ReservedAssignment
         if id in self._wwc_checked:
