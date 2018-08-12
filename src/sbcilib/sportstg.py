@@ -10,62 +10,281 @@ import csv
 from datetime import date
 from time import strptime
 
+from sbcilib.utils import SbciColumnDesc, latin1_str
 
-_members_colmap = OrderedDict((
-    ('FIBA ID Number',                    'fiba_id'),
-    ('Member ID',                         'member_id'),
-    ('Member No.',                        'member_no'),
-    ('First Name',                        'first_name'),
-    ('Preferred Name',                    'preferred_name'),
-    ('Family Name',                       'family_name'),
-    ('Date of Birth',                     'date_of_birth'),
-    ('Gender',                            'gender'),
-    ('Parent/Guardian 1 Firstname',       'parent1_firstname'),
-    ('Parent/Guardian 1 Surname',         'parent1_surname'),
-    ('Parent/Guardian 1 Gender',          'parent1_gender'),
-    ('Parent/Guardian 1 Mobile',          'parent1_mobile'),
-    ('Parent/Guardian 1 Email',           'parent1_email'),
-    ('Parent/Guardian 2 Firstname',       'parent2_firstname'),
-    ('Parent/Guardian 2 Surname',         'parent2_surname'),
-    ('Parent/Guardian 2 Gender',          'parent2_gender'),
-    ('Parent/Guardian 2 Mobile',          'parent2_mobile'),
-    ('Parent/Guardian 2 Email',           'parent2_email'),
-    ('Address 1',                         'address1'),
-    ('Address 2',                         'address2'),
-    ('Suburb',                            'suburb'),
-    ('Postal Code',                       'postal_code'),
-    ('Telephone Number (Home)',           'phone_home'),
-    ('Telephone Number (Work)',           'phone_work'),
-    ('Telephone Number (Mobile)',         'mobile'),
-    ('Email',                             'email'),
-    ('Medical Notes',                     'medical_notes'),
-    ('WWC Check Number',                  'wwc_check_number'),
-    ('WWC Check Expiry',                  'wwc_check_expiry'),
-    ('VJBL Level',                        'vjbl_level'),
-    ('Custom Text Field 25',              'custom_text_field25'),
-    ('Willingness to Volunteer ',         'willingness_to_volunteer'),
-    ('Notes',                             'notes'),
-    ('First Registered',                  'first_registered'),
-    ('Last Registered',                   'last_registered'),
-    ('Registered Until',                  'registered_until'),
-    ('Last Updated',                      'last_updated'),
-    ('Season',                            'season'),
-    ('Season Player ?',                   'season_player'),
-    ('Season Player Financial ?',         'season_player_financial'),
-    ('Date Player created in Season',     'date_player_created_in_season'),
-    ('Season Coach',                      'season_coach'),
-    ('Date Coach created in Season',      'date_coach_created_in_season'),
-    ('Season Misc',                       'season_misc'),
-    ('Date Misc created in Season',       'date_misc_created_in_season'),
-    ('RegoForm last used in Season',      'regoform_last_used_in_season'),
-    ('Date RegoForm last used in Season', 'date_regoform_last_used_in_season'),
-    ('Club Default Number',               'club_default_number'),
-    ('School Name',                       'school_name'),
-    ('School Suburb',                     'school_suburb'),
-    ('BSB',                               'bsb'),
-    ('Account Number',                    'account_number'),
-    ('Account Name',                      'account_name'),
-))
+
+_stgmem_cols = (
+    SbciColumnDesc(
+        'fiba_id',
+        lambda v: latin1_str(v),
+        'FIBA ID Number'
+    ),
+    SbciColumnDesc(
+        'member_id',
+        lambda v: latin1_str(v),
+        'Member ID'
+    ),
+    SbciColumnDesc(
+        'member_no',
+        lambda v: latin1_str(v),
+        'Member No.'
+    ),
+    SbciColumnDesc(
+        'first_name',
+        lambda v: latin1_str(v),
+        'First Name'
+    ),
+    SbciColumnDesc(
+        'preferred_name',
+        lambda v: latin1_str(v),
+        'Preferred Name'
+    ),
+    SbciColumnDesc(
+        'family_name',
+        lambda v: latin1_str(v),
+        'Family Name'
+    ),
+    SbciColumnDesc(
+        'date_of_birth',
+        lambda v: latin1_str(v),
+        'Date of Birth'
+    ),
+    SbciColumnDesc(
+        'gender',
+        lambda v: latin1_str(v),
+        'Gender'
+    ),
+    SbciColumnDesc(
+        'parent1_firstname',
+        lambda v: latin1_str(v),
+        'Parent/Guardian 1 Firstname'
+    ),
+    SbciColumnDesc(
+        'parent1_surname',
+        lambda v: latin1_str(v),
+        'Parent/Guardian 1 Surname'
+    ),
+    SbciColumnDesc(
+        'parent1_gender',
+        lambda v: latin1_str(v),
+        'Parent/Guardian 1 Gender'
+    ),
+    SbciColumnDesc(
+        'parent1_mobile',
+        lambda v: latin1_str(v),
+        'Parent/Guardian 1 Mobile'
+    ),
+    SbciColumnDesc(
+        'parent1_email',
+        lambda v: latin1_str(v),
+        'Parent/Guardian 1 Email'
+    ),
+    SbciColumnDesc(
+        'parent2_firstname',
+        lambda v: latin1_str(v),
+        'Parent/Guardian 2 Firstname'
+    ),
+    SbciColumnDesc(
+        'parent2_surname',
+        lambda v: latin1_str(v),
+        'Parent/Guardian 2 Surname'
+    ),
+    SbciColumnDesc(
+        'parent2_gender',
+        lambda v: latin1_str(v),
+        'Parent/Guardian 2 Gender'
+    ),
+    SbciColumnDesc(
+        'parent2_mobile',
+        lambda v: latin1_str(v),
+        'Parent/Guardian 2 Mobile'
+    ),
+    SbciColumnDesc(
+        'parent2_email',
+        lambda v: latin1_str(v),
+        'Parent/Guardian 2 Email'
+    ),
+    SbciColumnDesc(
+        'address1',
+        lambda v: latin1_str(v),
+        'Address 1'
+    ),
+    SbciColumnDesc(
+        'address2',
+        lambda v: latin1_str(v),
+        'Address 2'
+    ),
+    SbciColumnDesc(
+        'suburb',
+        lambda v: latin1_str(v),
+        'Suburb'
+    ),
+    SbciColumnDesc(
+        'postal_code',
+        lambda v: latin1_str(v),
+        'Postal Code'
+    ),
+    SbciColumnDesc(
+        'phone_home',
+        lambda v: latin1_str(v),
+        'Telephone Number (Home)'
+    ),
+    SbciColumnDesc(
+        'phone_work',
+        lambda v: latin1_str(v),
+        'Telephone Number (Work)'
+    ),
+    SbciColumnDesc(
+        'mobile',
+        lambda v: latin1_str(v),
+        'Telephone Number (Mobile)'
+    ),
+    SbciColumnDesc(
+        'email',
+        lambda v: latin1_str(v),
+        'Email'
+    ),
+    SbciColumnDesc(
+        'medical_notes',
+        lambda v: latin1_str(v),
+        'Medical Notes'
+    ),
+    SbciColumnDesc(
+        'wwc_check_number',
+        lambda v: latin1_str(v),
+        'WWC Check Number'
+    ),
+    SbciColumnDesc(
+        'wwc_check_expiry',
+        lambda v: latin1_str(v),
+        'WWC Check Expiry'
+    ),
+    SbciColumnDesc(
+        'vjbl_level',
+        lambda v: latin1_str(v),
+        'VJBL Level'
+    ),
+    SbciColumnDesc(
+        'notes',
+        lambda v: latin1_str(v),
+        'Notes'
+    ),
+    SbciColumnDesc(
+        'first_registered',
+        lambda v: latin1_str(v),
+        'First Registered'
+    ),
+    SbciColumnDesc(
+        'last_registered',
+        lambda v: latin1_str(v),
+        'Last Registered'
+    ),
+    SbciColumnDesc(
+        'registered_until',
+        lambda v: latin1_str(v),
+        'Registered Until'
+    ),
+    SbciColumnDesc(
+        'last_updated',
+        lambda v: latin1_str(v),
+        'Last Updated'
+    ),
+    SbciColumnDesc(
+        'season',
+        lambda v: latin1_str(v),
+        'Season'
+    ),
+    SbciColumnDesc(
+        'season_player',
+        lambda v: latin1_str(v),
+        'Season Player ?'
+    ),
+    SbciColumnDesc(
+        'season_player_financial',
+        lambda v: latin1_str(v),
+        'Season Player Financial ?'
+    ),
+    SbciColumnDesc(
+        'date_player_created_in_season',
+        lambda v: latin1_str(v),
+        'Date Player created in Season'
+    ),
+    SbciColumnDesc(
+        'season_coach',
+        lambda v: latin1_str(v),
+        'Season Coach'
+    ),
+    SbciColumnDesc(
+        'date_coach_created_in_season',
+        lambda v: latin1_str(v),
+        'Date Coach created in Season'
+    ),
+    SbciColumnDesc(
+        'season_misc',
+        lambda v: latin1_str(v),
+        'Season Misc'
+    ),
+    SbciColumnDesc(
+        'date_misc_created_in_season',
+        lambda v: latin1_str(v),
+        'Date Misc created in Season'
+    ),
+    SbciColumnDesc(
+        'regoform_last_used_in_season',
+        lambda v: latin1_str(v),
+        'RegoForm last used in Season'
+    ),
+    SbciColumnDesc(
+        'date_regoform_last_used_in_season',
+        lambda v: latin1_str(v),
+        'Date RegoForm last used in Season'
+    ),
+    SbciColumnDesc(
+        'club_default_number',
+        lambda v: latin1_str(v),
+        'Club Default Number'
+    ),
+    SbciColumnDesc(
+        'school_name',
+        lambda v: latin1_str(v),
+        'School Name'
+    ),
+    SbciColumnDesc(
+        'school_suburb',
+        lambda v: latin1_str(v),
+        'School Suburb'
+    ),
+    SbciColumnDesc(
+        'bsb',
+        lambda v: latin1_str(v),
+        'BSB'
+    ),
+    SbciColumnDesc(
+        'account_number',
+        lambda v: latin1_str(v),
+        'Account Number'
+    ),
+    SbciColumnDesc(
+        'account_name',
+        lambda v: latin1_str(v),
+        'Account Name'
+    ),
+    SbciColumnDesc(
+        'competition_season',
+        lambda v: latin1_str(v),
+        'Competition Season'
+    ),
+    SbciColumnDesc(
+        'competition_name',
+        lambda v: latin1_str(v),
+        'Competition Name'
+    ),
+    SbciColumnDesc(
+        'team_name',
+        lambda v: latin1_str(v),
+        'Team Name'
+    ),
+)
 
 
 _members_date_columns = (
