@@ -5,10 +5,8 @@ Created on 7 Jul. 2018
 '''
 from __future__ import print_function
 
-from collections import Mapping, namedtuple
+from collections import namedtuple
 from datetime import date
-import json
-from logging import getLogger
 import os
 import re
 from sqlalchemy import event
@@ -22,39 +20,7 @@ from enum import IntEnum
 from sqlalchemy.engine import create_engine
 from sqlalchemy.orm.session import Session
 
-from sbcilib.utils import SbciEnum
-
-
-_logger = getLogger(__name__)
-_config = {
-    'db_teams_file': 'teams.sqlite3',  # leave out if no file backing db
-    'db_teams_url':  'sqlite:///teams.sqlite3',
-}
-
-
-WWCCheckStatus = IntEnum('WWCCheckStatus', ' '.join([
-    'NONE', 'UNKNOWN', 'EMPTY', 'UNDER18', 'TEACHER', 'BADNUMBER',
-    'FAILED', 'SUCCESS', 'EXPIRED', 'INVALID', 'BADRESPONSE'
-]))
-
-
-class WWCCheckResult(namedtuple('WWCCheckResult',
-                                ['status', 'message', 'expiry'])):
-    __slots__ = ()
-
-    def __getitem__(self, index):
-        try:
-            return super(WWCCheckResult, self).__getitem__(index)
-        except TypeError:
-            return getattr(self, index)
-
-
-class PersonRole(SbciEnum):
-    '''TODO'''
-
-    COACH = 1, 'Coach'
-    ASSISTANT_COACH = 2, 'Assistant Coach'
-    TEAM_MANAGER = 3, 'Team Manager'
+from sbcilib.utils import SbciEnum, end_of_season
 
 
 @event.listens_for(Engine, "connect")
@@ -84,7 +50,6 @@ def _name_for_scalar_relationship(_base, _local_cls, referred_cls, constraint):
     # return referred_cls.__name__.lower()
     id_col = constraint.column_keys[0]
     if not id_col.endswith('_id'):
-        _logger.warning('column name does not end with "_id"!')
         return referred_cls.__name__.lower()
     return id_col[:-3]
 
@@ -100,40 +65,31 @@ def _name_for_collection_relationship(
     # return referred_cls.__name__.lower() + "_collection"
     id_col = constraint.column_keys[0]
     if not id_col.endswith('_id'):
-        _logger.warning('column name does not end with "_id"!')
         return referred_cls.__name__.lower() + '_collection'
     return id_col[:-3] + '_collection'
+
+
+class TeamRole(SbciEnum):
+    '''TODO'''
+
+    COACH = 1, 'Coach'
+    ASSISTANT_COACH = 2, 'Assistant Coach'
+    TEAM_MANAGER = 3, 'Team Manager'
 
 
 class SbciTeamsDB(object):
     '''TODO'''
 
-    def __init__(self, verbose=False, config=None, *args, **kwds):
+    def __init__(self, url=None, filename=None, verbose=False, *args, **kwds):
         super(SbciTeamsDB, self).__init__(*args, **kwds)
 
-        try:
-            with open('config.json', 'r') as fd:
-                contents = json.load(fd)
-                if isinstance(contents, Mapping):
-                    _config.update(contents)
-                elif verbose:
-                    _logger.error('contents of "config.json" are unsuitable!')
-        except (IOError, ValueError) as e:
-            if verbose > 1:
-                _logger.warning('exception reading "config.json": %s', str(e))
-
-        if config is not None:
-            _config.update(config)
+        if not os.access(filename, os.R_OK | os.W_OK):
+            raise RuntimeError('cannot access DB file ({}) for R/W!'
+                               .format(filename))
 
         self.Base = automap_base()
 
-        if 'db_teams_file' in _config:
-            db_teams_file = _config['db_teams_file']
-            if not os.access(db_teams_file, os.R_OK | os.W_OK):
-                raise RuntimeError('cannot access DB file ({}) for R/W!'
-                                   .format(db_teams_file))
-
-        self.engine = create_engine(_config['db_teams_url'])
+        self.engine = create_engine(url)
 
         self.Base.prepare(
             self.engine, reflect=True,
@@ -161,170 +117,183 @@ class SbciTeamsDB(object):
         self.teams_query = self.dbsession.query(self.Teams)
         self.sessions_query = self.dbsession.query(self.Sessions)
 
-        self._wwc_checked = {}
 
-    _wwc_url_fmt = 'https://online.justice.vic.gov.au/wwccu/checkstatus.doj' \
-                   '?viewSequence=1&cardnumber={}&lastname={}' \
-                   '&pageAction=Submit&Submit=submit'
-    _wwc_number_pattern = re.compile(r'^(\d{7}(\d|A))(-\d{1,2})?$', re.I)
-    _wwc_result_pattern = re.compile(
-        r'^('
-        '(Working.*expires on (\d{2}) ([A-Z][a-z]{2}) (\d{4})\.)'
-        '|'
-        '(Working.*no longer current.*)'
-        '|'
-        '(This family.*do not match.*)'
-        ')$'
-    )
+_wwc_url_fmt = 'https://online.justice.vic.gov.au/wwccu/checkstatus.doj' \
+               '?viewSequence=1&cardnumber={}&lastname={}' \
+               '&pageAction=Submit&Submit=submit'
 
-    def person_check_wwc(self, person, verbose=0):
-        '''TODO'''
+_wwc_number_pattern = re.compile(r'^(\d{7}(\d|A))(-\d{1,2})?$', re.I)
 
-        if person is None:
-            return WWCCheckResult(
-                WWCCheckStatus.NONE,
-                'Skipping - Value is None',
-                None
-            )
+_wwc_result_pattern = re.compile(
+    r'^('
+    '(Working.*expires on (\d{2}) ([A-Z][a-z]{2}) (\d{4})\.)'
+    '|'
+    '(Working.*no longer current.*)'
+    '|'
+    '(This family.*do not match.*)'
+    ')$'
+)
 
-        id = person.id  # @ReservedAssignment
-        if id in self._wwc_checked:
-            return self._wwc_checked[id]
-        name = person.name.encode('utf8')
-        wwcn = person.wwc_number
+_wwc_check_cache = {}
 
-        if id == 0:
-            self._wwc_checked[id] = WWCCheckResult(
-                WWCCheckStatus.UNKNOWN,
-                'Skipping - Placeholder ID',
-                None
-            )
-            return self._wwc_checked[id]
 
-        if self.person_is_under18(person):
-            self._wwc_checked[id] = WWCCheckResult(
-                WWCCheckStatus.UNDER18,
-                'Skipping - Under 18 (DoB: {})'.format(person.dob.date()),
-                None
-            )
-            return self._wwc_checked[id]
+WWCCheckStatus = IntEnum('WWCCheckStatus', ' '.join([
+    'NONE', 'UNKNOWN', 'EMPTY', 'UNDER18', 'TEACHER', 'BADNUMBER',
+    'FAILED', 'SUCCESS', 'EXPIRED', 'INVALID', 'BADRESPONSE'
+]))
 
-        if wwcn == '':
-            self._wwc_checked[id] = WWCCheckResult(
-                WWCCheckStatus.EMPTY,
-                'Skipping - Empty WWC Number',
-                None
-            )
-            return self._wwc_checked[id]
 
-        m = SbciTeamsDB._wwc_number_pattern.match(wwcn)
+class WWCCheckResult(namedtuple('WWCCheckResult',
+                                ['status', 'message', 'expiry'])):
+    __slots__ = ()
 
-        if m is None:
-            if wwcn.startswith('VIT'):
-                self._wwc_checked[id] = WWCCheckResult(
-                    WWCCheckStatus.TEACHER,
-                    'Skipping - Victorian Teacher ({})'.format(wwcn),
-                    None
-                )
-            else:
-                self._wwc_checked[id] = WWCCheckResult(
-                    WWCCheckStatus.BADNUMBER,
-                    'Skipping - Bad WWC Number ({})'.format(wwcn),
-                    None
-                )
-            return self._wwc_checked[id]
-
-        cardnumber = m.group(1).upper()
-        lastname = '%20'.join(name.split()[1:])
-
+    def __getitem__(self, index):
         try:
-            wwc_url = SbciTeamsDB._wwc_url_fmt.format(cardnumber, lastname)
-            contents = urllib2.urlopen(wwc_url).read()
-        except BaseException:
-            self._wwc_checked[id] = WWCCheckResult(
-                WWCCheckStatus.TEACHER,
-                'Web Transaction Failed!',
-                None
-            )
-            return self._wwc_checked[id]
+            return super(WWCCheckResult, self).__getitem__(index)
+        except TypeError:
+            return getattr(self, index)
 
-        for line in contents.splitlines():
 
-            m = SbciTeamsDB._wwc_result_pattern.match(line)
-            if not m:
-                continue
+def wwc_check(person, verbose=0):
+    '''TODO'''
 
-            success, expired, notvalid = m.group(2, 6, 7)
-
-            if expired:
-                if verbose > 1:
-                    print('expired response = {}'.format(expired))
-                self._wwc_checked[id] = WWCCheckResult(
-                    WWCCheckStatus.EXPIRED,
-                    'WWC Number ({}) has Expired'.format(wwcn),
-                    None
-                )
-                return self._wwc_checked[id]
-
-            if notvalid:
-                if verbose > 1:
-                    print('notvalid response = {}'.format(notvalid))
-                self._wwc_checked[id] = WWCCheckResult(
-                    WWCCheckStatus.EXPIRED,
-                    'WWC Number ({}) with Lastname ({}) NOT VALID'
-                    .format(wwcn, lastname),
-                    None
-                )
-                return self._wwc_checked[id]
-
-            if success is not None:
-                if verbose > 1:
-                    print('success response = {}'.format(success))
-                self._wwc_checked[id] = WWCCheckResult(
-                    WWCCheckStatus.SUCCESS,
-                    'WWC Check Succeeded',
-                    date(*strptime('-'.join(m.group(5, 4, 3)), '%Y-%b-%d')[:3])
-                )
-                return self._wwc_checked[id]
-
-        if verbose > 1:
-            print('bad response = {}'.format(contents))
-        self._wwc_checked[id] = WWCCheckResult(
-            WWCCheckStatus.BADRESPONSE,
-            'WWC Check Service returned BAD response',
+    if person is None:
+        return WWCCheckResult(
+            WWCCheckStatus.NONE,
+            'Skipping - Value is None',
             None
         )
-        return self._wwc_checked[id]
 
-    def person_is_under18(self, person):
-        '''TODO'''
-        diff = relativedelta(self.end_of_season(), person.dob)
-        return (diff.years < 18)
+    id = person.id  # @ReservedAssignment
+    if id in _wwc_check_cache:
+        return _wwc_check_cache[id]
+    name = person.name.encode('utf8')
+    wwcn = person.wwc_number
 
-    def competition_shortname(self, competition):
-        '''TODO'''
-        if competition.gender == 'F':
-            gender = 'G'
+    if id == 0:
+        _wwc_check_cache[id] = WWCCheckResult(
+            WWCCheckStatus.UNKNOWN,
+            'Skipping - Placeholder ID',
+            None
+        )
+        return _wwc_check_cache[id]
+
+    if is_under18(person):
+        _wwc_check_cache[id] = WWCCheckResult(
+            WWCCheckStatus.UNDER18,
+            'Skipping - Under 18 (DoB: {})'.format(person.dob.date()),
+            None
+        )
+        return _wwc_check_cache[id]
+
+    if wwcn == '':
+        _wwc_check_cache[id] = WWCCheckResult(
+            WWCCheckStatus.EMPTY,
+            'Skipping - Empty WWC Number',
+            None
+        )
+        return _wwc_check_cache[id]
+
+    m = _wwc_number_pattern.match(wwcn)
+
+    if m is None:
+        if wwcn.startswith('VIT'):
+            _wwc_check_cache[id] = WWCCheckResult(
+                WWCCheckStatus.TEACHER,
+                'Skipping - Victorian Teacher ({})'.format(wwcn),
+                None
+            )
         else:
-            gender = 'B'
-        return str(competition.age_group) + gender + str(competition.section)
+            _wwc_check_cache[id] = WWCCheckResult(
+                WWCCheckStatus.BADNUMBER,
+                'Skipping - Bad WWC Number ({})'.format(wwcn),
+                None
+            )
+        return _wwc_check_cache[id]
 
-    def competition_longname(self, competition):
-        '''TODO'''
-        if competition.gender == 'F':
-            gender = 'Girls'
-        else:
-            gender = 'Boys'
-        return 'Under ' + str(competition.age_group) + ' ' + gender + \
-               ' Section ' + str(competition.section)
+    cardnumber = m.group(1).upper()
+    lastname = '%20'.join(name.split()[1:])
 
-    def end_of_season(self):
-        '''TODO'''
-        today = date.today()
-        end_of_summer = date(today.year, 3, 31)  # near enough is good enough
-        if today <= end_of_summer:
-            return end_of_summer
-        end_of_winter = date(today.year, 9, 30)  # near enough is good enough
-        if today <= end_of_winter:
-            return end_of_winter
-        return date(today.year + 1, 3, 31)
+    try:
+        wwc_url = _wwc_url_fmt.format(cardnumber, lastname)
+        contents = urllib2.urlopen(wwc_url).read()
+    except BaseException:
+        _wwc_check_cache[id] = WWCCheckResult(
+            WWCCheckStatus.TEACHER,
+            'Web Transaction Failed!',
+            None
+        )
+        return _wwc_check_cache[id]
+
+    for line in contents.splitlines():
+
+        m = _wwc_result_pattern.match(line)
+        if not m:
+            continue
+
+        success, expired, notvalid = m.group(2, 6, 7)
+
+        if expired:
+            if verbose > 1:
+                print('expired response = {}'.format(expired))
+            _wwc_check_cache[id] = WWCCheckResult(
+                WWCCheckStatus.EXPIRED,
+                'WWC Number ({}) has Expired'.format(wwcn),
+                None
+            )
+            return _wwc_check_cache[id]
+
+        if notvalid:
+            if verbose > 1:
+                print('notvalid response = {}'.format(notvalid))
+            _wwc_check_cache[id] = WWCCheckResult(
+                WWCCheckStatus.EXPIRED,
+                'WWC Number ({}) with Lastname ({}) NOT VALID'
+                .format(wwcn, lastname),
+                None
+            )
+            return _wwc_check_cache[id]
+
+        if success is not None:
+            if verbose > 1:
+                print('success response = {}'.format(success))
+            _wwc_check_cache[id] = WWCCheckResult(
+                WWCCheckStatus.SUCCESS,
+                'WWC Check Succeeded',
+                date(*strptime('-'.join(m.group(5, 4, 3)), '%Y-%b-%d')[:3])
+            )
+            return _wwc_check_cache[id]
+
+    if verbose > 1:
+        print('bad response = {}'.format(contents))
+    _wwc_check_cache[id] = WWCCheckResult(
+        WWCCheckStatus.BADRESPONSE,
+        'WWC Check Service returned BAD response',
+        None
+    )
+    return _wwc_check_cache[id]
+
+
+def is_under18(person):
+    '''TODO'''
+    diff = relativedelta(end_of_season(), person.dob)
+    return (diff.years < 18)
+
+
+def competition_shortname(competition):
+    '''TODO'''
+    if competition.gender == 'F':
+        gender = 'G'
+    else:
+        gender = 'B'
+    return str(competition.age_group) + gender + str(competition.section)
+
+
+def competition_longname(competition):
+    '''TODO'''
+    if competition.gender == 'F':
+        gender = 'Girls'
+    else:
+        gender = 'Boys'
+    return 'Under ' + str(competition.age_group) + ' ' + gender + \
+           ' Section ' + str(competition.section)

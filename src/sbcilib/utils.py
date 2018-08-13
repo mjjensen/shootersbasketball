@@ -6,7 +6,7 @@ Created on 29 Jul. 2018
 from __future__ import print_function
 
 from collections import namedtuple
-from datetime import datetime
+from datetime import datetime, date
 import json
 import re
 
@@ -45,6 +45,18 @@ class SbciEnum(IntEnum):
                 return e
         else:
             raise ValueError('{} not a valid SbciEnum!'.format(alt_value))
+
+
+def end_of_season(self):
+    '''TODO'''
+    today = date.today()
+    end_of_summer = date(today.year, 3, 31)  # near enough is good enough
+    if today <= end_of_summer:
+        return end_of_summer
+    end_of_winter = date(today.year, 9, 30)  # near enough is good enough
+    if today <= end_of_winter:
+        return end_of_winter
+    return date(today.year + 1, 3, 31)
 
 
 def _prepare_str(s, allow_none):
