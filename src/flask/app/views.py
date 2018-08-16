@@ -3,7 +3,7 @@ from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_appbuilder import ModelView
 from app import appbuilder, db
 
-from app.models import Competitions, People, Venues, Sessions, Teams
+from app.models import Competitions, Venues, Roles, Sessions, People, Teams
 
 """
     Create your Views::
@@ -35,51 +35,59 @@ class CompetitionsModelView(ModelView):
     datamodel = SQLAInterface(Competitions)
 
 
-class PeopleModelView(ModelView):
-    datamodel = SQLAInterface(People)
-
-#     label_columns = {}
-
-#     list_columns = ['name', 'email', 'mobile', 'wwc_number', 'wwc_expiry',
-#                     'postal_address', 'photo', 'dob', 'bv_mpd_expiry']
-
-#     show_fieldsets = [
-#                         (
-#                             'Summary',
-#                             {'fields': ['name', 'email', 'mobile']}
-#                         ),
-#                         (
-#                             'Personal Info',
-#                             {'fields': ['wwc_number', 'wwc_expiry',
-#                                         'postal_address', 'dob',
-#                                         'bv_mpd_expiry'],
-#                              'expanded': False}
-#                         ),
-#                      ]
-
-
 class VenuesModelView(ModelView):
     datamodel = SQLAInterface(Venues)
 
 
+class RolesModelView(ModelView):
+    datamodel = SQLAInterface(Roles)
+
+
 class SessionsModelView(ModelView):
     datamodel = SQLAInterface(Sessions)
+
     related_views = [VenuesModelView]
+
+
+class PeopleModelView(ModelView):
+    datamodel = SQLAInterface(People)
+
+    related_views = [RolesModelView]
+
+    label_columns = {}
+
+    list_columns = ['name', 'email', 'mobile', 'wwc_number', 'wwc_expiry',
+                    'postal_address', 'photo', 'dob', 'bv_mpd_expiry', 'role']
+
+    show_fieldsets = [
+                        (
+                            'Summary',
+                            {'fields': ['name', 'email', 'mobile']}
+                        ),
+                        (
+                            'Personal Info',
+                            {'fields': ['wwc_number', 'wwc_expiry',
+                                        'postal_address', 'photo', 'dob',
+                                        'bv_mpd_expiry', 'role'],
+                             'expanded': False}
+                        ),
+                     ]
 
 
 class TeamsModelView(ModelView):
     datamodel = SQLAInterface(Teams)
 
-#     related_views = [CompetitionsModelView, PeopleModelView, SessionsModelView]
+    related_views = [CompetitionsModelView, PeopleModelView, SessionsModelView]
 
-    list_columns = ['team_name', 'competition', 'team_manager']
+    list_columns = ['team_name', 'competition', 'coach']
 
 
+# db.create_all()
 appbuilder.add_view(TeamsModelView, "List Teams",
                     icon="fa-folder-open-o", category="Teams",
                     category_icon="fa-envelope")
 appbuilder.add_view(PeopleModelView, "List Coaches",
-                    icon="fa-folder-open-o", category="People",
+                    icon="fa-folder-open-o", category="Coach",
                     category_icon="fa-envelope")
 
 # db.create_all()

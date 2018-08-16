@@ -28,14 +28,6 @@ class Competitions(Model):
     )
 
 
-class People(Model):
-    __bind_key__ = 'teamsdb'
-    __tablename__ = 'people'
-    __table_args__ = (
-        {'extend_existing': True}
-    )
-
-
 class Venues(Model):
     __bind_key__ = 'teamsdb'
     __tablename__ = 'venues'
@@ -45,13 +37,10 @@ class Venues(Model):
     )
 
 
-class Teams(Model):
+class Roles(Model):
     __bind_key__ = 'teamsdb'
-    __tablename__ = 'teams'
+    __tablename__ = 'roles'
     __table_args__ = (
-        db.CheckConstraint(u"active in ('false','true')"),
-        db.CheckConstraint(u"fspstate in "
-                           u"('','C','T','CT','N','CN','TN','CTN')"),
         {'extend_existing': True}
     )
 
@@ -71,3 +60,33 @@ class Sessions(Model):
                            u"'8.00pm','8.15pm','8.30pm','9.00pm','9.15pm')"),
         {'extend_existing': True}
     )
+
+
+class People(Model):
+    __bind_key__ = 'teamsdb'
+    __tablename__ = 'people'
+    __table_args__ = (
+        {'extend_existing': True}
+    )
+
+
+class Teams(Model):
+    __bind_key__ = 'teamsdb'
+    __tablename__ = 'teams'
+    __table_args__ = (
+        db.CheckConstraint(u"active in ('false','true')"),
+        db.CheckConstraint(u"fspstate in "
+                           u"('','C','T','CT','N','CN','TN','CTN')"),
+        {'extend_existing': True}
+    )
+
+
+# define relationships
+Teams.coach = db.relationship(
+    'People', foreign_keys=Teams.coach_id)
+Teams.asst_coach = db.relationship(
+    'People', foreign_keys=Teams.asst_coach_id)
+Teams.team_manager = db.relationship(
+    'People', foreign_keys=Teams.team_manager_id)
+People.role = db.relationship(
+    'Roles', foreign_keys=People.role_id)
