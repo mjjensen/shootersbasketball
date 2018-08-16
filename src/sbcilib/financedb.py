@@ -25,6 +25,10 @@ _config = {
 class SbciFinanceDB(object):
     '''TODO'''
 
+    FINANCE_FILE = \
+        os.getenv('HOME') + \
+        '/basketball/shooters/Finance/finance.sqlite3'
+
     def __init__(self, verbose=False, *args, **kwds):
         super(SbciFinanceDB, self).__init__(*args, **kwds)
 

@@ -71,7 +71,6 @@ def _name_for_collection_relationship(
 
 class TeamRole(SbciEnum):
     '''TODO'''
-
     COACH = 1, 'Coach'
     ASSISTANT_COACH = 2, 'Assistant Coach'
     TEAM_MANAGER = 3, 'Team Manager'
@@ -80,16 +79,20 @@ class TeamRole(SbciEnum):
 class SbciTeamsDB(object):
     '''TODO'''
 
-    def __init__(self, url=None, filename=None, verbose=False, *args, **kwds):
+    TEAMSDB_FILE = \
+        os.getenv('HOME') + \
+        '/basketball/shooters/SportsTG/2018-winter/teams.sqlite3'
+
+    def __init__(self, verbose=False, *args, **kwds):
         super(SbciTeamsDB, self).__init__(*args, **kwds)
 
-        if not os.access(filename, os.R_OK | os.W_OK):
+        if not os.access(SbciTeamsDB.TEAMSDB_FILE, os.R_OK | os.W_OK):
             raise RuntimeError('cannot access DB file ({}) for R/W!'
-                               .format(filename))
+                               .format(SbciTeamsDB.TEAMSDB_FILE))
 
         self.Base = automap_base()
 
-        self.engine = create_engine(url)
+        self.engine = create_engine('sqlite:///' + SbciTeamsDB.TEAMSDB_FILE)
 
         self.Base.prepare(
             self.engine, reflect=True,

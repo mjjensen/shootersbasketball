@@ -47,7 +47,7 @@ class SbciEnum(IntEnum):
             raise ValueError('{} not a valid SbciEnum!'.format(alt_value))
 
 
-def end_of_season(self):
+def end_of_season():
     '''TODO'''
     today = date.today()
     end_of_summer = date(today.year, 3, 31)  # near enough is good enough

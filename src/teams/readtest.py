@@ -18,7 +18,7 @@ from logging import getLogger, basicConfig
 import os
 import sys
 
-from sbcilib.teamsdb import SbciTeamsDB
+from sbcilib.teamsdb import SbciTeamsDB, competition_shortname, wwc_check
 
 
 __all__ = []
@@ -103,7 +103,7 @@ USAGE
                 if verbose:
                     print('{}, {}: coach {}, asst_coach {}, team manager {}'
                           .format(team.team_name,
-                                  db.competition_shortname(team.competition),
+                                  competition_shortname(team.competition),
                                   team.coach.name
                                   if team.coach is not None else "None",
                                   team.asst_coach.name
@@ -111,15 +111,15 @@ USAGE
                                   team.team_manager.name
                                   if team.team_manager is not None else "None"))
 
-                r, m, e = db.person_check_wwc(team.coach, verbose)
+                r, m, e = wwc_check(team.coach, verbose)
                 if not r:
                     print('WWC check failed: {}'.format(m))
 
-                r, m, e = db.person_check_wwc(team.asst_coach, verbose)
+                r, m, e = wwc_check(team.asst_coach, verbose)
                 if not r:
                     print('WWC check failed: {}'.format(m))
 
-                r, m, e = db.person_check_wwc(team.team_manager, verbose)
+                r, m, e = wwc_check(team.team_manager, verbose)
                 if not r:
                     print('WWC check failed: {}'.format(m))
 

@@ -1,7 +1,7 @@
 from flask import render_template
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_appbuilder import ModelView
-from app import appbuilder
+from app import appbuilder, db
 
 from app.models import Competitions, People, Venues, Sessions, Teams
 
@@ -38,39 +38,28 @@ class CompetitionsModelView(ModelView):
 class PeopleModelView(ModelView):
     datamodel = SQLAInterface(People)
 
-    label_columns = {}
-    list_columns = ['name', 'email', 'mobile', 'wwc_number', 'wwc_expiry',
-                    'postal_address', 'photo', 'dob', 'bv_mpd_expiry']
+#     label_columns = {}
 
-    show_fieldsets = [
-                        (
-                            'Summary',
-                            {'fields': ['name', 'email', 'mobile']}
-                        ),
-                        (
-                            'Personal Info',
-                            {'fields': ['wwc_number', 'wwc_expiry',
-                                        'postal_address', 'dob',
-                                        'bv_mpd_expiry'],
-                             'expanded': False}
-                        ),
-                     ]
+#     list_columns = ['name', 'email', 'mobile', 'wwc_number', 'wwc_expiry',
+#                     'postal_address', 'photo', 'dob', 'bv_mpd_expiry']
 
-
-class TeamManagerModelView(PeopleModelView):
-    pass
+#     show_fieldsets = [
+#                         (
+#                             'Summary',
+#                             {'fields': ['name', 'email', 'mobile']}
+#                         ),
+#                         (
+#                             'Personal Info',
+#                             {'fields': ['wwc_number', 'wwc_expiry',
+#                                         'postal_address', 'dob',
+#                                         'bv_mpd_expiry'],
+#                              'expanded': False}
+#                         ),
+#                      ]
 
 
-class CoachModelView(PeopleModelView):
-    pass
-
-
-class AsstCoachModelView(PeopleModelView):
-    pass
-
-
-class VenuesModelView(Venues):
-    pass
+class VenuesModelView(ModelView):
+    datamodel = SQLAInterface(Venues)
 
 
 class SessionsModelView(ModelView):
@@ -78,19 +67,10 @@ class SessionsModelView(ModelView):
     related_views = [VenuesModelView]
 
 
-class SessionModelView(SessionsModelView):
-    pass
-
-
-class OldSessionModelView(SessionsModelView):
-    pass
-
-
 class TeamsModelView(ModelView):
     datamodel = SQLAInterface(Teams)
-    related_views = [CompetitionsModelView, TeamManagerModelView,
-                     CoachModelView, AsstCoachModelView,
-                     SessionModelView, OldSessionModelView]
+
+#     related_views = [CompetitionsModelView, PeopleModelView, SessionsModelView]
 
     list_columns = ['team_name', 'competition', 'team_manager']
 
@@ -98,6 +78,8 @@ class TeamsModelView(ModelView):
 appbuilder.add_view(TeamsModelView, "List Teams",
                     icon="fa-folder-open-o", category="Teams",
                     category_icon="fa-envelope")
-appbuilder.add_view(CoachModelView, "List Coaches",
+appbuilder.add_view(PeopleModelView, "List Coaches",
                     icon="fa-folder-open-o", category="People",
                     category_icon="fa-envelope")
+
+# db.create_all()

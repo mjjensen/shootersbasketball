@@ -1,7 +1,7 @@
 from flask_appbuilder import Model
 from flask_appbuilder.models.mixins import AuditMixin, FileColumn, ImageColumn
 from sqlalchemy import Column, Integer, String, ForeignKey
-from sqlalchemy.orm import relationship, backref
+from sqlalchemy.orm import relationship
 from app import db, app
 """
 
@@ -13,6 +13,7 @@ AuditMixin will add automatic timestamp of created and modified by who
 """
 
 
+# idea came from this: https://stackoverflow.com/a/36337815/2130789
 db.reflect(app=app)
 
 
@@ -54,31 +55,6 @@ class Teams(Model):
         {'extend_existing': True}
     )
 
-#     competition = relationship(
-#         'Competitions', backref=backref('competition_teams', lazy=True),
-#         foreign_keys=[Teams.competition_id]  # @UndefinedVariable
-#     )
-#     team_manager = relationship(
-#         'People', backref=backref('team_manager_teams', lazy=True),
-#         foreign_keys=[Teams.team_manager_id]  # @UndefinedVariable
-#     )
-#     coach = relationship(
-#         'People', backref=backref('coach_teams', lazy=True),
-#         foreign_keys=[Teams.coach_id]  # @UndefinedVariable
-#     )
-#     asst_coach = relationship(
-#         'People', backref=backref('asst_coach_teams', lazy=True),
-#         foreign_keys=[Teams.asst_coach_id]  # @UndefinedVariable
-#     )
-#     session = relationship(
-#         'Sessions', backref=backref('session_teams', lazy=True),
-#         foreign_keys=[Teams.session_id]  # @UndefinedVariable
-#     )
-#     old_session = relationship(
-#         'Sessions', backref=backref('old_session_teams', lazy=True),
-#         foreign_keys=[Teams.old_session_id]  # @UndefinedVariable
-#     )
-
 
 class Sessions(Model):
     __bind_key__ = 'teamsdb'
@@ -95,8 +71,3 @@ class Sessions(Model):
                            u"'8.00pm','8.15pm','8.30pm','9.00pm','9.15pm')"),
         {'extend_existing': True}
     )
-
-#     venue = relationship(
-#         'Venues', backref=backref('venue_sessions', lazy=True),
-#         foreign_keys=[Sessions.venue_id]  # @UndefinedVariable
-#     )
