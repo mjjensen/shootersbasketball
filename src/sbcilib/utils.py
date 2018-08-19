@@ -5,10 +5,14 @@ Created on 29 Jul. 2018
 '''
 from __future__ import print_function
 
+import __main__
+from argparse import RawDescriptionHelpFormatter
 from collections import namedtuple
 from datetime import datetime, date
 import json
+import os
 import re
+import sys
 
 from enum import unique, IntEnum
 
@@ -45,6 +49,87 @@ class SbciEnum(IntEnum):
                 return e
         else:
             raise ValueError('{} not a valid SbciEnum!'.format(alt_value))
+
+
+class SbciHelpFormatter(RawDescriptionHelpFormatter):
+    '''I don't like usage: - make it Usage: ...'''
+
+    def add_usage(self, *args):
+        '''override add_usage() and set the usage prefix if not specified'''
+        if len(args) == 4 and args[3] is None:
+            args = args[:3]
+        if len(args) == 3:
+            args += ('Usage: ', )
+        super(SbciHelpFormatter, self).add_usage(*args)
+
+
+class SbciException(Exception):
+    '''Generic exception to raise and log different fatal errors.'''
+
+    def __init__(self, msg):
+        super(SbciException).__init__(type(self))
+        self.msg = "E: %s" % msg
+
+    def __str__(self):
+        return self.msg
+
+    def __unicode__(self):
+        return self.msg
+
+
+def _get_docstring_lines(obj=None):
+    '''locate and return the __doc__ string of the main python module'''
+    if obj is not None:
+        if hasattr(obj, '__module__'):
+            name = obj.__module__
+        elif hasattr(obj, '__name'):
+            name = obj.__name__
+        else:
+            name = obj
+        if name in sys.modules:
+            m = sys.modules[name]
+            if hasattr(m, '__doc__') and m.__doc__ is not None:
+                lines = m.__doc__.splitlines()
+                if len(lines) >= 4:
+                    return lines
+    if hasattr(__main__, '__doc__') and __main__.__doc__ is not None:
+        lines = __main__.__doc__.splitlines()
+        if len(lines) >= 4:
+            return lines
+    return('', '<program __doc__ string UNAVAILABLE!>') * 2
+
+
+_docstring_pattern = re.compile(r'^[$@]([^:]+):\s*(.*?)\s*\$?$')
+
+
+def get_program_info():
+    lines = _get_docstring_lines()
+    info = {}
+    info['shortdesc'] = lines[1]
+    n = 4
+    for line in lines[4:]:
+        if line.startswith(('@', '$', '--')):
+            break
+        n += 1
+    e = n
+    while e > 4 and lines[e - 1] == '':
+        e -= 1
+    info['longdesc'] = '\n'.join(lines[3:e])
+    for line in lines[n:]:
+        m = _docstring_pattern.match(line)
+        if m is not None:
+            info[m.group(1).lower()] = m.group(2)
+    # idea taken from:
+    # https://doughellmann.com/blog/2012/04/30/determining-the-name-of-a-process-from-python/
+    if hasattr(__main__, '__file__'):
+        info['file'] = os.path.abspath(__main__.__file__)
+    else:
+        info['file'] = os.path.abspath(sys.argv[0])
+    info['name'] = os.path.basename(info['file'])
+    return info
+
+
+def program_setup():
 
 
 def end_of_season():
