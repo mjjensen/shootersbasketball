@@ -6,13 +6,18 @@ Created on 29 Jul. 2018
 from __future__ import print_function
 
 import __main__
-from argparse import RawDescriptionHelpFormatter
+from abc import ABCMeta, abstractmethod
+from argparse import RawDescriptionHelpFormatter, ArgumentParser, SUPPRESS
 from collections import namedtuple
 from datetime import datetime, date
+import inspect
 import json
+from logging import root, getLogger, Logger, basicConfig, DEBUG, INFO, WARN,\
+    setLoggerClass
 import os
 import re
 import sys
+from threading import Lock
 
 from enum import unique, IntEnum
 
@@ -51,18 +56,6 @@ class SbciEnum(IntEnum):
             raise ValueError('{} not a valid SbciEnum!'.format(alt_value))
 
 
-class SbciHelpFormatter(RawDescriptionHelpFormatter):
-    '''I don't like usage: - make it Usage: ...'''
-
-    def add_usage(self, *args):
-        '''override add_usage() and set the usage prefix if not specified'''
-        if len(args) == 4 and args[3] is None:
-            args = args[:3]
-        if len(args) == 3:
-            args += ('Usage: ', )
-        super(SbciHelpFormatter, self).add_usage(*args)
-
-
 class SbciException(Exception):
     '''Generic exception to raise and log different fatal errors.'''
 
@@ -75,6 +68,109 @@ class SbciException(Exception):
 
     def __unicode__(self):
         return self.msg
+
+
+def _class_logger_name(obj):
+    '''TODO'''
+    if obj is None:
+        return None
+    if not inspect.isclass(obj) and not inspect.ismodule(obj):
+        obj = type(obj)
+#         return '.'.join([obj.__module__, obj.__name__])
+    return obj.__name__
+
+
+def _class_logger(obj=None):
+    '''TODO'''
+    name = _class_logger_name(obj)
+    if name is None or name == '':
+        return root
+    return getLogger(name)
+
+
+class SbciLog(object):
+    '''TODO'''
+
+    _classlock = Lock()
+    _configured = False
+    _debug_level = 0
+    _verbose_level = 0
+
+    @property
+    def logger(self):
+        return _class_logger(self)
+
+    @classmethod
+    def try_configure(cls):
+        with cls._classlock:
+            if cls._configured:
+                return
+
+            if cls._debug_level > 0:
+                logging_level = DEBUG
+            elif cls._verbose_level > 0:
+                logging_level = INFO
+            else:
+                logging_level = WARN
+
+            setLoggerClass(SbciLogger)
+            basicConfig(level=logging_level)
+
+            cls._configured = True
+
+    @classmethod
+    def get_debug_level(cls):
+        with cls._classlock:
+            return cls._debug_level
+
+    @classmethod
+    def set_debug_level(cls, debug_level):
+        with cls._classlock:
+            result = cls._debug_level
+            cls._debug_level = int(debug_level)
+            return result
+
+    @classmethod
+    def get_verbose_level(cls):
+        with cls._classlock:
+            return cls._verbose_level
+
+    @classmethod
+    def set_verbose_level(cls, verbose_level):
+        with cls._classlock:
+            result = cls._verbose_level
+            cls._verbose_level = int(verbose_level)
+            return result
+
+
+class SbciLogger(Logger):
+    '''TODO'''
+
+    def __init__(self, name=None, *args, **kwds):
+        if name is None:
+            name = _class_logger_name(self)
+        super(SbciLogger, self).__init__(name, *args, **kwds)
+
+    def _log(self, level, msg, args, exc_info=None, extra=None):
+        '''all logger methods that actually log something go through this'''
+        SbciLog.try_configure()
+        super(SbciLogger, self)._log(level, msg, args, exc_info, extra)
+
+    def debugif(self, msg_debug_level, msg, *args, **kwds):
+        if SbciLog._debug_level >= msg_debug_level:
+            self.debug(msg, *args, **kwds)
+
+
+class SbciHelpFormatter(RawDescriptionHelpFormatter):
+    '''I don't like usage: - make it Usage: ...'''
+
+    def add_usage(self, *args):
+        '''override add_usage() and set the usage prefix if not specified'''
+        if len(args) == 4 and args[3] is None:
+            args = args[:3]
+        if len(args) == 3:
+            args += ('Usage: ', )
+        super(SbciHelpFormatter, self).add_usage(*args)
 
 
 def _get_docstring_lines(obj=None):
@@ -99,13 +195,31 @@ def _get_docstring_lines(obj=None):
     return('', '<program __doc__ string UNAVAILABLE!>') * 2
 
 
-_docstring_pattern = re.compile(r'^[$@]([^:]+):\s*(.*?)\s*\$?$')
+_docstring_pattern = re.compile(r'^[$@]([^:\$]+):?\s*(.*?)\s*\$?$')
 
 
-def get_program_info():
+def _get_program_info():
+    '''TODO'''
     lines = _get_docstring_lines()
+
     info = {}
+
+    # idea taken from:
+    # https://doughellmann.com/blog/2012/04/30/determining-the-name-of-a-process-from-python/
+    if hasattr(__main__, '__file__'):
+        progfile = __main__.__file__
+    else:
+        progfile = sys.argv[0]
+    info['file'] = os.path.abspath(progfile)
+
+    progname = os.path.basename(info['file'])
+    if progname.lower().endswith('.py'):
+        info['name'] = progname[:-3]
+    else:
+        info['name'] = progname
+
     info['shortdesc'] = lines[1]
+
     n = 4
     for line in lines[4:]:
         if line.startswith(('@', '$', '--')):
@@ -115,21 +229,162 @@ def get_program_info():
     while e > 4 and lines[e - 1] == '':
         e -= 1
     info['longdesc'] = '\n'.join(lines[3:e])
+
     for line in lines[n:]:
         m = _docstring_pattern.match(line)
         if m is not None:
             info[m.group(1).lower()] = m.group(2)
-    # idea taken from:
-    # https://doughellmann.com/blog/2012/04/30/determining-the-name-of-a-process-from-python/
-    if hasattr(__main__, '__file__'):
-        info['file'] = os.path.abspath(__main__.__file__)
-    else:
-        info['file'] = os.path.abspath(sys.argv[0])
-    info['name'] = os.path.basename(info['file'])
+
     return info
 
 
-def program_setup():
+class SbciMain(SbciLog):
+    '''TODO'''
+    __metaclass__ = ABCMeta
+
+    def __init__(self, *args, **kwds):
+        super(SbciMain, self).__init__(*args, **kwds)
+
+        self.info = _get_program_info()
+
+        self.parser = ArgumentParser(
+            prog=self.info['name'],
+            description='''{shortdesc}
+
+  Created by {author} on {created}.
+  Copyright {copyright}.
+
+  Licensed under the {license}.
+'''.format(**self.info),
+            formatter_class=SbciHelpFormatter,
+            add_help=False)
+
+        self.define_args()
+
+        self.args = self.parser.parse_args()
+
+        debug_level = getattr(self.args, 'debug', 0)
+        SbciLog.set_debug_level(debug_level)
+
+        verbose_level = getattr(self.args, 'verbose', 0)
+        SbciLog.set_verbose_level(verbose_level)
+
+        self.try_configure()
+
+        self.logger.info('{name} {version} ({date})'.format(**self.info))
+
+        verbose = getattr(args, 'verbose', 0)
+        if verbose > 0:
+            self.logger.info('%s', self.program_shortdesc)
+            self.logger.info("Verbose mode on (level %d)", verbose)
+
+            if hasattr(args, 'debug'):
+                if args.debug > 0:
+                    self.logger.info("Debug mode on (level=%d)", args.debug)
+                else:
+                    self.logger.info("Debug mode off")
+
+    def define_args(self):
+        '''TODO'''
+
+        self.parser.add_argument(
+            '--help', '-h',
+            action='help', default=SUPPRESS,
+            help='show this help message and exit')
+
+        self.parser.add_argument(
+            '--version', '-V',
+            action='version',
+            version='%(prog)s {version} ({date})'.format(**self.info))
+
+        self.parser.add_argument(
+            '--verbose', '-v',
+            action='count', default=0,
+            help='increase verbosity level [default: %(default)d]')
+
+        self.parser.add_argument(
+            "--debug", "-D",
+            type=int, default=0,
+            nargs='?', const=1, metavar='N',
+            help="set debugging level [default: %(default)d]")
+
+        self.parser.add_argument(
+            "--profile",
+            action="store_true",
+            help="enable profile data output [default: %(default)s]")
+
+    def run(self):
+        '''TODO'''
+        result = os.EX_OSERR
+
+        try:
+            self.setup()
+        except BaseException as e:
+            self.logger.exception('Exception (during setup): %r', e)
+        else:
+            try:
+                result = self.main()
+            except (KeyboardInterrupt, SystemExit):
+                self.logger.info('Attempting normal exit ...')
+                result = os.EX_OK
+            except BaseException as e:
+                self.logger.exception('Exception: %r', e)
+        finally:
+            try:
+                self.cleanup()
+            except BaseException as e:
+                self.logger.exception('Exception (during cleanup): %r', e)
+
+        return result
+
+    def setup(self):
+        '''TODO'''
+        pass
+
+    @abstractmethod
+    def main(self):
+        '''TODO'''
+        pass
+
+    def cleanup(self):
+        '''TODO'''
+        pass
+
+    def profile_run(self):
+        '''TODO'''
+        import cProfile
+        import pstats
+        program_name = self.info['name']
+        profile_filename = program_name + '_profile_data'
+        stats_filename = program_name + "_profile_stats.txt"
+        cProfile.runctx('self.run()', globals(), locals(), profile_filename)
+        with open(stats_filename, "wb") as statsfile:
+            p = pstats.Stats(profile_filename, stream=statsfile)
+            stats = p.strip_dirs().sort_stats('cumulative')
+            stats.print_stats()
+        return os.EX_OK
+
+    @classmethod
+    def setuptools_entry(cls, *args, **kwds):
+        '''class method to implement a standard "setuptools" entry point'''
+        if not issubclass(cls, SbciMain):
+            sys.stderr.write('%r is not a subclass of SbciMain!\n' % cls)
+            return os.EX_SOFTWARE
+
+        main = cls(*args, **kwds)
+
+        if getattr(main.args, 'test', False):
+            import doctest
+            nfails, ntests = doctest.testmod(
+                sys.modules[cls.__module__],
+                verbose=(getattr(main.args, 'verbose', 0) > 0)
+            )
+            sys.stderr.write('%d out of %d tests failed.\n' % (nfails, ntests))
+            return nfails
+        if getattr(main.args, 'profile', False):
+            return main.profile_run()
+        else:
+            return main.run()
 
 
 def end_of_season():

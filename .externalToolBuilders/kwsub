@@ -1,0 +1,41 @@
+#!/usr/bin/env python2
+# encoding: utf-8
+import re
+import sys
+import os
+from subprocess import check_output, CalledProcessError
+
+progname = os.path.basename(sys.argv[0])
+
+if len(sys.argv) != 2 or sys.argv[1] not in ('--smudge', '--clean'):
+    print >>sys.stderr,'Usage: %s {--smudge|--clean}' % progname
+    sys.exit(1)
+
+kwds = (
+    'Date', 'LastChangedDate',
+    'Revision', 'LastChangedRevision', 'Rev',
+    'Author', ' LastChangedBy',
+    'Id',
+)
+pattern = re.compile(r'\$(' + '|'.join(kwds) + ')(:[^\$]*)?\$', re.IGNORECASE)
+
+if sys.argv[1] == '--smudge':
+    cmd = [
+        'git', 'log',
+        '--pretty=format:%ai (%ad)|%aE|%H', '--date=format:%a, %d %b %Y',
+        '-1',
+    ]
+    try:
+        date, author, commit = check_output(cmd).split('|')
+    except CalledProcessError as e:
+        print >>sys.stderr, 'git log command failed!'
+        sys.exit(1)
+    print >>sys.stderr,'date=%s,author=%s,commit=%s' % (date, author, commit)
+    repl = r''
+else:
+    repl = r'$\1$'
+
+for line in sys.stdin:
+    print pattern.sub(r'$\1$', line),
+
+sys.exit(0)
