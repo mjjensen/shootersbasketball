@@ -5,348 +5,294 @@ Created on 29 Jul. 2018
 '''
 from __future__ import print_function
 
-from collections import deque
-from collections import namedtuple
-import csv
-
-from sbcilib.utils import SbciColumnDesc, latin1_str, date_str, phone_str, \
-    email_str, postcode_str, boolean_str, posint_str
+from sbcilib.utils import SbciCSVColumn, SbciCSVInfo, latin1_str, date_str, \
+    phone_str, email_str, postcode_str, boolean_str, posint_str
 
 
-_stgmem_cols = (
-    SbciColumnDesc(
+stg_members_csvinfo = SbciCSVInfo(
+    SbciCSVColumn(
         'fiba_id',
-        lambda v: latin1_str(v),
-        'FIBA ID Number'
+        latin1_str,
+        'FIBA ID Number',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'member_id',
-        lambda v: latin1_str(v),
-        'Member ID'
+        latin1_str,
+        'Member ID',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'member_no',
-        lambda v: latin1_str(v),
-        'Member No.'
+        latin1_str,
+        'Member No.',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'first_name',
-        lambda v: latin1_str(v),
-        'First Name'
+        latin1_str,
+        'First Name',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'preferred_name',
-        lambda v: latin1_str(v),
-        'Preferred Name'
+        latin1_str,
+        'Preferred Name',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'family_name',
-        lambda v: latin1_str(v),
-        'Family Name'
+        latin1_str,
+        'Family Name',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'date_of_birth',
         lambda v: date_str(v, '%d/%m/%Y'),
-        'Date of Birth'
+        'Date of Birth',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'gender',
-        lambda v: latin1_str(v),
-        'Gender'
+        latin1_str,
+        'Gender',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'parent1_firstname',
-        lambda v: latin1_str(v),
-        'Parent/Guardian 1 Firstname'
+        latin1_str,
+        'Parent/Guardian 1 Firstname',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'parent1_surname',
-        lambda v: latin1_str(v),
-        'Parent/Guardian 1 Surname'
+        latin1_str,
+        'Parent/Guardian 1 Surname',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'parent1_gender',
-        lambda v: latin1_str(v),
-        'Parent/Guardian 1 Gender'
+        latin1_str,
+        'Parent/Guardian 1 Gender',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'parent1_mobile',
-        lambda v: phone_str(v),
-        'Parent/Guardian 1 Mobile'
+        phone_str,
+        'Parent/Guardian 1 Mobile',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'parent1_email',
-        lambda v: email_str(v),
-        'Parent/Guardian 1 Email'
+        email_str,
+        'Parent/Guardian 1 Email',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'parent2_firstname',
-        lambda v: latin1_str(v),
-        'Parent/Guardian 2 Firstname'
+        latin1_str,
+        'Parent/Guardian 2 Firstname',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'parent2_surname',
-        lambda v: latin1_str(v),
-        'Parent/Guardian 2 Surname'
+        latin1_str,
+        'Parent/Guardian 2 Surname',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'parent2_gender',
-        lambda v: latin1_str(v),
-        'Parent/Guardian 2 Gender'
+        latin1_str,
+        'Parent/Guardian 2 Gender',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'parent2_mobile',
-        lambda v: phone_str(v),
-        'Parent/Guardian 2 Mobile'
+        phone_str,
+        'Parent/Guardian 2 Mobile',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'parent2_email',
-        lambda v: email_str(v),
-        'Parent/Guardian 2 Email'
+        email_str,
+        'Parent/Guardian 2 Email',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'address1',
-        lambda v: latin1_str(v),
-        'Address 1'
+        latin1_str,
+        'Address 1',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'address2',
-        lambda v: latin1_str(v),
-        'Address 2'
+        latin1_str,
+        'Address 2',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'suburb',
-        lambda v: latin1_str(v),
-        'Suburb'
+        latin1_str,
+        'Suburb',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'postal_code',
-        lambda v: postcode_str(v),
-        'Postal Code'
+        postcode_str,
+        'Postal Code',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'phone_home',
-        lambda v: phone_str(v),
-        'Telephone Number (Home)'
+        phone_str,
+        'Telephone Number (Home)',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'phone_work',
-        lambda v: phone_str(v),
-        'Telephone Number (Work)'
+        phone_str,
+        'Telephone Number (Work)',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'mobile',
-        lambda v: phone_str(v),
-        'Telephone Number (Mobile)'
+        phone_str,
+        'Telephone Number (Mobile)',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'email',
-        lambda v: email_str(v),
-        'Email'
+        email_str,
+        'Email',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'medical_notes',
-        lambda v: latin1_str(v),
-        'Medical Notes'
+        latin1_str,
+        'Medical Notes',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'wwc_check_number',
-        lambda v: latin1_str(v),
-        'WWC Check Number'
+        latin1_str,
+        'WWC Number', 'WWC Check Number',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'wwc_check_expiry',
         lambda v: date_str(v, '%d/%m/%Y'),
-        'WWC Check Expiry'
+        'WWC Expiry', 'WWC Check Expiry',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'vjbl_level',
-        lambda v: latin1_str(v),
-        'VJBL Level'
+        latin1_str,
+        'VJBL Level',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
+        'custom_text_field_25',
+        latin1_str,
+        'Custom Text Field 25',
+        ignored=True
+    ),
+    SbciCSVColumn(
+        'willingness_to_volunteer',
+        latin1_str,
+        'Willingness to Volunteer',
+        ignored=True
+    ),
+    SbciCSVColumn(
         'notes',
-        lambda v: latin1_str(v),
-        'Notes'
+        latin1_str,
+        'Notes',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'first_registered',
         lambda v: date_str(v, '%d/%m/%Y'),
-        'First Registered'
+        'First Registered',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'last_registered',
         lambda v: date_str(v, '%d/%m/%Y'),
-        'Last Registered'
+        'Last Registered',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'registered_until',
         lambda v: date_str(v, '%d/%m/%Y'),
-        'Registered Until'
+        'Registered Until',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'last_updated',
         lambda v: date_str(v, '%d/%m/%Y'),
         'Last Updated'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'season',
-        lambda v: latin1_str(v),
-        'Season'
+        latin1_str,
+        'Season',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'season_player',
-        lambda v: boolean_str(v),
-        'Season Player ?'
+        boolean_str,
+        'Season Player ?',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'season_player_financial',
-        lambda v: boolean_str(v),
-        'Season Player Financial ?'
+        boolean_str,
+        'Season Player Financial ?',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'date_player_created_in_season',
         lambda v: date_str(v, '%d/%m/%Y'),
-        'Date Player created in Season'
+        'Date Player created in Season',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'season_coach',
-        lambda v: boolean_str(v),
-        'Season Coach'
+        boolean_str,
+        'Season Coach',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'date_coach_created_in_season',
         lambda v: date_str(v, '%d/%m/%Y'),
-        'Date Coach created in Season'
+        'Date Coach created in Season',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'season_misc',
-        lambda v: boolean_str(v),
-        'Season Misc'
+        boolean_str,
+        'Season Misc',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'date_misc_created_in_season',
         lambda v: date_str(v, '%d/%m/%Y'),
-        'Date Misc created in Season'
+        'Date Misc created in Season',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'regoform_last_used_in_season',
-        lambda v: latin1_str(v),
-        'RegoForm last used in Season'
+        latin1_str,
+        'RegoForm last used in Season',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'date_regoform_last_used_in_season',
         lambda v: date_str(v, '%d/%m/%Y'),
-        'Date RegoForm last used in Season'
+        'Date RegoForm last used in Season',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'club_default_number',
-        lambda v: posint_str(v),
-        'Club Default Number'
+        posint_str,
+        'Club Default Number',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'school_name',
-        lambda v: latin1_str(v),
-        'School Name'
+        latin1_str,
+        'School Name',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'school_suburb',
-        lambda v: latin1_str(v),
-        'School Suburb'
+        latin1_str,
+        'School Suburb',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'bsb',
-        lambda v: latin1_str(v),
-        'BSB'
+        latin1_str,
+        'BSB',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'account_number',
-        lambda v: latin1_str(v),
-        'Account Number'
+        latin1_str,
+        'Account Number',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'account_name',
-        lambda v: latin1_str(v),
-        'Account Name'
+        latin1_str,
+        'Account Name',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'competition_season',
-        lambda v: latin1_str(v),
-        'Competition Season'
+        latin1_str,
+        'Competition Season',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'competition_name',
-        lambda v: latin1_str(v),
-        'Competition Name'
+        latin1_str,
+        'Competition Name',
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'team_name',
-        lambda v: latin1_str(v),
-        'Team Name'
+        latin1_str,
+        'Team Name',
     ),
 )
-_stgmem_del = (54, )
 
 
-class STGMembersCSVRecord(namedtuple('STGMembersCSVRecord',
-                                     (c.name for c in _stgmem_cols))):
-    __slots__ = ()
-
-    def __getitem__(self, index):
-        try:
-            return super(STGMembersCSVRecord, self).__getitem__(index)
-        except TypeError:
-            return getattr(self, index)
-
-
-def STGMembersCSVRead(csvfile, verbose=0, reverse=False):
-    '''TODO'''
-
-    if verbose > 0:
-        print('Reading SportsTG Members CSV file: {} ... '
-              .format(csvfile), end='')
-
-    records = deque()
-
-    with open(csvfile) as fd:
-
-        reader = csv.reader(fd)
-
-        headings = next(reader)
-        for c in _stgmem_del:
-            del headings[c]
-
-        for c, h in zip(_stgmem_cols, headings):
-            if h != c.head:
-                raise RuntimeError('column heading mismatch! ("%s" != "%s")'
-                                   % (h, c.head))
-
-        for row in reader:
-
-            for c in _stgmem_del:
-                del row[c]
-
-            if row[0].endswith(' rows '):
-                break
-
-            if verbose > 2:
-                print('row={}'.format(row))
-
-            record = STGMembersCSVRecord(*(c.func(v)
-                                           for c, v in zip(_stgmem_cols, row)))
-
-            if verbose > 1:
-                print('{}'.format(record))
-
-            if reverse:
-                records.append(record)
-            else:
-                records.appendleft(record)
-
-    if verbose > 0:
-        print('{} records read.'.format(len(records)))
-
-    return records
-
-
-__all__ = ['STGMembersCSVRecord', 'STGMembersCSVRead']
+__all__ = ['stg_members_csvinfo']

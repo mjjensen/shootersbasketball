@@ -6,9 +6,10 @@ Created on 29 Jul. 2018
 from __future__ import print_function
 
 import __main__
+from _collections import deque
 from abc import ABCMeta, abstractmethod
 from argparse import RawDescriptionHelpFormatter, ArgumentParser, SUPPRESS
-from collections import namedtuple
+import csv
 from datetime import datetime, date
 import inspect
 import json
@@ -22,7 +23,117 @@ from threading import Lock
 from enum import unique, IntEnum
 
 
-SbciColumnDesc = namedtuple('SbciColumnDesc', ['name', 'func', 'head'])
+class SbciCSVRecord(object):
+    '''TODO'''
+
+    def __str__(self):
+        return '[{}]'.format(', '.join('{}={}'.format(n, v)
+                                       for n, v in self.__dict__.items()
+                                       if not n.startswith('_')))
+
+
+class SbciCSVColumn(object):
+    '''TODO'''
+
+    def __init__(self, attr, parser, *args, **kwds):
+        self.attr = attr
+        self.parser = parser
+        self.headings = args
+        self.options = {'required': False, 'ignored': False}
+        self.options.update(kwds)
+
+
+class SbciCSVInfo(object):
+    '''TODO'''
+
+    def __init__(self, *args, **kwds):
+        self.columns = args
+
+        self.options = {}
+        self.options.update(kwds)
+
+        self.attrs = {}
+        self.headings = {}
+        self.required = []
+        self.optional = []
+        self.ignored = []
+
+        for column in self.columns:
+            if column.attr in self.attrs:
+                raise RuntimeError('duplicate attr: {}'.format(column.attr))
+            self.attrs[column.attr] = column
+
+            if column.options['required']:
+                self.required.append(column.attr)
+            elif column.options['ignored']:
+                self.ignored.append(column.attr)
+            else:
+                self.optional.append(column.attr)
+
+            for heading in column.headings:
+                if heading in self.headings:
+                    raise RuntimeError('duplicate heading: {}'.format(heading))
+                self.headings[heading] = column
+
+    def read(self, csvfile, label, verbose=0, terminate=None, reverse=False):
+
+        if verbose > 0:
+            print('Reading {} CSV file: {} ... '.format(label, csvfile))
+
+        records = deque()
+
+        with open(csvfile) as fd:
+
+            reader = csv.DictReader(fd)
+
+            required = list(self.required)
+            optional = list(self.optional)
+            for fieldname in reader.fieldnames:
+                heading = fieldname.strip()
+                if heading is None or heading == '':
+                    continue
+                if heading not in self.headings:
+                    if verbose > 0:
+                        print('\tunknown column heading: {}'.format(heading))
+                else:
+                    column = self.headings[heading]
+                    if column.options['required']:
+                        required.remove(column.attr)
+                    elif not column.options['ignored']:
+                        optional.remove(column.attr)
+            if len(required) > 0:
+                raise RuntimeError('\trequired columns missing: {}'
+                                   .format(', '.join(required)))
+            if len(optional) > 0 and verbose > 0:
+                print('optional columns missing: {}'
+                      .format(', '.join(optional)))
+
+            for row in reader:
+                if verbose > 2:
+                    print('\trow={}'.format(row))
+
+                record = SbciCSVRecord()
+                for heading, value in row.viewitems():
+                    if heading not in self.headings:
+                        continue
+                    column = self.headings[heading]
+                    setattr(record, column.attr, value)
+
+                if verbose > 1:
+                    print('\trecord={}'.format(record))
+
+                if terminate is not None and terminate(record):
+                    break
+
+                if reverse:
+                    records.append(record)
+                else:
+                    records.appendleft(record)
+
+        if verbose > 0:
+            print('{} records read.'.format(len(records)))
+
+        return records
 
 
 @unique

@@ -10,171 +10,171 @@ import csv
 
 from sbcilib.utils import SbciEnum, latin1_str, postcode_str, currency_str,\
     date_str, phone_str, email_str, posint_str, time_str, boolean_str,\
-    SbciColumnDesc, datetime_str
+    SbciCSVColumn, datetime_str
 
 
 _tbreg_cols = (
-    SbciColumnDesc(
+    SbciCSVColumn(
         'first_name',
         lambda v: latin1_str(v),
         'Booking First Name'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'last_name',
         lambda v: latin1_str(v),
         'Booking Last Name'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'address_1',
         lambda v: latin1_str(v),
         'Booking Address 1'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'address_2',
         lambda v: latin1_str(v),
         'Booking Address 2'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'suburb',
         lambda v: latin1_str(v),
         'Booking Suburb'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'state',
         lambda v: latin1_str(v),
         'Booking State'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'post_code',
         lambda v: postcode_str(v),
         'Booking Post Code'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'country',
         lambda v: latin1_str(v),
         'Booking Country'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'telephone',
         lambda v: phone_str(v),
         'Booking Telephone'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'email',
         lambda v: email_str(v),
         'Booking Email'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'booking_id',
         lambda v: latin1_str(v),
         'Booking ID'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'number_of_tickets',
         lambda v: posint_str(v),
         'Number of Tickets'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'payment_received',
         lambda v: currency_str(v),
         'Payment Received'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'discount_amount',
         lambda v: currency_str(v),
         'Discount Amount'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'processing_fees',
         lambda v: currency_str(v),
         'Processing Fees'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'box_office_fees',
         lambda v: currency_str(v),
         'Box Office Fees'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'box_office_quicksale',
         lambda v: boolean_str(v),
         'Box Office Quicksale'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'date_booked',
         lambda v: date_str(v, '%d/%m/%Y'),
         'Date Booked (GMT+10:00)'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'time_booked',
         lambda v: time_str(v),
         'Time Booked'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'permission_to_contact',
         lambda v: latin1_str(v),
         'Permission to Contact'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'ticket_type',
         lambda v: latin1_str(v),
         'Ticket Type'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'ticket_price',
         lambda v: currency_str(v),
         'Ticket Price (AUD)'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'discount_code',
         lambda v: latin1_str(v),
         'Promotion[Discount] Code'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'section',
         lambda v: latin1_str(v),
         'Section'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'ticket_number',
         lambda v: latin1_str(v),
         'Ticket Number'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'seat_row',
         lambda v: latin1_str(v),
         'Seat Row'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'seat_number',
         lambda v: latin1_str(v),
         'Seat Number'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'refunded_misc',
         lambda v: latin1_str(v),
         'Refunded Misc'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'refunded_amount',
         lambda v: currency_str(v),
         'Ticket Refunded Amount'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'status',
         lambda v: latin1_str(v),
         'Ticket Status'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'void',
         lambda v: latin1_str(v),
         'Void'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'player_first_name',
         lambda v: latin1_str(v),
         'Ticket Data: Player First Name'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'player_family_name',
         lambda v: latin1_str(v),
         'Ticket Data: Player Family Name'
@@ -244,37 +244,37 @@ def TBRegCSVRead(csvfile, verbose=0, reverse=False):
 
 
 _tbtrx_cols = (
-    SbciColumnDesc(
+    SbciCSVColumn(
         'date',
         lambda v: datetime_str(v, '%d%b%y %I:%M %p'),
         'Date'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'type',
         lambda v: latin1_str(v),
         'Transaction'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'booking_id',
         lambda v: latin1_str(v),
         'Booking ID'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'description',
         lambda v: latin1_str(v),
         'Description'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'customer',
         lambda v: latin1_str(v),
         'Customer'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'debit',
         lambda v: currency_str(v),
         'Debit'
     ),
-    SbciColumnDesc(
+    SbciCSVColumn(
         'credit',
         lambda v: currency_str(v),
         'Credit'
