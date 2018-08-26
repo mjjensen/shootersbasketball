@@ -1,4 +1,4 @@
 all:
 
 install: all
-	install -c 
+	python setup.py --help

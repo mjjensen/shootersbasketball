@@ -9,6 +9,10 @@ from sbcilib.utils import SbciCSVColumn, SbciCSVInfo, latin1_str, date_str, \
     phone_str, email_str, postcode_str, boolean_str, posint_str
 
 
+def _stg_members_terminate(d):
+    return d['FIBA ID Number'].endswith(' rows ')
+
+
 stg_members_csvinfo = SbciCSVInfo(
     SbciCSVColumn(
         'fiba_id',
@@ -292,6 +296,7 @@ stg_members_csvinfo = SbciCSVInfo(
         latin1_str,
         'Team Name',
     ),
+    terminate=_stg_members_terminate,
 )
 
 

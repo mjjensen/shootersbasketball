@@ -27,15 +27,18 @@ class SbciCSVRecord(object):
     '''TODO'''
 
     def __str__(self):
-        return '[{}]'.format(', '.join('{}={}'.format(n, v)
-                                       for n, v in self.__dict__.items()
-                                       if not n.startswith('_')))
+        return '[{}]'.format(
+            ', '.join('{}={}'.format(k, v.encode('utf-8')
+                                     if isinstance(v, unicode) else v)
+                      for k, v in self.__dict__.viewitems()
+                      if not k.startswith('_')))
 
 
 class SbciCSVColumn(object):
     '''TODO'''
 
     def __init__(self, attr, parser, *args, **kwds):
+        super(SbciCSVColumn, self).__init__()
         self.attr = attr
         self.parser = parser
         self.headings = args
@@ -47,6 +50,8 @@ class SbciCSVInfo(object):
     '''TODO'''
 
     def __init__(self, *args, **kwds):
+        super(SbciCSVInfo, self).__init__()
+
         self.columns = args
 
         self.options = {}
@@ -75,65 +80,86 @@ class SbciCSVInfo(object):
                     raise RuntimeError('duplicate heading: {}'.format(heading))
                 self.headings[heading] = column
 
-    def read(self, csvfile, label, verbose=0, terminate=None, reverse=False):
 
-        if verbose > 0:
-            print('Reading {} CSV file: {} ... '.format(label, csvfile))
+def read_csv(csvfile, csvinfo, verbose=0, reverse=False,
+             initiate=None, terminate=None, fieldnames=None):
+    '''TODO'''
 
-        records = deque()
+    if initiate is None:
+        if 'initiate' in csvinfo.options:
+            initiate = csvinfo.options['initiate']
 
-        with open(csvfile) as fd:
+    if terminate is None:
+        if 'terminate' in csvinfo.options:
+            terminate = csvinfo.options['terminate']
 
-            reader = csv.DictReader(fd)
+    if fieldnames is None:
+        if 'fieldnames' in csvinfo.options:
+            fieldnames = csvinfo.options['fieldnames']
 
-            required = list(self.required)
-            optional = list(self.optional)
-            for fieldname in reader.fieldnames:
-                heading = fieldname.strip()
-                if heading is None or heading == '':
+    if verbose > 0:
+        print('Reading CSV file: {} ... '.format(csvfile))
+
+    records = deque()
+
+    with open(csvfile) as fd:
+
+        if initiate is not None:
+            initiate(fd)
+
+        reader = csv.DictReader(fd)
+
+        if fieldnames is not None:
+            reader.fieldnames = fieldnames
+
+        required = list(csvinfo.required)
+        optional = list(csvinfo.optional)
+        for fieldname in reader.fieldnames:
+            heading = fieldname.strip()
+            if heading is None or heading == '':
+                continue
+            if heading not in csvinfo.headings:
+                if verbose > 0:
+                    print('\tunknown column heading: {}'.format(heading))
+            else:
+                column = csvinfo.headings[heading]
+                if column.options['required']:
+                    required.remove(column.attr)
+                elif not column.options['ignored']:
+                    optional.remove(column.attr)
+        if len(required) > 0:
+            raise RuntimeError('\trequired columns missing: {}'
+                               .format(', '.join(required)))
+        if len(optional) > 0 and verbose > 0:
+            print('optional columns missing: {}'
+                  .format(', '.join(optional)))
+
+        for row in reader:
+            if verbose > 2:
+                print('\trow={}'.format(row))
+
+            if terminate is not None and terminate(row):
+                break
+
+            record = SbciCSVRecord()
+            for heading, value in row.viewitems():
+                if heading not in csvinfo.headings:
                     continue
-                if heading not in self.headings:
-                    if verbose > 0:
-                        print('\tunknown column heading: {}'.format(heading))
-                else:
-                    column = self.headings[heading]
-                    if column.options['required']:
-                        required.remove(column.attr)
-                    elif not column.options['ignored']:
-                        optional.remove(column.attr)
-            if len(required) > 0:
-                raise RuntimeError('\trequired columns missing: {}'
-                                   .format(', '.join(required)))
-            if len(optional) > 0 and verbose > 0:
-                print('optional columns missing: {}'
-                      .format(', '.join(optional)))
+                column = csvinfo.headings[heading]
+                setattr(record, column.attr, column.parser(value))
 
-            for row in reader:
-                if verbose > 2:
-                    print('\trow={}'.format(row))
+            if verbose > 1:
+                print('\trecord={}'.format(record))
 
-                record = SbciCSVRecord()
-                for heading, value in row.viewitems():
-                    if heading not in self.headings:
-                        continue
-                    column = self.headings[heading]
-                    setattr(record, column.attr, value)
+            if reverse:
+                records.append(record)
+            else:
+                records.appendleft(record)
 
-                if verbose > 1:
-                    print('\trecord={}'.format(record))
+    if verbose > 0:
+        print('{} records read.'.format(len(records)))
 
-                if terminate is not None and terminate(record):
-                    break
-
-                if reverse:
-                    records.append(record)
-                else:
-                    records.appendleft(record)
-
-        if verbose > 0:
-            print('{} records read.'.format(len(records)))
-
-        return records
+    return records
 
 
 @unique
@@ -510,7 +536,7 @@ def end_of_season():
     return date(today.year + 1, 3, 31)
 
 
-def _prepare_str(s, allow_none):
+def prepare_str(s, allow_none):
     '''TODO'''
     if s is None:
         if allow_none:
@@ -526,7 +552,7 @@ def _prepare_str(s, allow_none):
 
 def date_str(s, fmt='%Y-%m-%d', allow_none=True):
     '''TODO'''
-    stmp = _prepare_str(s, allow_none)
+    stmp = prepare_str(s, allow_none)
     if stmp is None:
         return None
     return datetime.strptime(stmp, fmt).date()
@@ -534,7 +560,7 @@ def date_str(s, fmt='%Y-%m-%d', allow_none=True):
 
 def time_str(s, fmt='%I:%M:%S %p', allow_none=True):
     '''TODO'''
-    stmp = _prepare_str(s, allow_none)
+    stmp = prepare_str(s, allow_none)
     if stmp is None:
         return None
     return datetime.strptime(stmp, fmt).time()
@@ -542,7 +568,7 @@ def time_str(s, fmt='%I:%M:%S %p', allow_none=True):
 
 def datetime_str(s, fmt='%Y-%m-%d %H:%M:%S.%f', allow_none=True):
     '''TODO'''
-    stmp = _prepare_str(s, allow_none)
+    stmp = prepare_str(s, allow_none)
     if stmp is None:
         return None
     return datetime.strptime(stmp, fmt)
@@ -550,7 +576,7 @@ def datetime_str(s, fmt='%Y-%m-%d %H:%M:%S.%f', allow_none=True):
 
 def latin1_str(s, allow_none=True):
     '''TODO'''
-    stmp = _prepare_str(s, allow_none)
+    stmp = prepare_str(s, allow_none)
     if stmp is None:
         return None
     return unicode(stmp, encoding='latin-1')
@@ -558,7 +584,7 @@ def latin1_str(s, allow_none=True):
 
 def currency_str(s, allow_none=True):
     '''TODO'''
-    stmp = _prepare_str(s, allow_none)
+    stmp = prepare_str(s, allow_none)
     if stmp is None:
         return None
     return float(stmp.replace(',', ''))
@@ -630,7 +656,7 @@ _phone_pattern = re.compile(r'^\+?(61|0)?')
 
 def phone_str(s, allow_none=True):
     '''TODO'''
-    stmp = _prepare_str(s, allow_none)
+    stmp = prepare_str(s, allow_none)
     if stmp is None:
         return None
     for r in ' \t\r\n-()[].':
@@ -651,7 +677,7 @@ _email_pattern = re.compile(r'^[^@\s]+@[^@\s]+\.[^@\s]+$')
 
 def email_str(s, allow_none=True):
     '''TODO'''
-    stmp = _prepare_str(s, allow_none)
+    stmp = prepare_str(s, allow_none)
     if stmp is None:
         return None
     if _email_pattern.match(stmp) is None:
@@ -661,7 +687,7 @@ def email_str(s, allow_none=True):
 
 def posint_str(s, allow_none=True):
     '''TODO'''
-    stmp = _prepare_str(s, allow_none)
+    stmp = prepare_str(s, allow_none)
     if stmp is None:
         return None
     if not stmp.isdigit():
@@ -671,7 +697,7 @@ def posint_str(s, allow_none=True):
 
 def boolean_str(s, allow_none=True):
     '''TODO'''
-    stmp = _prepare_str(s, allow_none)
+    stmp = prepare_str(s, allow_none)
     if stmp is None:
         return None
     if stmp.lower() in ('t', 'true', 'y', 'yes', 'on'):

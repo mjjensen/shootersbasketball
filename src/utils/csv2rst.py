@@ -8,7 +8,7 @@ CSV files to reStructuredText tables
 A. Caird (acaird@gmail.com)
 2016
 
-Example taken from: https://acaird.github.io/2016/02/07/simple-python-gui
+*** from: https://acaird.github.io/2016/02/07/simple-python-gui
 '''
 
 from Tkconstants import END, SUNKEN, X

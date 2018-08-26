@@ -5,67 +5,17 @@ Created on 8 Aug. 2018
 '''
 from __future__ import print_function
 
-from collections import deque, namedtuple
-import csv
-
-from sbcilib.utils import date_str, currency_str, latin1_str
+from sbcilib.utils import date_str, currency_str, latin1_str, SbciCSVInfo,\
+    SbciCSVColumn
 
 
-_cbtrx_cols = (
-    ('date',
-        lambda v: date_str(v, '%d/%m/%Y')),
-    ('amount',
-        lambda v: currency_str(v)),
-    ('description',
-        lambda v: latin1_str(v)),
-    ('balance',
-        lambda v: currency_str(v)),
+cb_trx_csvinfo = SbciCSVInfo(
+    SbciCSVColumn('date', lambda v: date_str(v, '%d/%m/%Y'), 'date'),
+    SbciCSVColumn('amount', currency_str, 'amount'),
+    SbciCSVColumn('description', latin1_str, 'description'),
+    SbciCSVColumn('balance', currency_str, 'balance'),
+    fieldnames=('date', 'amount', 'description', 'balance'),
 )
 
 
-class CBTrxCSVRecord(namedtuple('CBTrxCSVRecord', (n for n, f in _cbtrx_cols))):
-    __slots__ = ()
-
-    def __getitem__(self, index):
-        try:
-            return super(CBTrxCSVRecord, self).__getitem__(index)
-        except TypeError:
-            return getattr(self, index)
-
-
-def CBTrxCSVRead(csvfile, verbose=0, reverse=False):
-    '''TODO'''
-
-    if verbose > 0:
-        print('Reading Commbank Transaction CSV file: {} ... '
-              .format(csvfile), end='')
-
-    records = deque()
-
-    with open(csvfile) as fd:
-
-        reader = csv.reader(fd)
-
-        for row in reader:
-
-            if verbose > 2:
-                print('row={}'.format(row))
-
-            record = CBTrxCSVRecord(*(f(v)
-                                      for (n, f), v in zip(_cbtrx_cols, row)))
-
-            if verbose > 1:
-                print('{}'.format(record))
-
-            if reverse:
-                records.append(record)
-            else:
-                records.appendleft(record)
-
-    if verbose > 0:
-        print('{} records read.'.format(len(records)))
-
-    return records
-
-
-__all__ = ['CBTrxCSVRecord', 'CBTrxCSVRead']
+__all__ = ['cb_trx_csvinfo']

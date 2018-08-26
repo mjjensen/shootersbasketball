@@ -13,9 +13,9 @@ setup(
 
     version='0.1',
 
-    description='A Python library and tools for Shooters Basketball Club Inc.',
+    description='Python lib and utils for Shooters Basketball Club Inc.',
     long_description='''
-A Python library and tools for Shooters Basketball Club Inc.
+Python library and utilities for Shooters Basketball Club Inc.
 
 Copyright (C) 2018 Murray Jensen - All Rights Reserved.
 ''',
@@ -23,31 +23,31 @@ Copyright (C) 2018 Murray Jensen - All Rights Reserved.
     author='Murray Jensen',
     author_email='mjj@jensen-williams.id.au',
 
-    license='Apache',
+    license='Apache License 2.0',
 
     classifiers=[
         'Development Status :: 4 - Beta',
-        'Intended Audience :: Science/Research',
-        'Topic :: Software Development :: Libraries :: Python Modules',
-        'License :: Other/Proprietary License',
-        'Programming Language :: Python :: 2 :: Only',
+        'Intended Audience :: End Users/Desktop',
+        'Topic :: Utilities',
+        'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 2.7',
         'Natural Language :: English',
         'Operating System :: POSIX :: Linux',
     ],
 
-    keywords='shooters basketball club library',
+    keywords='shooters basketball library utilities',
 
     package_dir={'': _dotdot},
     packages=find_packages(_dotdot, exclude=[]),
 
     entry_points={
         'console_scripts': [
-            'checkstg = teams.checkstg:main',
-            'readtest = teams.readtest:main',
-            'wwcreport = teams.wwcreport:main',
-            'cbtrximport = finance.cbtrximport:main',
-            'tbtrximport = finance.tbtrximport:main',
+            'finance_cbtrximport = finance.cbtrximport:main',
+            'finance_tbtrximport = finance.tbtrximport:main',
+            'teams_checkstg = teams.checkstg:main',
+            'teams_readtest = teams.readtest:main',
+            'teams_wwcreport = teams.wwcreport:main',
+            'uniforms_process = uniforms.process:main',
         ],
     },
 )
