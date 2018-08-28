@@ -11,6 +11,7 @@ from abc import ABCMeta, abstractmethod
 from argparse import RawDescriptionHelpFormatter, ArgumentParser, SUPPRESS
 import csv
 from datetime import datetime, date
+from dateutil.relativedelta import relativedelta
 import inspect
 import json
 from logging import root, getLogger, Logger, basicConfig, DEBUG, INFO, WARN,\
@@ -534,6 +535,12 @@ def end_of_season():
     if today <= end_of_winter:
         return end_of_winter
     return date(today.year + 1, 3, 31)
+
+
+def is_under18(date_of_birth):
+    '''TODO'''
+    diff = relativedelta(end_of_season(), date_of_birth)
+    return (diff.years < 18)
 
 
 def prepare_str(s, allow_none):

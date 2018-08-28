@@ -5,7 +5,7 @@ Created on 8 Aug. 2018
 '''
 from __future__ import print_function
 
-from sbcilib.utils import date_str, currency_str, latin1_str, SbciCSVInfo,\
+from sbcilib.utils import date_str, currency_str, latin1_str, SbciCSVInfo, \
     SbciCSVColumn
 
 

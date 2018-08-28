@@ -25,19 +25,18 @@ import os
 import sys
 
 from sbcilib.sportstg import stg_members_csvinfo
-from sbcilib.teamsdb import SbciTeamsDB, TeamRole, competition_longname,\
-    is_under18
-from sbcilib.utils import SbciMain, read_csv
+from sbcilib.teamsdb import SbciTeamsDB, TeamRole, competition_longname
+from sbcilib.utils import SbciMain, read_csv, is_under18
 
 
 class Main(SbciMain):
 
     def main(self):
-        try:
-            verbose = self.args.verbose
-            if verbose > 0:
-                print('Current Working Directory = {}'.format(os.getcwd()))
+        verbose = self.args.verbose
+        if verbose > 0:
+            print('Current Working Directory = {}'.format(os.getcwd()))
 
+        try:
             db = SbciTeamsDB(verbose)
 
             member_records = read_csv('reportdata-members.csv',
@@ -99,7 +98,7 @@ class Main(SbciMain):
                             result += ' +MOBILE'
                         need_update = True
 
-                    if not is_under18(person):
+                    if not is_under18(person.dob):
 
                         if person.wwc_number != member_record.wwc_check_number:
                             if verbose > 0:

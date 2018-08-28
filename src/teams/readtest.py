@@ -23,9 +23,9 @@ from __future__ import print_function
 import os
 import sys
 
-from sbcilib.teamsdb import SbciTeamsDB, competition_shortname, wwc_check,\
-    WWCCheckStatus
+from sbcilib.teamsdb import SbciTeamsDB, competition_shortname
 from sbcilib.utils import SbciMain
+from sbcilib.wwc import WWCCheckStatus, wwc_check
 
 
 class Main(SbciMain):

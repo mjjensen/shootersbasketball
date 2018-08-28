@@ -149,7 +149,7 @@ class Main(SbciMain):
                               .format(result.status.name, result.message))
 
                 def bv_mpd_signed(person):
-                    if is_under18(person):
+                    if is_under18(person.dob):
                         return 'Under 18'
                     elif (person.bv_mpd_expiry is not None and
                             person.bv_mpd_expiry.date() > end_of_season()):
@@ -171,7 +171,7 @@ class Main(SbciMain):
                     write_a_date(row, col + 2, person.dob)
                     write_a_cell(row, col + 3, person.email)
                     write_a_cell(row, col + 4, person.mobile)
-                    if is_under18(person):
+                    if is_under18(person.dob):
                         write_a_cell(row, col + 5, 'Under 18')
                         write_a_cell(row, col + 6, 'Under 18', True)
                     else:
