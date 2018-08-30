@@ -1,17 +1,11 @@
 import os
 
-from flask_appbuilder.security.manager import AUTH_OID, AUTH_REMOTE_USER, \
-    AUTH_DB, AUTH_LDAP, AUTH_OAUTH
+from flask_appbuilder.security.manager import AUTH_DB
+
+from sbcilib.config import TEAMSDB_FILE, FINANCEDB_FILE
+
 
 basedir = os.path.abspath(os.path.dirname(__file__))
-
-TEAMS_FILE = \
-    os.getenv('HOME') + \
-    '/basketball/shooters/SportsTG/2018-winter/teams.sqlite3'
-
-FINANCE_FILE = \
-    os.getenv('HOME') + \
-    '/basketball/shooters/Finance/finance.sqlite3'
 
 # Your App secret key
 SECRET_KEY = '\2\1thisismyscretkey\1\2\e\y\y\h'
@@ -22,8 +16,8 @@ SQLALCHEMY_DATABASE_URI = 'sqlite:///' + os.path.join(basedir, 'app.db')
 # SQLALCHEMY_DATABASE_URI = 'postgresql://root:password@localhost/myapp'
 
 SQLALCHEMY_BINDS = {
-    'teamsdb':   'sqlite:///' + TEAMS_FILE,
-    'financedb': 'sqlite:///' + FINANCE_FILE,
+    'teamsdb':   'sqlite:///' + TEAMSDB_FILE,
+    'financedb': 'sqlite:///' + FINANCEDB_FILE,
 }
 
 # Flask-WTF flag for CSRF
