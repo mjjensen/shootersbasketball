@@ -6,7 +6,7 @@ setuptools module for installation and distribution.
 import os
 from setuptools import setup, find_packages
 
-_dotdot = os.path.abspath('..')
+_cwd = os.path.abspath('.')
 
 setup(
     name='sbci',
@@ -37,8 +37,8 @@ Copyright (C) 2018 Murray Jensen - All Rights Reserved.
 
     keywords='shooters basketball library utilities',
 
-    package_dir={'': _dotdot},
-    packages=find_packages(_dotdot, exclude=[]),
+    package_dir={'': _cwd},
+    packages=find_packages(_cwd, exclude=[]),
 
     entry_points={
         'console_scripts': [
