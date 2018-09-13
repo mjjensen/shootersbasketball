@@ -22,7 +22,7 @@ import sys
 
 from sbcilib.financedb import SbciFinanceDB, trybooking_format
 from sbcilib.trybooking import tb_trx_csvinfo
-from sbcilib.utils import SbciMain, read_csv
+from sbcilib.utils import SbciMain, read_csv, deduplicate
 
 
 class Main(SbciMain):
@@ -53,6 +53,8 @@ class Main(SbciMain):
             print('Caught exception {} reading CSV files'
                   .format(e), file=sys.stderr)
             return os.EX_SOFTWARE
+
+        csvrecords = deduplicate(csvrecords)
 
         try:
             db = SbciFinanceDB(self.args.verbose)

@@ -43,8 +43,8 @@ class SbciCSVRecord(object):
         return NotImplemented
 
     def __hash__(self):
-        return hash(sorted((k, v) for k, v in self.__dict__.viewitems()
-                           if k[0] != '_'))
+        return hash(tuple(sorted((k, v) for k, v in self.__dict__.viewitems()
+                                 if k[0] != '_')))
 
     def __str__(self):
         return '[{}]'.format(
@@ -543,15 +543,13 @@ class SbciMain(SbciLog):
             return main.run()
 
 
-def deduplicate(records):
+def deduplicate(seq):
     # see: https://stackoverflow.com/a/25887387/2130789
-    result = []
-    added = set()
-    for e in records:
-        if e not in added:
-            result.append(e)
-            added.add(e)
-    return result
+    # but then I found ...
+    # see: https://stackoverflow.com/a/480227/2130789
+    seen = set()
+    seen_add = seen.add
+    return [x for x in seq if not (x in seen or seen_add(x))]
 
 
 def end_of_season():

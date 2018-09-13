@@ -269,4 +269,219 @@ tb_trx_csvinfo = SbciCSVInfo(
 )
 
 
-__all__ = ['tb_rego_csvinfo', 'TBTrxCSVType', 'tb_trx_csvinfo']
+tb_clinic_csvinfo = SbciCSVInfo(
+    SbciCSVColumn(
+        'first_name',
+        latin1_str,
+        'Booking First Name'
+    ),
+    SbciCSVColumn(
+        'last_name',
+        latin1_str,
+        'Booking Last Name'
+    ),
+    SbciCSVColumn(
+        'address_1',
+        latin1_str,
+        'Booking Address 1'
+    ),
+    SbciCSVColumn(
+        'address_2',
+        latin1_str,
+        'Booking Address 2'
+    ),
+    SbciCSVColumn(
+        'suburb',
+        latin1_str,
+        'Booking Suburb'
+    ),
+    SbciCSVColumn(
+        'state',
+        latin1_str,
+        'Booking State'
+    ),
+    SbciCSVColumn(
+        'postcode',
+        latin1_str,
+        'Booking Post Code'
+    ),
+    SbciCSVColumn(
+        'country',
+        latin1_str,
+        'Booking Country'
+    ),
+    SbciCSVColumn(
+        'telephone',
+        latin1_str,
+        'Booking Telephone'
+    ),
+    SbciCSVColumn(
+        'email',
+        latin1_str,
+        'Booking Email'
+    ),
+    SbciCSVColumn(
+        'booking_id',
+        latin1_str,
+        'Booking ID'
+    ),
+    SbciCSVColumn(
+        'number_of_tickets',
+        latin1_str,
+        'Number of Tickets'
+    ),
+    SbciCSVColumn(
+        'payment_received',
+        latin1_str,
+        'Payment Received'
+    ),
+    SbciCSVColumn(
+        'discount_amount',
+        latin1_str,
+        'Discount Amount'
+    ),
+    SbciCSVColumn(
+        'processing_fees',
+        latin1_str,
+        'Processing Fees'
+    ),
+    SbciCSVColumn(
+        'ticket_fees',
+        latin1_str,
+        'Ticket Fees'
+    ),
+    SbciCSVColumn(
+        'box_office_fees',
+        latin1_str,
+        'Box Office Fees'
+    ),
+    SbciCSVColumn(
+        'box_office_quicksale',
+        latin1_str,
+        'Box Office Quicksale'
+    ),
+    SbciCSVColumn(
+        'date_booked',
+        latin1_str,
+        'Date Booked (GMT+10:00)'
+    ),
+    SbciCSVColumn(
+        'time_booked',
+        latin1_str,
+        'Time Booked'
+    ),
+    SbciCSVColumn(
+        'permission_to_contact',
+        latin1_str,
+        'Permission to Contact'
+    ),
+    SbciCSVColumn(
+        'ticket_type',
+        latin1_str,
+        'Ticket Type'
+    ),
+    SbciCSVColumn(
+        'ticket_price',
+        latin1_str,
+        'Ticket Price (AUD)'
+    ),
+    SbciCSVColumn(
+        'discount_code',
+        latin1_str,
+        'Promotion[Discount] Code'
+    ),
+    SbciCSVColumn(
+        'section',
+        latin1_str,
+        'Section'
+    ),
+    SbciCSVColumn(
+        'ticket_number',
+        latin1_str,
+        'Ticket Number'
+    ),
+    SbciCSVColumn(
+        'seat_row',
+        latin1_str,
+        'Seat Row'
+    ),
+    SbciCSVColumn(
+        'seat_number',
+        latin1_str,
+        'Seat Number'
+    ),
+    SbciCSVColumn(
+        'refunded_misc',
+        latin1_str,
+        'Refunded Misc'
+    ),
+    SbciCSVColumn(
+        'ticket_refunded_amount',
+        latin1_str,
+        'Ticket Refunded Amount'
+    ),
+    SbciCSVColumn(
+        'ticket_status',
+        latin1_str,
+        'Ticket Status'
+    ),
+    SbciCSVColumn(
+        'void',
+        latin1_str,
+        'Void'
+    ),
+    SbciCSVColumn(
+        'player_first_name',
+        latin1_str,
+        'Ticket Data: Player\'s First Name'
+    ),
+    SbciCSVColumn(
+        'player_surname',
+        latin1_str,
+        'Ticket Data: Player\'s Surname'
+    ),
+    SbciCSVColumn(
+        'player_date_of_birth',
+        latin1_str,
+        'Ticket Data: Player\'s Date-of-Birth'
+    ),
+    SbciCSVColumn(
+        'special_requirements',
+        latin1_str,
+        'Ticket Data: Special Requirements/Medical Conditions'
+    ),
+    SbciCSVColumn(
+        'current_team',
+        latin1_str,
+        'Ticket Data: Current Team / Competition'
+    ),
+    SbciCSVColumn(
+        'is_parent',
+        latin1_str,
+        'Ticket Data: Is Purchaser the child\'s Parent/Guardian'
+    ),
+    SbciCSVColumn(
+        'parent_name',
+        latin1_str,
+        'Ticket Data: Parent/Guardian Name'
+    ),
+    SbciCSVColumn(
+        'parent_address',
+        latin1_str,
+        'Ticket Data: Parent/Guardian Address'
+    ),
+    SbciCSVColumn(
+        'parent_phone',
+        latin1_str,
+        'Ticket Data: Parent/Guardian Phone'
+    ),
+    SbciCSVColumn(
+        'parent_email',
+        latin1_str,
+        'Ticket Data: Parent/Guardian Email'
+    ),
+)
+
+
+__all__ = ['tb_rego_csvinfo', 'TBTrxCSVType',
+           'tb_trx_csvinfo', 'tb_clinic_csvinfo']
