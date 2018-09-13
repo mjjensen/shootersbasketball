@@ -68,7 +68,7 @@ class Main(SbciMain):
 
             for csvrecord in sorted(csvrecords, key=lambda r: r.date):
 
-                if self.args.verbose > 2:
+                if self.args.verbose > 3:
                     print('CSV Record: {}'.format(csvrecord))
 
                 maybe_dups = db.transactions_query.filter(
@@ -82,7 +82,7 @@ class Main(SbciMain):
 
                 for maybe_dup in maybe_dups:
 
-                    if self.args.verbose > 2:
+                    if self.args.verbose > 3:
                         print('Compare with: {} ...'.format(maybe_dup))
 
                     if maybe_dup.date.date() == csvrecord.date:
@@ -97,12 +97,12 @@ class Main(SbciMain):
 
                         if maybe_dup.date != csvrecord.date:
                             if self.args.dryrun:
-                                if self.args.verbose > 0:
+                                if self.args.verbose > 1:
                                     print('(dryrun) Need to update date: '
                                           '{} => {}'.format(maybe_dup.date,
                                                             csvrecord.date))
                             else:
-                                if self.args.verbose > 0:
+                                if self.args.verbose > 1:
                                     print('Updated date: {} => {}'.format(
                                         maybe_dup.date, csvrecord.date))
 
@@ -112,7 +112,7 @@ class Main(SbciMain):
                         prev_dup = maybe_dup
 
                 if found_dup:
-                    if self.args.verbose > 1:
+                    if self.args.verbose > 2:
                         print('DUPLICATE!! {}'.format(csvrecord))
                     duplicates += 1
                 else:
