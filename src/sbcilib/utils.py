@@ -27,12 +27,30 @@ from enum import unique, IntEnum
 class SbciCSVRecord(object):
     '''TODO'''
 
+    # see: https://stackoverflow.com/a/25176504/2130789
+
+    def __eq__(self, other):
+        if isinstance(other, SbciCSVRecord):
+            sdict = {k: v for k, v in self.__dict__.viewitems() if k[0] != '_'}
+            odict = {k: v for k, v in other.__dict__.viewitems() if k[0] != '_'}
+            return sdict == odict
+        return NotImplemented
+
+    def __ne__(self, other):
+        result = self == other
+        if result is not NotImplemented:
+            return not result
+        return NotImplemented
+
+    def __hash__(self):
+        return hash(sorted((k, v) for k, v in self.__dict__.viewitems()
+                           if k[0] != '_'))
+
     def __str__(self):
         return '[{}]'.format(
             ', '.join('{}={}'.format(k, v.encode('utf-8')
                                      if isinstance(v, unicode) else v)
-                      for k, v in self.__dict__.viewitems()
-                      if not k.startswith('_')))
+                      for k, v in self.__dict__.viewitems() if k[0] != '_'))
 
 
 class SbciCSVColumn(object):
@@ -523,6 +541,17 @@ class SbciMain(SbciLog):
             return main.profile_run()
         else:
             return main.run()
+
+
+def deduplicate(records):
+    # see: https://stackoverflow.com/a/25887387/2130789
+    result = []
+    added = set()
+    for e in records:
+        if e not in added:
+            result.append(e)
+            added.add(e)
+    return result
 
 
 def end_of_season():
