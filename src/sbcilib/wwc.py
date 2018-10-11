@@ -73,14 +73,18 @@ def wwc_check(person, verbose=0):
         return _wwc_check_cache[id]
 
     if is_under18(person.dob):
+        if person.dob is None:
+            dob_date = '<unknown>'
+        else:
+            dob_date = person.dob.date()
         _wwc_check_cache[id] = WWCCheckResult(
             WWCCheckStatus.UNDER18,
-            'Skipping - Under 18 (DoB: {})'.format(person.dob.date()),
+            'Skipping - Under 18 (DoB: {})'.format(dob_date),
             None
         )
         return _wwc_check_cache[id]
 
-    if wwcn == '':
+    if wwcn is None or wwcn == '':
         _wwc_check_cache[id] = WWCCheckResult(
             WWCCheckStatus.EMPTY,
             'Skipping - Empty WWC Number',

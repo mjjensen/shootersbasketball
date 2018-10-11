@@ -26,9 +26,9 @@ import sys
 
 import xlsxwriter
 
-from sbcilib.teamsdb import SbciTeamsDB, WWCCheckStatus, TeamRole, wwc_check,\
-    competition_longname, is_under18
-from sbcilib.utils import SbciMain, end_of_season
+from sbcilib.teamsdb import SbciTeamsDB, TeamRole, competition_longname
+from sbcilib.utils import SbciMain, end_of_season, is_under18
+from sbcilib.wwc import wwc_check, WWCCheckStatus
 
 
 class Main(SbciMain):
@@ -80,6 +80,8 @@ class Main(SbciMain):
             maxwidths = {}
 
             def write_a_cell(row, col, data, rjust=False):
+                if data is None:
+                    return
                 if rjust:
                     worksheet.write_string(row, col, data, right_align)
                 else:
@@ -89,6 +91,8 @@ class Main(SbciMain):
                     maxwidths[col] = width
 
             def write_a_date(row, col, data):
+                if data is None:
+                    return
                 worksheet.write_datetime(row, col, data, date_format)
                 if col not in maxwidths or 11 > maxwidths[col]:
                     maxwidths[col] = 11
@@ -148,7 +152,7 @@ class Main(SbciMain):
                         print('{}, {}'
                               .format(result.status.name, result.message))
 
-                def bv_mpd_signed(person):
+                def hba_mpd_signed(person):
                     if is_under18(person.dob):
                         return 'Under 18'
                     elif (person.bv_mpd_expiry is not None and
@@ -164,6 +168,8 @@ class Main(SbciMain):
                     return m.group(3) + '-' + m.group(2) + '-' + m.group(1)
 
                 def write_one_person(row, col, person):
+                    if person is None:
+                        return
                     fullname = person.name.decode('utf-8')
                     firstname, lastname = fullname.split(' ', 1)
                     write_a_cell(row, col + 0, firstname)
@@ -177,7 +183,7 @@ class Main(SbciMain):
                     else:
                         write_a_cell(row, col + 5, person.wwc_number)
                         write_a_date(row, col + 6, person.wwc_expiry)
-                    write_a_cell(row, col + 7, bv_mpd_signed(person))
+                    write_a_cell(row, col + 7, hba_mpd_signed(person))
 
                 write_a_cell(row, 0, 'Shooters Basketball Club')
                 write_a_cell(row, 1, team.team_name)
