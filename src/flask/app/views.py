@@ -1,6 +1,6 @@
 from flask import render_template
 from flask_appbuilder.models.sqla.interface import SQLAInterface
-from flask_appbuilder import ModelView
+from flask_appbuilder import ModelView, MultipleView
 from app import appbuilder, db
 
 from app.models import Competitions, Venues, Roles, Sessions, People, Teams
@@ -54,24 +54,25 @@ class PeopleModelView(ModelView):
 
     related_views = [RolesModelView]
 
-    label_columns = {}
+#     search_columns = ['name', 'postal_address', 'role']
 
-    list_columns = ['name', 'email', 'mobile', 'wwc_number', 'wwc_expiry',
-                    'postal_address', 'photo', 'dob', 'bv_mpd_expiry', 'role']
+#     list_columns = ['id', 'name', 'email', 'mobile', 'wwc_number',
+#                     'wwc_expiry', 'postal_address', 'dob',
+#                     'bv_mpd_expiry', 'role']
 
-    show_fieldsets = [
-                        (
-                            'Summary',
-                            {'fields': ['name', 'email', 'mobile']}
-                        ),
-                        (
-                            'Personal Info',
-                            {'fields': ['wwc_number', 'wwc_expiry',
-                                        'postal_address', 'photo', 'dob',
-                                        'bv_mpd_expiry', 'role'],
-                             'expanded': False}
-                        ),
-                     ]
+#     show_fieldsets = [
+#                         (
+#                             'Summary',
+#                             {'fields': ['name', 'email', 'mobile']}
+#                         ),
+#                         (
+#                             'Personal Info',
+#                             {'fields': ['wwc_number', 'wwc_expiry',
+#                                         'postal_address', 'photo', 'dob',
+#                                         'bv_mpd_expiry', 'role'],
+#                              'expanded': False}
+#                         ),
+#                      ]
 
 
 class TeamsModelView(ModelView):
@@ -79,15 +80,38 @@ class TeamsModelView(ModelView):
 
     related_views = [CompetitionsModelView, PeopleModelView, SessionsModelView]
 
-    list_columns = ['team_name', 'competition', 'coach']
+#     search_columns = ['team_name', 'competition',
+#                       'team_manager', 'coach', 'asst_coach',
+#                       'session', 'old_session']
+
+#     list_columns = ['id', 'team_name', 'competition',
+#                     'team_manager', 'coach', 'asst_coach',
+#                     'session', 'old_session', 'active']
+
+
+class MultipleViewsExp(MultipleView):
+    views = [TeamsModelView, PeopleModelView, SessionsModelView,
+             RolesModelView, VenuesModelView, CompetitionsModelView]
 
 
 # db.create_all()
+appbuilder.add_view(CompetitionsModelView, "List Competitions",
+                    icon="fa-folder-open-o", category="Competitions",
+                    category_icon="fa-envelope")
+appbuilder.add_view(VenuesModelView, "List Venues",
+                    icon="fa-folder-open-o", category="Venues",
+                    category_icon="fa-envelope")
+appbuilder.add_view(RolesModelView, "List Roles",
+                    icon="fa-folder-open-o", category="Roles",
+                    category_icon="fa-envelope")
+appbuilder.add_view(SessionsModelView, "List Sessions",
+                    icon="fa-folder-open-o", category="Sessions",
+                    category_icon="fa-envelope")
+appbuilder.add_view(PeopleModelView, "List People",
+                    icon="fa-folder-open-o", category="People",
+                    category_icon="fa-envelope")
 appbuilder.add_view(TeamsModelView, "List Teams",
                     icon="fa-folder-open-o", category="Teams",
                     category_icon="fa-envelope")
-appbuilder.add_view(PeopleModelView, "List Coaches",
-                    icon="fa-folder-open-o", category="Coach",
-                    category_icon="fa-envelope")
-
-# db.create_all()
+appbuilder.add_view(MultipleViewsExp, "Multiple Views",
+                    icon="fa-envelope", category="Contacts")
