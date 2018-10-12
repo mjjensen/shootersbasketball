@@ -626,11 +626,14 @@ def currency_str(s, allow_none=True):
 
 name2postcode = {
     'Melbourne':                 3000,
+    'Southbank':                 3006,
+    'Hoppers Crossing':          3029,
     'Moonee Ponds':              3039,
     'Brunswick East':            3057,
     'Sumner':                    3057,
     'Coburg':                    3058,
     'Fitzroy':                   3065,
+    'Abbotsford':                3067,
     'Clifton Hill':              3068,
     'Northcote':                 3070,
     'Thornbury':                 3071,

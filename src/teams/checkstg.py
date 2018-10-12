@@ -77,8 +77,9 @@ class Main(SbciMain):
 
                     nmatches = len(member_matches)
                     if nmatches == 0:
-                        raise RuntimeError('{} has no SportsTG record!'
-                                           .format(person.name))
+                        self.logger.error('{} has no SportsTG record!'
+                                          .format(person.name))
+                        continue
                     elif nmatches > 1:
                         raise RuntimeError('{} matches more than 1 SportsTG '
                                            'record!'.format(person.name))
@@ -105,13 +106,15 @@ class Main(SbciMain):
                                 result += ' +WWCNUM'
                             need_update = True
 
-                        if (person.wwc_expiry.date() !=
+                        if (person.wwc_expiry is None or
+                                person.wwc_expiry.date() !=
                                 member_record.wwc_check_expiry):
                             if verbose > 0:
                                 result += ' +WWCEXP'
                             need_update = True
 
-                    if person.dob.date() != member_record.date_of_birth:
+                    if (person.dob is None or
+                            person.dob.date() != member_record.date_of_birth):
                         if verbose > 0:
                             result += ' +DOB'
                         need_update = True
