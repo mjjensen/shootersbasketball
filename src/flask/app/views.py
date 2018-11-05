@@ -1,7 +1,7 @@
-from flask import render_template
+# from flask import render_template
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 from flask_appbuilder import ModelView, MultipleView
-from app import appbuilder, db
+from app import appbuilder
 
 from app.models import Competitions, Venues, Roles, Sessions, People, Teams
 
@@ -25,28 +25,40 @@ from app.models import Competitions, Venues, Roles, Sessions, People, Teams
 """
 
 
-@appbuilder.app.errorhandler(404)
-def page_not_found(_e):
-    return render_template('404.html', base_template=appbuilder.base_template,
-                           appbuilder=appbuilder), 404
+# @appbuilder.app.errorhandler(404)
+# def page_not_found(_e):
+#     return render_template('404.html', base_template=appbuilder.base_template,
+#                            appbuilder=appbuilder), 404
+
+
+# it appears that the model view classes are initialised before reflection so
+# none of the columns are present - need to manually list them all
 
 
 class CompetitionsModelView(ModelView):
     datamodel = SQLAInterface(Competitions)
 
+    list_columns = ['id', 'gender', 'age_group', 'section', 'day']
+
 
 class VenuesModelView(ModelView):
     datamodel = SQLAInterface(Venues)
 
+    list_columns = ['id', 'name', 'max_teams', 'abbrev']
+
 
 class RolesModelView(ModelView):
     datamodel = SQLAInterface(Roles)
+
+    list_columns = ['id', 'role']
 
 
 class SessionsModelView(ModelView):
     datamodel = SQLAInterface(Sessions)
 
     related_views = [VenuesModelView]
+
+    list_columns = ['id', 'venue', 'day', 'time', 'duration', 'active']
 
 
 class PeopleModelView(ModelView):
@@ -56,9 +68,9 @@ class PeopleModelView(ModelView):
 
 #     search_columns = ['name', 'postal_address', 'role']
 
-#     list_columns = ['id', 'name', 'email', 'mobile', 'wwc_number',
-#                     'wwc_expiry', 'postal_address', 'dob',
-#                     'bv_mpd_expiry', 'role']
+    list_columns = ['id', 'name', 'email', 'mobile', 'wwc_number',
+                    'wwc_expiry', 'postal_address', 'dob',
+                    'bv_mpd_expiry', 'role']
 
 #     show_fieldsets = [
 #                         (
@@ -84,9 +96,9 @@ class TeamsModelView(ModelView):
 #                       'team_manager', 'coach', 'asst_coach',
 #                       'session', 'old_session']
 
-#     list_columns = ['id', 'team_name', 'competition',
-#                     'team_manager', 'coach', 'asst_coach',
-#                     'session', 'old_session', 'active']
+    list_columns = ['id', 'team_name', 'competition',
+                    'team_manager', 'coach', 'asst_coach',
+                    'session', 'old_session', 'active']
 
 
 class MultipleViewsExp(MultipleView):
