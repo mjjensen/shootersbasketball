@@ -113,16 +113,18 @@ class Main(SbciMain):
                 if team.active != 'true':
                     continue
 
+                if verbose:
+                    print('{}'.format(team.team_name), end='')
+
                 competition = db.competitions_query.get(team.competition_id)
                 compname = competition_longname(competition)
+
+                if verbose:
+                    print(', {}:'.format(compname))
 
                 coach = db.people_query.get(team.coach_id)
                 asst_coach = db.people_query.get(team.asst_coach_id)
                 team_manager = db.people_query.get(team.team_manager_id)
-
-                if verbose:
-                    print('{}, {}:'
-                          .format(team.team_name, compname))
 
                 team_roles = [
                     (TeamRole.COACH, coach),
