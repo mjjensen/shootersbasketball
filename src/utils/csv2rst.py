@@ -11,13 +11,13 @@ A. Caird (acaird@gmail.com)
 *** from: https://acaird.github.io/2016/02/07/simple-python-gui
 '''
 
-from Tkconstants import END, SUNKEN, X
-from Tkinter import Tk, Frame, StringVar, Label, Entry, Button, mainloop
 import argparse
 import csv
 import sys
 from tabulate import tabulate
-import tkFileDialog
+from tkinter import Tk, Frame, StringVar, Label, Entry, Button, mainloop, \
+    filedialog
+from tkinter.constants import END, SUNKEN, X
 
 
 def get_output_filename(input_file_name):
@@ -53,7 +53,7 @@ def gui():
 
     def button_browse_callback():
         ''' What to do when the Browse button is pressed '''
-        filename = tkFileDialog.askopenfilename()
+        filename = filedialog.askopenfilename()
         entry.delete(0, END)
         entry.insert(0, filename)
 
@@ -116,9 +116,9 @@ def command_line(args):
     table_contents = read_csv(args.input)
 
     if write_table(args.output, table_contents):
-        print 'rst table is in file "{}"'.format(args.output)
+        print('rst table is in file "{}"'.format(args.output))
     else:
-        print 'Writing file "{}" did not succeed.'.format(args.output)
+        print('Writing file "{}" did not succeed.'.format(args.output))
 
 
 def read_csv(filename):

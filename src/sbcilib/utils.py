@@ -22,6 +22,7 @@ import sys
 from threading import Lock
 
 from enum import unique, IntEnum
+from six import text_type, viewitems
 
 
 class SbciCSVRecord(object):
@@ -31,8 +32,8 @@ class SbciCSVRecord(object):
 
     def __eq__(self, other):
         if isinstance(other, SbciCSVRecord):
-            sdict = {k: v for k, v in self.__dict__.viewitems() if k[0] != '_'}
-            odict = {k: v for k, v in other.__dict__.viewitems() if k[0] != '_'}
+            sdict = {k: v for k, v in viewitems(self.__dict__) if k[0] != '_'}
+            odict = {k: v for k, v in viewitems(other.__dict__) if k[0] != '_'}
             return sdict == odict
         return NotImplemented
 
@@ -43,14 +44,14 @@ class SbciCSVRecord(object):
         return NotImplemented
 
     def __hash__(self):
-        return hash(tuple(sorted((k, v) for k, v in self.__dict__.viewitems()
+        return hash(tuple(sorted((k, v) for k, v in viewitems(self.__dict__)
                                  if k[0] != '_')))
 
     def __str__(self):
         return '[{}]'.format(
             ', '.join('{}={}'.format(k, v.encode('utf-8')
-                                     if isinstance(v, unicode) else v)
-                      for k, v in self.__dict__.viewitems() if k[0] != '_'))
+                                     if isinstance(v, text_type) else v)
+                      for k, v in viewitems(self.__dict__) if k[0] != '_'))
 
 
 class SbciCSVColumn(object):
@@ -161,7 +162,7 @@ def read_csv(csvfile, csvinfo, verbose=0, reverse=False,
                 break
 
             record = SbciCSVRecord()
-            for heading, value in row.viewitems():
+            for heading, value in viewitems(row):
                 if heading not in csvinfo.headings:
                     continue
                 column = csvinfo.headings[heading]
@@ -613,7 +614,7 @@ def latin1_str(s, allow_none=True):
     stmp = prepare_str(s, allow_none)
     if stmp is None:
         return None
-    return unicode(stmp, encoding='latin-1')
+    return text_type(stmp, encoding='latin-1')
 
 
 def currency_str(s, allow_none=True):
@@ -668,7 +669,7 @@ name2postcode = {
 }
 
 
-postcode2name = {postcode: name for name, postcode in name2postcode.viewitems()}
+postcode2name = {postcode: name for name, postcode in viewitems(name2postcode)}
 
 
 def postcode_str(s, allow_none=True):

@@ -6,8 +6,10 @@ Created on 28 Aug. 2018
 from datetime import date
 import re
 from time import strptime
-import urllib2
-
+try:
+    from urllib2 import urlopen
+except ImportError:
+    from urllib.request import urlopen
 from enum import IntEnum
 
 from sbcilib.utils import is_under18
@@ -114,7 +116,7 @@ def wwc_check(person, verbose=0):
 
     try:
         wwc_url = _wwc_url_fmt.format(cardnumber, lastname)
-        contents = urllib2.urlopen(wwc_url).read()
+        contents = urlopen(wwc_url).read()
     except BaseException:
         _wwc_check_cache[id] = WWCCheckResult(
             WWCCheckStatus.TEACHER,

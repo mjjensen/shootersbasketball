@@ -23,7 +23,7 @@ from __future__ import print_function
 import os
 import sys
 
-from sbcilib.teamsdb import SbciTeamsDB, competition_shortname
+from sbcilib.teamsdb import SbciTeamsDB
 from sbcilib.utils import SbciMain
 from sbcilib.wwc import WWCCheckStatus, wwc_check
 
@@ -41,15 +41,14 @@ class Main(SbciMain):
                     continue
 
                 if verbose:
-                    print('{}, {}: coach {}, asst_coach {}, team manager {}'
+                    print('{}: coach {}, asst_coach {}, team manager {}'
                           .format(team.team_name,
-                                  competition_shortname(team.competition),
                                   team.coach.name
-                                  if team.coach is not None else "None",
+                                  if team.coach is not None else 'None',
                                   team.asst_coach.name
-                                  if team.asst_coach is not None else "None",
+                                  if team.asst_coach is not None else 'None',
                                   team.team_manager.name
-                                  if team.team_manager is not None else "None"))
+                                  if team.team_manager is not None else 'None'))
 
                 ok_results = (
                     WWCCheckStatus.SUCCESS,

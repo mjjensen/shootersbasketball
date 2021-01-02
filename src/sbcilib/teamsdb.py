@@ -3,14 +3,14 @@ Created on 7 Jul. 2018
 
 @author: jen117
 '''
+
 from __future__ import print_function
 
 import os
 from sqlalchemy import event
+from sqlalchemy.engine import create_engine
 from sqlalchemy.engine.base import Engine
 from sqlalchemy.ext.automap import automap_base
-
-from sqlalchemy.engine import create_engine
 from sqlalchemy.orm.session import Session
 
 from sbcilib.config import TEAMSDB_FILE
@@ -91,40 +91,20 @@ class SbciTeamsDB(object):
             name_for_collection_relationship=_name_for_collection_relationship
         )
 
-        self.Competitions = self.Base.classes.competitions
-        self.People = self.Base.classes.people
         self.Venues = self.Base.classes.venues
-        self.Teams = self.Base.classes.teams
+        self.Roles = self.Base.classes.roles
         self.Sessions = self.Base.classes.sessions
+        self.People = self.Base.classes.people
+        self.Teams = self.Base.classes.teams
 
         if verbose > 1:
-            for cls in (self.Competitions, self.People, self.Venues,
-                        self.Teams, self.Sessions):
+            for cls in (self.People, self.Venues, self.Teams, self.Sessions):
                 print('{} = {}'.format(cls.__name__, dir(cls)))
 
         self.dbsession = Session(self.engine)
 
-        self.competitions_query = self.dbsession.query(self.Competitions)
-        self.people_query = self.dbsession.query(self.People)
         self.venues_query = self.dbsession.query(self.Venues)
-        self.teams_query = self.dbsession.query(self.Teams)
+        self.roles_query = self.dbsession.query(self.Roles)
         self.sessions_query = self.dbsession.query(self.Sessions)
-
-
-def competition_shortname(competition):
-    '''TODO'''
-    if competition.gender == 'F':
-        gender = 'G'
-    else:
-        gender = 'B'
-    return str(competition.age_group) + gender + str(competition.section)
-
-
-def competition_longname(competition):
-    '''TODO'''
-    if competition.gender == 'F':
-        gender = 'Girls'
-    else:
-        gender = 'Boys'
-    return 'Under ' + str(competition.age_group) + ' ' + gender + \
-           ' Section ' + str(competition.section)
+        self.people_query = self.dbsession.query(self.People)
+        self.teams_query = self.dbsession.query(self.Teams)
