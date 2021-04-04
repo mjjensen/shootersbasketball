@@ -17,7 +17,7 @@ setup(
     long_description='''
 Python library and utilities for Shooters Basketball Club Inc.
 
-Copyright (C) 2018 Murray Jensen - All Rights Reserved.
+Copyright (C) 2018-21 Murray Jensen - All Rights Reserved.
 ''',
 
     author='Murray Jensen',
@@ -42,12 +42,17 @@ Copyright (C) 2018 Murray Jensen - All Rights Reserved.
 
     entry_points={
         'console_scripts': [
-            'finance_cbtrximport = finance.cbtrximport:main',
-            'finance_tbtrximport = finance.tbtrximport:main',
-            'teams_checkstg = teams.checkstg:main',
-            'teams_readtest = teams.readtest:main',
-            'teams_wwcreport = teams.wwcreport:main',
-            'uniforms_process = uniforms.process:main',
+            'check_participants = sbci.check_participants:main',
+            'check_team_entries = sbci.check_team_entries:main',
+            'check_trybooking = sbci.check_trybooking:main',
+            'email_info = sbci.email_info:main',
+            'print_games = sbci.print_games:main',
+            'print_participants = sbci.print_participants:main',
+            'print_teams_db = sbci.print_teams_db:main',
+            'process_csv_development_teams = sbci.process_csv_development_teams:main',
+            'process_csv_training_forms = sbci.process_csv_training_forms:main',
+            'process_csv_trybooking_transactions = sbci.process_csv_trybooking_transactions:main',
+            'process_xlsx_fixtures = sbci.process_xlsx_fixtures:main',
         ],
     },
 )

@@ -1,15 +1,15 @@
-DESTDIR = /tmp
-RECORD = $(DESTDIR)/.sbci-record
+PREFIX = $(HOME)/basketball/shooters
 
 all:
 
 install: all
-	python setup.py install \
-		--install-layout deb \
-		--record "$(RECORD)" \
-		--root "$(DESTDIR)"
+	_PYTHON_SYSCONFIGDATA_NAME=_sysconfigdata__linux_x86_64-linux-gnu \
+		python3 setup.py install --prefix "$(PREFIX)" \
+			--single-version-externally-managed --root=/
+
+uninstall:
+	rm -rf "$(PREFIX)/bin" "$(PREFIX)/lib"
 
 clean:
-	rm -f "$(RECORD)"
 	find . -name '*.pyc' -exec rm -f '{}' ';'
-	rm -rf build sbci.egg-info
+	rm -rf build dist sbci.egg-info
