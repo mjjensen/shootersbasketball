@@ -420,7 +420,7 @@ def to_bool(value):
             return (int(stmp) != 0)
         if _numeric_pattern.match(stmp):
             return (float(stmp) != 0.0)
-        raise ValueError('cannot convert "%r" to bool!'.format(value))
+        raise ValueError('cannot convert "{}" to bool!'.format(value))
     if value:
         return True
     else:

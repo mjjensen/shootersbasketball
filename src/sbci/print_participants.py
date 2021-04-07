@@ -141,13 +141,20 @@ def main():
                     # disability type
                     # disability-other
                     # disability assistance
-                    atsi = to_bool(p['aboriginal/torres strait islander'])
+                    negatives = ('Do not wish to disclose', 'NOT_SAYING')
+
+                    b = p['aboriginal/torres strait islander']
+                    atsi = False if b in negatives else to_bool(b)
                     if atsi:
                         extra3 += ' [ATSI]'
-                    _pos = to_bool(p['parent/guardian born overseas?'])
+
+                    b = p['parent/guardian born overseas?']
+                    _pos = False if b in negatives else to_bool(b)
                     _p1c = p['parent/guardian 1 country of birth']
                     _p2c = p['parent/guardian 2 country of birth']
-                    disability = to_bool(p['disability?'])
+
+                    b = p['disability?']
+                    disability = False if b in negatives else to_bool(b)
                     distype = p['disability type']
                     disother = p['disability-other']
                     disass = p['disability assistance']
