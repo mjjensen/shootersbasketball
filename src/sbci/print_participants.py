@@ -147,7 +147,11 @@ def main():
                 sctag = '___'
             else:
                 sctag = 'U{:02d}'.format(ctag)
-            extra += ' [{} => U{:02d}]'.format(sctag, ntag)
+            if ntag is None:
+                sntag = '___'
+            else:
+                sntag = 'U{:02d}'.format(ntag)
+            extra += ' [{} => {}]'.format(sctag, sntag)
             if args.verbose:
                 for k, v in sorted(nags.items(), key=lambda i: i[0]):
                     extra += ' {:d}xU{:02d}'.format(v, k)
