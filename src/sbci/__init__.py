@@ -7,7 +7,7 @@ from glob import glob
 from json import loads
 import os
 import re
-from six import string_types
+from six import string_types, binary_type, text_type
 from sqlite3 import connect, Row
 from time import strftime
 import time
@@ -387,6 +387,44 @@ def to_date(s):
         return None
     else:
         return datetime.strptime(s, '%d/%m/%Y').date()
+
+
+_binary_types = (binary_type, bytearray)
+_text_types = (text_type, )
+_string_types = string_types + _text_types + _binary_types
+_numeric_pattern = re.compile(
+    r'^[+-]?(inf(inity)?|(\d+(\.\d*)?|(\d*\.)?\d+)(e[+-]?\d+)?)$'
+)
+
+
+def to_bool(value):
+    '''convert an object to a boolean'''
+    if value is None:
+        return False
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, _string_types):
+        if isinstance(value, _binary_types):
+            try:
+                value = value.decode()
+            except UnicodeDecodeError:
+                value = ''.join(chr(c) if c < 128 else '\\x%02x' % c
+                                for c in value)
+        stmp = value.strip().lower()
+        if stmp in ('true', 't', 'yes', 'y', 'on'):
+            return True
+        if stmp in ('false', 'f', 'no', 'n', 'off',
+                    '', 'none', 'nil', 'nul', 'null', 'nan'):
+            return False
+        if stmp.isdigit():
+            return (int(stmp) != 0)
+        if _numeric_pattern.match(stmp):
+            return (float(stmp) != 0.0)
+        raise ValueError('cannot convert "%r" to bool!'.format(value))
+    if value:
+        return True
+    else:
+        return False
 
 
 def find_age_group(age_groups, dob):

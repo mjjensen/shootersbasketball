@@ -1,7 +1,8 @@
 from argparse import ArgumentParser
-from sbci import fetch_teams, fetch_participants, load_config, \
-    fetch_trybooking, find_in_tb, to_fullname, to_date, find_age_group
 import sys
+
+from sbci import fetch_teams, fetch_participants, load_config, \
+    fetch_trybooking, find_in_tb, to_fullname, to_date, find_age_group, to_bool
 
 
 def main():
@@ -23,6 +24,8 @@ def main():
                         help='print an email list for unpaid players')
     parser.add_argument('--younger', '-y', action='store_true',
                         help='flag players too young for age group')
+    parser.add_argument('--diversity', '-D', action='store_true',
+                        help='include diversity details')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
     args = parser.parse_args()
@@ -128,6 +131,30 @@ def main():
                     extra3 += ' [OLDER]'
                 if args.younger and ag_end and dob > ag_end:
                     extra3 += ' [YOUNGER]'
+
+                if args.diversity:
+                    # aboriginal/torres strait islander (NO/YES)
+                    # parent/guardian born overseas? (NO/YES)
+                    # parent/guardian 1 country of birth
+                    # parent/guardian 2 country of birth
+                    # disability? (NO/YES)
+                    # disability type
+                    # disability-other
+                    # disability assistance
+                    atsi = to_bool(p['aboriginal/torres strait islander'])
+                    if atsi:
+                        extra3 += ' [ATSI]'
+                    _pos = to_bool(p['parent/guardian born overseas?'])
+                    _p1c = p['parent/guardian 1 country of birth']
+                    _p2c = p['parent/guardian 2 country of birth']
+                    disability = to_bool(p['disability?'])
+                    distype = p['disability type']
+                    disother = p['disability-other']
+                    disass = p['disability assistance']
+                    if disability:
+                        extra3 += ' [DISABILITY: {},{},{}]'.format(
+                            distype, disother, disass
+                        )
 
                 lines.append(
                     '    {:30} - {}{}, #{:>2}{}{}'.format(
