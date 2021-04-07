@@ -143,7 +143,11 @@ def main():
 
         extra = ''
         if args.rollover:
-            extra += ' [U{:02d} => U{:02d}]'.format(ctag, ntag)
+            if ctag is None:
+                sctag = '___'
+            else:
+                sctag = 'U{:02d}'.format(ctag)
+            extra += ' [{} => U{:02d}]'.format(sctag, ntag)
             if args.verbose:
                 for k, v in sorted(nags.items(), key=lambda i: i[0]):
                     extra += ' {:d}xU{:02d}'.format(v, k)
