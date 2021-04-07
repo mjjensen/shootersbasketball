@@ -133,7 +133,7 @@ def main():
                     extra3 += ' [YOUNGER]'
 
                 if args.diversity:
-                    # aboriginal/torres strait islander (NO/YES)
+                    # aboriginal/torres strait islander
                     # parent/guardian born overseas? (NO/YES)
                     # parent/guardian 1 country of birth
                     # parent/guardian 2 country of birth
@@ -141,25 +141,27 @@ def main():
                     # disability type
                     # disability-other
                     # disability assistance
-                    negatives = ('Do not wish to disclose', 'NOT_SAYING')
+                    negatives = ('NO', 'Do not wish to disclose', 'NOT_SAYING')
 
-                    b = p['aboriginal/torres strait islander']
-                    atsi = False if b in negatives else to_bool(b)
+                    v = p['aboriginal/torres strait islander']
+                    atsi = None if v in negatives else v
                     if atsi:
-                        extra3 += ' [ATSI]'
+                        extra3 += ' [ATSI: "{}"]'.format(atsi)
 
-                    b = p['parent/guardian born overseas?']
-                    _pos = False if b in negatives else to_bool(b)
-                    _p1c = p['parent/guardian 1 country of birth']
-                    _p2c = p['parent/guardian 2 country of birth']
+                    v = p['parent/guardian born overseas?']
+                    pos = False if v in negatives else to_bool(v)
+                    p1c = p['parent/guardian 1 country of birth']
+                    p2c = p['parent/guardian 2 country of birth']
+                    if pos:
+                        extra3 += ' [POS: "{}","{}"]'.format(pos, p1c, p2c)
 
-                    b = p['disability?']
-                    disability = False if b in negatives else to_bool(b)
+                    v = p['disability?']
+                    disability = False if v in negatives else to_bool(v)
                     distype = p['disability type']
                     disother = p['disability-other']
                     disass = p['disability assistance']
                     if disability:
-                        extra3 += ' [DISABILITY: {},{},{}]'.format(
+                        extra3 += ' [DISABILITY: "{}","{}","{}"]'.format(
                             distype, disother, disass
                         )
 
