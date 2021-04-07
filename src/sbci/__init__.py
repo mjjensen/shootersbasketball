@@ -10,9 +10,11 @@ import re
 from six import string_types
 from sqlite3 import connect, Row
 from time import strftime
+import time
+from urllib.request import urlopen
 
 
-#season = os.getenv('SEASON', '2021-summer')
+# season = os.getenv('SEASON', '2021-summer')
 season = os.getenv('SEASON', '2021-winter')
 provider = os.getenv('PROVIDER', 'PlayHQ')
 shootersdir = os.getenv(
@@ -151,9 +153,10 @@ def latest_report(rtype, rdir='reports', nre=None, n2dt=None, verbose=False):
     if nre is None:
         nre = r'^' + rtype + r'_(\d{8})(\d+)\.csv$'
     if n2dt is None:
-        n2dt = lambda m: datetime.strptime(
-            '{:08d}{:06d}'.format(*map(int, m.groups())), '%Y%m%d%H%M%S'
-        )
+        def n2dt(m):
+            return datetime.strptime(
+                '{:08d}{:06d}'.format(*map(int, m.groups())), '%Y%m%d%H%M%S'
+            )
 
     p = re.compile(nre)
     latest = None, None
@@ -176,7 +179,7 @@ def latest_report(rtype, rdir='reports', nre=None, n2dt=None, verbose=False):
 
         dt = n2dt(m)
 
-        lpath, ldt = latest
+        _, ldt = latest
         if not ldt or dt > ldt:
             latest = os.path.join(rdir, name), dt
 
@@ -232,7 +235,7 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True):
 
             role = participant['role']
             if role == 'Player':
-                if is_dup(t.players, participant):
+                if is_dup(t.players, participant) and drop_dups:
                     if verbose:
                         print(
                             'dup? player in {}: {}'.format(
@@ -242,7 +245,7 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True):
                 else:
                     t.players.append(participant)
             elif role == 'Coach':
-                if is_dup(t.coaches, participant):
+                if is_dup(t.coaches, participant) and drop_dups:
                     if verbose:
                         print(
                             'dup? coach in {}: {}'.format(
@@ -252,7 +255,7 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True):
                 else:
                     t.coaches.append(participant)
             elif role == 'Team Manager':
-                if is_dup(t.managers, participant):
+                if is_dup(t.managers, participant) and drop_dups:
                     if verbose:
                         print(
                             'dup t/m? in {}: {}'.format(
@@ -284,7 +287,7 @@ def find_in_tb(tb, want_name):
     return None
 
 
-def fetch_trybooking(teams, tbmap=None, report_file=None, verbose=False):
+def fetch_trybooking(tbmap=None, report_file=None, verbose=False):
 
     if report_file is None:
         report_file, _ = latest_report(
@@ -301,13 +304,51 @@ def fetch_trybooking(teams, tbmap=None, report_file=None, verbose=False):
 
     with open(report_file, 'r', newline='') as csvfile:
 
-        uchar = csvfile.read(1)
+        _ = csvfile.read(1)
 
         reader = DictReader(csvfile)
 
         for entry in reader:
-
-            # {'Booking First Name': 'david', 'Booking Last Name': 'mcnab', 'Booking Address 1': '63 Perry St', 'Booking Address 2': '', 'Booking Suburb': 'Fairfield', 'Booking State': 'Vic', 'Booking Post Code': '3078', 'Booking Country': 'Australia', 'Booking Telephone': ' 0402064630', 'Booking Email': 'david.mcnab@finity.com.au', 'Booking ID': 'e24e3bc7-867c-4cd5-aa00-e8a11a96b94d', 'Number of Tickets': '1', 'Net Booking': '200.00', 'Discount Amount': '0.00', 'Gift Certificates Redeemed': '0.00', 'Processing Fees': '0.00', 'Ticket Fees': '0.00', 'Quicksale Fees': '0.00', 'Quicksale': 'No', 'Date Booked (UTC+11)': '18Feb21', 'Time Booked': '9:15:56 PM', 'Permission to Contact': 'No', 'Donation': '0.00', 'Booking Data: Season': '2020/21 Summer', 'Ticket Type': 'Full Season', 'Ticket Price (AUD)': '200.00', 'Promotion[Discount] Code': '', 'Section': 'Section 1', 'Ticket Number': '2287297-62601549', 'Seat Row': '', 'Seat Number': '0', 'Refunded Misc': '0.0000', 'Ticket Refunded Amount': '0.0000', 'Ticket Status': 'Unrefunded', 'Void': 'No', 'Ticket Data: Player First Name': 'jack', 'Ticket Data: Player Family Name': 'mcnab', '': ''}
+            # {
+            #  'Booking First Name': 'david',
+            #  'Booking Last Name': 'mcnab',
+            #  'Booking Address 1': '63 Perry St',
+            #  'Booking Address 2': '',
+            #  'Booking Suburb': 'Fairfield',
+            #  'Booking State': 'Vic',
+            #  'Booking Post Code': '3078',
+            #  'Booking Country': 'Australia',
+            #  'Booking Telephone': ' 0402064630',
+            #  'Booking Email': 'david.mcnab@finity.com.au',
+            #  'Booking ID': 'e24e3bc7-867c-4cd5-aa00-e8a11a96b94d',
+            #  'Number of Tickets': '1',
+            #  'Net Booking': '200.00',
+            #  'Discount Amount': '0.00',
+            #  'Gift Certificates Redeemed': '0.00',
+            #  'Processing Fees': '0.00',
+            #  'Ticket Fees': '0.00',
+            #  'Quicksale Fees': '0.00',
+            #  'Quicksale': 'No',
+            #  'Date Booked (UTC+11)': '18Feb21',
+            #  'Time Booked': '9:15:56 PM',
+            #  'Permission to Contact': 'No',
+            #  'Donation': '0.00',
+            #  'Booking Data: Season': '2020/21 Summer',
+            #  'Ticket Type': 'Full Season',
+            #  'Ticket Price (AUD)': '200.00',
+            #  'Promotion[Discount] Code': '',
+            #  'Section': 'Section 1',
+            #  'Ticket Number': '2287297-62601549',
+            #  'Seat Row': '',
+            #  'Seat Number': '0',
+            #  'Refunded Misc': '0.0000',
+            #  'Ticket Refunded Amount': '0.0000',
+            #  'Ticket Status': 'Unrefunded',
+            #  'Void': 'No',
+            #  'Ticket Data: Player First Name': 'jack',
+            #  'Ticket Data: Player Family Name': 'mcnab',
+            #  '': ''
+            # }
             name = entry['Ticket Data: Player Family Name'] + ',' + \
                 entry['Ticket Data: Player First Name']
             if tbmap and name in tbmap:
@@ -407,7 +448,7 @@ postcode2name = {
     3029: 'Hoppers Crossing',
     2203: 'Dulwich Hill',
 }
-name2postcode = { name: postcode for postcode, name in postcode2name.items() }
+name2postcode = {name: postcode for postcode, name in postcode2name.items()}
 
 
 def make_address(addr1, addr2, suburb, postcode):
@@ -484,7 +525,7 @@ class WWCCheckResult(object):
         self.expiry = expiry
 
 
-def wwc_check(person, verbose=0):
+def wwc_check(person, verbose=0, nocache=False):
 
     if person is None:
         return WWCCheckResult(
@@ -494,7 +535,7 @@ def wwc_check(person, verbose=0):
         )
 
     id = person.id  # @ReservedAssignment
-    if id in _wwc_check_cache:
+    if not nocache and id in _wwc_check_cache:
         return _wwc_check_cache[id]
     name = person.name.encode('utf-8')
     wwcn = person.wwc_number
@@ -549,7 +590,9 @@ def wwc_check(person, verbose=0):
 
     try:
         wwc_url = _wwc_url_fmt.format(cardnumber, lastname)
-        contents = urllib2.urlopen(wwc_url).read()
+        response = urlopen(wwc_url)
+        charset = response.headers.get_content_charset('utf-8')
+        contents = response.read().decode(charset, 'replace')
     except BaseException:
         _wwc_check_cache[id] = WWCCheckResult(
             WWCCheckStatus.TEACHER,
@@ -593,7 +636,7 @@ def wwc_check(person, verbose=0):
             _wwc_check_cache[id] = WWCCheckResult(
                 WWCCheckStatus.SUCCESS,
                 'WWC Check Succeeded',
-                date(*strptime('-'.join(m.group(5, 4, 3)), '%Y-%b-%d')[:3])
+                date(*time.strptime('-'.join(m.group(5, 4, 3)), '%Y-%b-%d')[:3])
             )
             return _wwc_check_cache[id]
 

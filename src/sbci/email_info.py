@@ -136,7 +136,7 @@ def main():
         if args.trybooking:
             tbmap = config['tbmap']
 
-            tb = fetch_trybooking(teams, tbmap, args.tbreport, args.verbose)
+            tb = fetch_trybooking(tbmap, args.tbreport, args.verbose)
 
             if len(tb) == 0:
                 raise RuntimeError(

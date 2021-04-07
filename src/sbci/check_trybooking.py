@@ -21,7 +21,7 @@ def main():
 
     fetch_participants(teams, args.partreport, args.verbose)
 
-    tb = fetch_trybooking(teams, config['tbmap'], args.tbreport, args.verbose)
+    tb = fetch_trybooking(config['tbmap'], args.tbreport, args.verbose)
 
     def match_names(fn1, fn2):
         if fn1.lower() == fn2.lower():

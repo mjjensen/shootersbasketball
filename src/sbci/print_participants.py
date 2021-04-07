@@ -40,9 +40,7 @@ def main():
                 'trybooking payment check requires --details arg'
             )
 
-        tb = fetch_trybooking(
-            teams, config['tbmap'], args.tbreport, args.verbose
-        )
+        tb = fetch_trybooking(config['tbmap'], args.tbreport, args.verbose)
 
         if len(tb) == 0:
             raise RuntimeError('no trybooking data in {}'.format(args.tbreport))
