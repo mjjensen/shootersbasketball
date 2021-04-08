@@ -59,6 +59,8 @@ def main():
                         help='send to coaches instead of team managers')
     parser.add_argument('--details', '-d', action='store_true',
                         help='include coach and player details')
+    parser.add_argument('--nocoach', action='store_true',
+                        help='do not include coach details')
     parser.add_argument('--dryrun', '-n', action='store_true',
                         help='dont actually send email')
     parser.add_argument('--pause', '-p', action='store_true',
@@ -75,6 +77,8 @@ def main():
                         help='specify trybooking report file to use')
     parser.add_argument('--trybooking', '-T', action='store_true',
                         help='check trybooking payment and include in details')
+    parser.add_argument('--trailer', default=None, metavar='F',
+                        help='specify file to append to html body')
     args = parser.parse_args()
 
     config = load_config()
@@ -222,6 +226,11 @@ def main():
                 pt.append('   </tbody>\n')
                 pt.append('  </table>\n')
 
+            if args.trailer:
+                with open(args.trailer, 'r') as fd:
+                    for line in fd.read().splitlines():
+                        pt.append('{}\n'.format(line))
+
             msg = MIMEText(
                 body_fmt.format(
                     '{', '}',
@@ -234,10 +243,10 @@ def main():
                     ),
                     person_tr(
                         'Coach', t.co_name, t.co_email, t.co_mobile
-                    ) if args.details else '',
+                    ) if args.details and not args.nocoach else '',
                     person_tr(
                         'Asst Coach', t.ac_name, t.ac_email, t.ac_mobile
-                    ) if args.details else '',
+                    ) if args.details and not args.nocoach else '',
                     nesc(t.regurl),
                     nesc(t.regurl),
                     ''.join(pt),

@@ -7,10 +7,11 @@ from glob import glob
 from json import loads
 import os
 import re
-from six import string_types, binary_type, text_type
+from six import string_types, binary_type, text_type, ensure_text
 from sqlite3 import connect, Row
 from time import strftime
 import time
+from urllib.parse import urlencode
 from urllib.request import urlopen
 
 
@@ -49,17 +50,23 @@ sql_attr_map = [
     ('team_number',       'number'),
     ('grade',             'grade'),
     ('team_name',         'name'),
+    ('tm.id',             'tm_id'),
+    ('tm.dob',            'tm_dob'),
     ('tm.name',           'tm_name'),
     ('tm.email',          'tm_email'),
     ('tm.mobile',         'tm_mobile'),
     ('tm.wwc_number',     'tm_wwcnum'),
     ('tm.wwc_expiry',     'tm_wwcexp'),
+    ('co.id',             'co_id'),
+    ('co.dob',            'co_dob'),
     ('co.name',           'co_name'),
     ('co.email',          'co_email'),
     ('co.mobile',         'co_mobile'),
     ('co.wwc_number',     'co_wwcnum'),
     ('co.wwc_expiry',     'co_wwcexp'),
     ('co.postal_address', 'co_address'),
+    ('ac.id',             'ac_id'),
+    ('ac.dob',            'ac_dob'),
     ('ac.name',           'ac_name'),
     ('ac.email',          'ac_email'),
     ('ac.mobile',         'ac_mobile'),
@@ -553,7 +560,25 @@ WWCCheckStatus = IntEnum(
 )
 
 
+class WWCCheckPerson(object):
+    '''details of a person requiring a Working With Children check'''
+
+    def __init__(self, ident, name, wwc_number, dob, *args, **kwds):
+        super(WWCCheckPerson, self).__init__(*args, **kwds)
+
+        self.ident = ident
+        self.name = name
+        self.wwc_number = wwc_number
+        self.dob = dob
+
+    def __str__(self):
+        return '[wwc check person: {},{},{},{}]'.format(
+            self.ident, self.name, self.wwc_number, self.dob
+        )
+
+
 class WWCCheckResult(object):
+    '''the result of a Working With Children check'''
 
     def __init__(self, status, message, expiry, *args, **kwds):
         super(WWCCheckResult, self).__init__(*args, **kwds)
@@ -561,6 +586,11 @@ class WWCCheckResult(object):
         self.status = status
         self.message = message
         self.expiry = expiry
+
+    def __str__(self):
+        return '[wwc check result: {},{},{}]'.format(
+            self.status, self.message, self.expiry
+        )
 
 
 def wwc_check(person, verbose=0, nocache=False):
@@ -572,72 +602,79 @@ def wwc_check(person, verbose=0, nocache=False):
             None
         )
 
-    id = person.id  # @ReservedAssignment
-    if not nocache and id in _wwc_check_cache:
-        return _wwc_check_cache[id]
-    name = person.name.encode('utf-8')
+    ident = person.ident
+    if not nocache and ident in _wwc_check_cache:
+        return _wwc_check_cache[ident]
+    name = ensure_text(person.name)
     wwcn = person.wwc_number
 
-    if id == 0:
-        _wwc_check_cache[id] = WWCCheckResult(
+    if ident == 0:
+        _wwc_check_cache[ident] = WWCCheckResult(
             WWCCheckStatus.UNKNOWN,
             'Skipping - Placeholder ID',
             None
         )
-        return _wwc_check_cache[id]
+        return _wwc_check_cache[ident]
 
     if is_under18(person.dob):
         if person.dob is None:
             dob_date = '<unknown>'
         else:
             dob_date = person.dob.date()
-        _wwc_check_cache[id] = WWCCheckResult(
+        _wwc_check_cache[ident] = WWCCheckResult(
             WWCCheckStatus.UNDER18,
             'Skipping - Under 18 (DoB: {})'.format(dob_date),
             None
         )
-        return _wwc_check_cache[id]
+        return _wwc_check_cache[ident]
 
     if wwcn is None or wwcn == '':
-        _wwc_check_cache[id] = WWCCheckResult(
+        _wwc_check_cache[ident] = WWCCheckResult(
             WWCCheckStatus.EMPTY,
             'Skipping - Empty WWC Number',
             None
         )
-        return _wwc_check_cache[id]
+        return _wwc_check_cache[ident]
 
     m = _wwc_number_pattern.match(wwcn)
 
     if m is None:
         if wwcn.startswith('VIT'):
-            _wwc_check_cache[id] = WWCCheckResult(
+            _wwc_check_cache[ident] = WWCCheckResult(
                 WWCCheckStatus.TEACHER,
                 'Skipping - Victorian Teacher ({})'.format(wwcn),
                 None
             )
         else:
-            _wwc_check_cache[id] = WWCCheckResult(
+            _wwc_check_cache[ident] = WWCCheckResult(
                 WWCCheckStatus.BADNUMBER,
                 'Skipping - Bad WWC Number ({})'.format(wwcn),
                 None
             )
-        return _wwc_check_cache[id]
+        return _wwc_check_cache[ident]
 
     cardnumber = m.group(1).upper()
     lastname = '%20'.join(name.split()[1:])
 
     try:
-        wwc_url = _wwc_url_fmt.format(cardnumber, lastname)
-        response = urlopen(wwc_url)
+        wwc_url = 'https://online.justice.vic.gov.au/wwccu/checkstatus.doj'
+        post_data = {
+            'viewSequence': 1,
+            'cardnumber': cardnumber,
+            'lastname': lastname,
+            'pageAction': 'Submit',
+            'Submit': 'submit',
+        }
+        response = urlopen(wwc_url, urlencode(post_data).encode('utf-8'))
         charset = response.headers.get_content_charset('utf-8')
         contents = response.read().decode(charset, 'replace')
-    except BaseException:
-        _wwc_check_cache[id] = WWCCheckResult(
-            WWCCheckStatus.TEACHER,
-            'Web Transaction Failed!',
+    except BaseException as e:
+        _wwc_check_cache[ident] = WWCCheckResult(
+            WWCCheckStatus.FAILED,
+            'Web Transaction Failed! (Exception: {})'.format(e),
             None
         )
-        return _wwc_check_cache[id]
+        return _wwc_check_cache[ident]
 
     for line in contents.splitlines():
 
@@ -650,39 +687,39 @@ def wwc_check(person, verbose=0, nocache=False):
         if expired:
             if verbose > 1:
                 print('expired response = {}'.format(expired))
-            _wwc_check_cache[id] = WWCCheckResult(
+            _wwc_check_cache[ident] = WWCCheckResult(
                 WWCCheckStatus.EXPIRED,
                 'WWC Number ({}) has Expired'.format(wwcn),
                 None
             )
-            return _wwc_check_cache[id]
+            return _wwc_check_cache[ident]
 
         if notvalid:
             if verbose > 1:
                 print('notvalid response = {}'.format(notvalid))
-            _wwc_check_cache[id] = WWCCheckResult(
+            _wwc_check_cache[ident] = WWCCheckResult(
                 WWCCheckStatus.EXPIRED,
                 'WWC Number ({}) with Lastname ({}) NOT VALID'
                 .format(wwcn, lastname),
                 None
             )
-            return _wwc_check_cache[id]
+            return _wwc_check_cache[ident]
 
         if success is not None:
             if verbose > 1:
                 print('success response = {}'.format(success))
-            _wwc_check_cache[id] = WWCCheckResult(
+            _wwc_check_cache[ident] = WWCCheckResult(
                 WWCCheckStatus.SUCCESS,
                 'WWC Check Succeeded',
                 date(*time.strptime('-'.join(m.group(5, 4, 3)), '%Y-%b-%d')[:3])
             )
-            return _wwc_check_cache[id]
+            return _wwc_check_cache[ident]
 
     if verbose > 1:
         print('bad response = {}'.format(contents))
-    _wwc_check_cache[id] = WWCCheckResult(
+    _wwc_check_cache[ident] = WWCCheckResult(
         WWCCheckStatus.BADRESPONSE,
         'WWC Check Service returned BAD response',
         None
     )
-    return _wwc_check_cache[id]
+    return _wwc_check_cache[ident]

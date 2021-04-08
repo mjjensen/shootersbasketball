@@ -49,10 +49,13 @@ Copyright (C) 2018-21 Murray Jensen - All Rights Reserved.
             'print_games = sbci.print_games:main',
             'print_participants = sbci.print_participants:main',
             'print_teams_db = sbci.print_teams_db:main',
-            'process_csv_development_teams = sbci.process_csv_development_teams:main',
+            'process_csv_development_teams'
+            ' = sbci.process_csv_development_teams:main',
             'process_csv_training_forms = sbci.process_csv_training_forms:main',
-            'process_csv_trybooking_transactions = sbci.process_csv_trybooking_transactions:main',
+            'process_csv_trybooking_transactions'
+            ' = sbci.process_csv_trybooking_transactions:main',
             'process_xlsx_fixtures = sbci.process_xlsx_fixtures:main',
+            'wwc_report = sbci.wwc_report:main',
         ],
     },
 )
