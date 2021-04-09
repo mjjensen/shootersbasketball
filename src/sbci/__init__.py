@@ -7,12 +7,17 @@ from glob import glob
 from json import loads
 import os
 import re
+from requests.adapters import HTTPAdapter
+from requests.sessions import session
 from six import string_types, binary_type, text_type, ensure_text
 from sqlite3 import connect, Row
+from ssl import create_default_context, PROTOCOL_TLS
+from threading import Lock
 from time import strftime
 import time
 from urllib.parse import urlencode
 from urllib.request import urlopen
+from urllib3.poolmanager import PoolManager
 
 
 # season = os.getenv('SEASON', '2021-summer')
@@ -388,12 +393,12 @@ def to_fullname(fn, ln):
     return ln + ',' + fn
 
 
-def to_date(s):
+def to_date(s, fmt='%d/%m/%Y'):
     '''convert a string to a date object'''
     if s is None:
         return None
     else:
-        return datetime.strptime(s, '%d/%m/%Y').date()
+        return datetime.strptime(s.strip(), fmt).date()
 
 
 _binary_types = (binary_type, bytearray)
@@ -530,9 +535,15 @@ def is_under18(date_of_birth):
     return (diff.years < 18)
 
 
-_wwc_url_fmt = 'https://online.justice.vic.gov.au/wwccu/checkstatus.doj' \
-               '?viewSequence=1&cardnumber={}&lastname={}' \
-               '&pageAction=Submit&Submit=submit'
+_wwc_url = 'https://online.justice.vic.gov.au/wwccu/checkstatus.doj'
+
+_wwc_post_data = {
+    'viewSequence': 1,
+    'cardnumber': None,
+    'lastname': None,
+    'pageAction': 'Submit',
+    'Submit': 'submit',
+}
 
 _wwc_number_pattern = re.compile(r'^(\d{7}(\d|A))(-\d{1,2})?$', re.I)
 
@@ -547,6 +558,8 @@ _wwc_result_pattern = re.compile(
 )
 
 _wwc_check_cache = {}
+_wwc_check_session = None
+_wwc_check_lock = Lock()
 
 
 WWCCheckStatus = IntEnum(
@@ -593,12 +606,27 @@ class WWCCheckResult(object):
         )
 
 
-def wwc_check(person, verbose=0, nocache=False):
+class _TLSAdapter(HTTPAdapter):
 
-    if person is None:
+    def init_poolmanager(self, connections, maxsize, block=False):
+        '''Create and initialize the urllib3 PoolManager.'''
+        ctx = create_default_context()
+        ctx.set_ciphers('DEFAULT@SECLEVEL=1')
+        self.poolmanager = PoolManager(
+            num_pools=connections,
+            maxsize=maxsize,
+            block=block,
+            ssl_version=PROTOCOL_TLS,
+            ssl_context=ctx
+        )
+
+
+def wwc_check(person, verbose=False, nocache=False):
+
+    if person is None or person.ident is None or person.name is None:
         return WWCCheckResult(
             WWCCheckStatus.NONE,
-            'Skipping - Value is None',
+            'Skipping - invalid person {}'.format(person),
             None
         )
 
@@ -620,7 +648,7 @@ def wwc_check(person, verbose=0, nocache=False):
         if person.dob is None:
             dob_date = '<unknown>'
         else:
-            dob_date = person.dob.date()
+            dob_date = person.dob
         _wwc_check_cache[ident] = WWCCheckResult(
             WWCCheckStatus.UNDER18,
             'Skipping - Under 18 (DoB: {})'.format(dob_date),
@@ -655,26 +683,33 @@ def wwc_check(person, verbose=0, nocache=False):
 
     cardnumber = m.group(1).upper()
     lastname = '%20'.join(name.split()[1:])
+    postdata = dict(_wwc_post_data)
+    postdata['cardnumber'] = cardnumber
+    postdata['lastname'] = lastname
 
-    try:
-        wwc_url = 'https://online.justice.vic.gov.au/wwccu/checkstatus.doj'
-        post_data = {
-            'viewSequence': 1,
-            'cardnumber': cardnumber,
-            'lastname': lastname,
-            'pageAction': 'Submit',
-            'Submit': 'submit',
-        }
-        response = urlopen(wwc_url, urlencode(post_data).encode('utf-8'))
-        charset = response.headers.get_content_charset('utf-8')
-        contents = response.read().decode(charset, 'replace')
-    except BaseException as e:
+    with _wwc_check_lock:
+        global _wwc_check_session
+        if _wwc_check_session is None:
+            _wwc_check_session = session()
+            _wwc_check_session.mount('https://', _TLSAdapter())
+        try:
+            res = _wwc_check_session.post(_wwc_url, postdata)
+        except BaseException as e:
+            _wwc_check_cache[ident] = WWCCheckResult(
+                WWCCheckStatus.FAILED,
+                'Exception during Web Transaction: {}'.format(e),
+                None
+            )
+            return _wwc_check_cache[ident]
+
+    if res.status_code != 200:
         _wwc_check_cache[ident] = WWCCheckResult(
             WWCCheckStatus.FAILED,
-            'Web Transaction Failed! (Exception: {})'.format(e),
+            'Web Transaction Failed with status {}!'.format(res.status_code),
             None
         )
         return _wwc_check_cache[ident]
+    contents = res.text
 
     for line in contents.splitlines():
 
@@ -685,7 +720,7 @@ def wwc_check(person, verbose=0, nocache=False):
         success, expired, notvalid = m.group(2, 6, 7)
 
         if expired:
-            if verbose > 1:
+            if verbose:
                 print('expired response = {}'.format(expired))
             _wwc_check_cache[ident] = WWCCheckResult(
                 WWCCheckStatus.EXPIRED,
@@ -695,7 +730,7 @@ def wwc_check(person, verbose=0, nocache=False):
             return _wwc_check_cache[ident]
 
         if notvalid:
-            if verbose > 1:
+            if verbose:
                 print('notvalid response = {}'.format(notvalid))
             _wwc_check_cache[ident] = WWCCheckResult(
                 WWCCheckStatus.EXPIRED,
@@ -706,7 +741,7 @@ def wwc_check(person, verbose=0, nocache=False):
             return _wwc_check_cache[ident]
 
         if success is not None:
-            if verbose > 1:
+            if verbose:
                 print('success response = {}'.format(success))
             _wwc_check_cache[ident] = WWCCheckResult(
                 WWCCheckStatus.SUCCESS,
@@ -715,7 +750,7 @@ def wwc_check(person, verbose=0, nocache=False):
             )
             return _wwc_check_cache[ident]
 
-    if verbose > 1:
+    if verbose:
         print('bad response = {}'.format(contents))
     _wwc_check_cache[ident] = WWCCheckResult(
         WWCCheckStatus.BADRESPONSE,

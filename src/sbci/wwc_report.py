@@ -1,8 +1,14 @@
 from argparse import ArgumentParser
-from datetime import datetime
 import sys
 
-from sbci import fetch_teams, wwc_check, WWCCheckPerson
+from sbci import fetch_teams, wwc_check, WWCCheckPerson, to_date
+
+
+descs = (
+    ('Team Manager',    ('tm_id', 'tm_name', 'tm_wwcnum', 'tm_dob')),
+    ('Coach',           ('co_id', 'co_name', 'co_wwcnum', 'co_dob')),
+    ('Assistant Coach', ('ac_id', 'ac_name', 'ac_wwcnum', 'ac_dob')),
+)
 
 
 def main():
@@ -18,25 +24,14 @@ def main():
 
         if args.verbose:
             print('{} [{}]:'.format(t.sname, t.edjba_id))
-            verbose = 2
-        else:
-            verbose = 0
 
-        if t.tm_name:
+        for label, attrs in descs:
+            ident, name, wwcnum, dobstr = map(lambda a: getattr(t, a), attrs)
             if args.verbose:
-                print('\t   Team Manager: {}'.format(t.tm_name))
-            dob = datetime.strptime(t.tm_dob.strip(), '%Y-%m-%d %H:%M:%S.%f')
-            p = WWCCheckPerson(t.tm_id, t.tm_name, t.tm_wwcnum, dob)
-            r = wwc_check(p, verbose)
-            print('\t\t- {}'.format(r))
-
-        if t.co_name:
-            if args.verbose:
-                print('\t          Coach: {}'.format(t.co_name))
-
-        if t.ac_name:
-            if args.verbose:
-                print('\Assistant Coach: {}'.format(t.ac_name))
+                print('\t{}: {}'.format(label, name))
+            dob = to_date(dobstr, '%Y-%m-%d %H:%M:%S.%f')
+            res = wwc_check(WWCCheckPerson(ident, name, wwcnum, dob))
+            print('\t\t- {}'.format(res))
 
     return 0
 
