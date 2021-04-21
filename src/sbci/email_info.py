@@ -117,7 +117,7 @@ def main():
     <td>Team Name:</td><td>&nbsp;</td><td><tt>{}</tt></td>
    </tr>
    <tr>
-    <td>EDJBA Id:</td><td>&nbsp;</td><td><tt>{}</tt></td>
+    <td>EDJBA Name:</td><td>&nbsp;</td><td><tt>{}</tt></td>
    </tr>
    <tr>
     <td>EDJBA Code:</td><td>&nbsp;</td><td><tt>{}</tt></td>
