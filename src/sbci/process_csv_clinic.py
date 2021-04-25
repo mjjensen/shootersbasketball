@@ -4,7 +4,7 @@ from datetime import datetime
 from io import TextIOWrapper
 import sys
 
-from sbci import latest_report, make_address, make_phone, develdir
+from sbci import latest_report, make_address, make_phone, clinicdir, clinicterm
 
 
 def main():
@@ -19,7 +19,7 @@ def main():
     csvinput = args.csvfile
     if csvinput is None:
         csvinput, _ = latest_report(
-            None, rdir=develdir,
+            None, rdir=clinicdir,
             nre=r'^(\d{8}).csv$',
             n2dt=lambda m: datetime.strptime(m.group(1), '%d%m%Y'),
             verbose=args.verbose
@@ -49,6 +49,12 @@ def main():
                         file=sys.stderr
                     )
                 continue
+
+            term = inrec['Ticket Data: School Term']
+            if term != clinicterm:
+                raise RuntimeError(
+                    'School Term mismatch! ({}!={})'.format(term, clinicterm)
+                )
 
             name = inrec['Ticket Data: Player\'s First Name'] + ' ' + \
                 inrec['Ticket Data: Player\'s Surname']

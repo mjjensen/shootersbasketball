@@ -33,6 +33,26 @@ seasondir = os.getenv(
 )
 
 
+trybookingdir = os.getenv(
+    'TRYBOOKINGDIR',
+    os.path.join(shootersdir, 'Trybooking')
+)
+
+
+clinicterm = os.getenv('CLINICTERM', '2021-Term2')
+clinicdir = os.getenv(
+    'CLINICDIR',
+    os.path.join(trybookingdir, 'Clinic', clinicterm)
+)
+
+
+develterm = os.getenv('DEVELTERM', '2021-Term1-Monday')
+develdir = os.getenv(
+    'DEVELDIR',
+    os.path.join(trybookingdir, 'Devel', develterm)
+)
+
+
 class Team(object):
 
     def __str__(self):
