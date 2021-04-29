@@ -4,7 +4,8 @@ from datetime import datetime
 from io import TextIOWrapper
 import sys
 
-from sbci import latest_report, make_address, make_phone, clinicdir, clinicterm
+from sbci import latest_report, make_address, make_phone, \
+    clinicdir, clinicterm, cliniclabel
 
 
 def main():
@@ -50,10 +51,12 @@ def main():
                     )
                 continue
 
-            term = inrec['Ticket Data: School Term']
-            if term != clinicterm:
+            school_term = inrec['Ticket Data: School Term']
+            if school_term != cliniclabel:
                 raise RuntimeError(
-                    'School Term mismatch! ({}!={})'.format(term, clinicterm)
+                    'School Term mismatch! ({}!={})'.format(
+                        school_term, clinicterm
+                    )
                 )
 
             name = inrec['Ticket Data: Player\'s First Name'] + ' ' + \
@@ -65,7 +68,7 @@ def main():
             ]
 
             isparent = (
-                inrec['Ticket Data: Purchaser is Player\'s Parent/Guardian']
+                inrec['Ticket Data: Is Purchaser the child\'s Parent/Guardian']
                 ==
                 'Yes'
             )
