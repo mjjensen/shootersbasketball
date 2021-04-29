@@ -1,13 +1,13 @@
 from argparse import ArgumentParser
 import sys
 
-from sbci import fetch_teams, wwc_check, WWCCheckPerson, to_date
+from sbci import fetch_teams, wwc_check, WWCCheckPerson, to_date, WWCCheckStatus
 
 
 descs = (
-    ('Team Manager',    ('tm_id', 'tm_name', 'tm_wwcnum', 'tm_dob')),
-    ('Coach',           ('co_id', 'co_name', 'co_wwcnum', 'co_dob')),
-    ('Assistant Coach', ('ac_id', 'ac_name', 'ac_wwcnum', 'ac_dob')),
+    ('Manager',   ('tm_id', 'tm_name', 'tm_dob', 'tm_wwcnum', 'tm_wwcname')),
+    ('Coach',     ('co_id', 'co_name', 'co_dob', 'co_wwcnum', 'co_wwcname')),
+    ('Assistant', ('ac_id', 'ac_name', 'ac_dob', 'ac_wwcnum', 'ac_wwcname')),
 )
 
 
@@ -26,12 +26,32 @@ def main():
             print('{} [{}]:'.format(t.sname, t.edjba_id))
 
         for label, attrs in descs:
-            ident, name, wwcnum, dobstr = map(lambda a: getattr(t, a), attrs)
-            if args.verbose:
-                print('\t{}: {}'.format(label, name))
+            ident, name, dobstr, wwcnum, wwcname = map(
+                lambda a: getattr(t, a), attrs
+            )
             dob = to_date(dobstr, '%Y-%m-%d %H:%M:%S.%f')
-            res = wwc_check(WWCCheckPerson(ident, name, wwcnum, dob))
-            print('\t\t- {}'.format(res))
+            res = wwc_check(
+                WWCCheckPerson(ident, name, wwcnum, dob, wwcname),
+                args.verbose
+            )
+            # result is a WWCCheckStatus (IntEnum) and can be one of:
+            #     NONE, UNKNOWN, EMPTY, UNDER18, TEACHER, BADNUMBER,
+            #     FAILED, SUCCESS, EXPIRED, INVALID, BADRESPONSE
+            if args.verbose:
+                print('\t{}: {}\t\t- {}'.format(label, name, res))
+            if res.status not in (
+                WWCCheckStatus.NONE,
+                WWCCheckStatus.UNKNOWN,
+                WWCCheckStatus.SUCCESS,
+                WWCCheckStatus.UNDER18,
+                WWCCheckStatus.TEACHER,
+            ):
+                print(
+                    '{} [{}]: {} ({}): {}'.format(
+                        t.sname, t.edjba_id, name, label, res
+                    ),
+                    file=sys.stderr
+                )
 
     return 0
 

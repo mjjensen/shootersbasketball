@@ -80,6 +80,7 @@ sql_attr_map = [
     ('tm.name',           'tm_name'),
     ('tm.email',          'tm_email'),
     ('tm.mobile',         'tm_mobile'),
+    ('tm.wwc_name',       'tm_wwcname'),
     ('tm.wwc_number',     'tm_wwcnum'),
     ('tm.wwc_expiry',     'tm_wwcexp'),
     ('co.id',             'co_id'),
@@ -87,6 +88,7 @@ sql_attr_map = [
     ('co.name',           'co_name'),
     ('co.email',          'co_email'),
     ('co.mobile',         'co_mobile'),
+    ('co.wwc_name',       'co_wwcname'),
     ('co.wwc_number',     'co_wwcnum'),
     ('co.wwc_expiry',     'co_wwcexp'),
     ('co.postal_address', 'co_address'),
@@ -95,6 +97,7 @@ sql_attr_map = [
     ('ac.name',           'ac_name'),
     ('ac.email',          'ac_email'),
     ('ac.mobile',         'ac_mobile'),
+    ('ac.wwc_name',       'ac_wwcname'),
     ('ac.wwc_number',     'ac_wwcnum'),
     ('ac.wwc_expiry',     'ac_wwcexp'),
     ('ac.postal_address', 'ac_address'),
@@ -596,17 +599,18 @@ WWCCheckStatus = IntEnum(
 class WWCCheckPerson(object):
     '''details of a person requiring a Working With Children check'''
 
-    def __init__(self, ident, name, wwc_number, dob, *args, **kwds):
+    def __init__(self, ident, name, number, dob, checkname=None, *args, **kwds):
         super(WWCCheckPerson, self).__init__(*args, **kwds)
 
         self.ident = ident
         self.name = name
-        self.wwc_number = wwc_number
+        self.number = number
         self.dob = dob
+        self.checkname = checkname
 
     def __str__(self):
-        return '[wwc check person: {},{},{},{}]'.format(
-            self.ident, self.name, self.wwc_number, self.dob
+        return '[wwc check person: {},{},{},{},{}]'.format(
+            self.ident, self.name, self.number, self.dob, self.checkname
         )
 
 
@@ -627,6 +631,7 @@ class WWCCheckResult(object):
 
 
 class _TLSAdapter(HTTPAdapter):
+    '''see: https://stackoverflow.com/a/61643770/2130789'''
 
     def init_poolmanager(self, connections, maxsize, block=False):
         '''Create and initialize the urllib3 PoolManager.'''
@@ -653,8 +658,17 @@ def wwc_check(person, verbose=False, nocache=False):
     ident = person.ident
     if not nocache and ident in _wwc_check_cache:
         return _wwc_check_cache[ident]
-    name = ensure_text(person.name)
-    wwcn = person.wwc_number
+    if person.checkname is not None:
+        name = ensure_text(person.checkname)
+        if verbose:
+            print(
+                '[Using {} for name instead of {}]'.format(
+                    person.checkname, person.name
+                )
+            )
+    else:
+        name = ensure_text(person.name)
+    wwcn = person.number
 
     if ident == 0:
         _wwc_check_cache[ident] = WWCCheckResult(
@@ -664,14 +678,10 @@ def wwc_check(person, verbose=False, nocache=False):
         )
         return _wwc_check_cache[ident]
 
-    if is_under18(person.dob):
-        if person.dob is None:
-            dob_date = '<unknown>'
-        else:
-            dob_date = person.dob
+    if person.dob is not None and is_under18(person.dob):
         _wwc_check_cache[ident] = WWCCheckResult(
             WWCCheckStatus.UNDER18,
-            'Skipping - Under 18 (DoB: {})'.format(dob_date),
+            'Skipping - Under 18 (DoB: {})'.format(person.dob),
             None
         )
         return _wwc_check_cache[ident]
@@ -708,6 +718,7 @@ def wwc_check(person, verbose=False, nocache=False):
     postdata['lastname'] = lastname
 
     with _wwc_check_lock:
+        # based on: https://stackoverflow.com/a/61643770/2130789
         global _wwc_check_session
         if _wwc_check_session is None:
             _wwc_check_session = session()
