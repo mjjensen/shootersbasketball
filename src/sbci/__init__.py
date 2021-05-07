@@ -12,6 +12,7 @@ from requests.sessions import session
 from six import string_types, binary_type, text_type, ensure_text
 from sqlite3 import connect, Row
 from ssl import create_default_context, PROTOCOL_TLS
+import sys
 from threading import Lock
 from time import strftime
 import time
@@ -183,24 +184,18 @@ def load_config(filename='config.json'):
     return config
 
 
-def latest_report(rtype, rdir='reports', nre=None, n2dt=None, verbose=False):
-    '''find the latest report file of a certain type'''
+def get_reports(rtype, rdir='reports', nre=None, verbose=False):
 
     if nre is None:
         nre = r'^' + rtype + r'_(\d{8})(\d+)\.csv$'
-    if n2dt is None:
-        def n2dt(m):
-            return datetime.strptime(
-                '{:08d}{:06d}'.format(*map(int, m.groups())), '%Y%m%d%H%M%S'
-            )
-
     p = re.compile(nre)
-    latest = None, None
 
     if not os.path.isdir(rdir):
         rdir = os.path.join(seasondir, rdir)
         if not os.path.isdir(rdir):
             raise RuntimeError('cannot find report dir ({})'.format(rdir))
+
+    matches = []
 
     # os.walk() returns generator that walks the directory tree; next() on
     # the generator will return the first level (i.e. rdir contents) as a
@@ -210,8 +205,29 @@ def latest_report(rtype, rdir='reports', nre=None, n2dt=None, verbose=False):
         m = p.match(name)
         if m is None:
             if verbose:
-                print('re mismatch for file name: {}'.format(name))
+                print(
+                    're mismatch for file name: {}'.format(name),
+                    file=sys.stderr
+                )
             continue
+
+        matches.append((name, m))
+
+    return matches
+
+
+def latest_report(rtype, rdir='reports', nre=None, n2dt=None, verbose=False):
+    '''find the latest report file of a certain type'''
+
+    if n2dt is None:
+        def n2dt(m):
+            return datetime.strptime(
+                '{:08d}{:06d}'.format(*map(int, m.groups())), '%Y%m%d%H%M%S'
+            )
+
+    latest = None, None
+
+    for name, m in get_reports(rtype, rdir, nre, verbose):
 
         dt = n2dt(m)
 

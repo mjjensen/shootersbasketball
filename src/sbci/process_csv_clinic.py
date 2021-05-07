@@ -2,38 +2,62 @@ from argparse import ArgumentParser
 from csv import DictReader, DictWriter
 from datetime import datetime
 from io import TextIOWrapper
+import os
 import sys
 
-from sbci import latest_report, make_address, make_phone, \
-    clinicdir, clinicterm, cliniclabel
+from sbci import make_address, make_phone, clinicdir, clinicterm, \
+    cliniclabel, get_reports
 
 
 def main():
 
     parser = ArgumentParser()
-    parser.add_argument('--csvfile', '-c', default=None, metavar='F',
+    parser.add_argument('--csvfile', '-C', default=None, metavar='F',
                         help='csv file containing trybooking report')
+    parser.add_argument('--reffile', '-R', default=None, metavar='F',
+                        help='file to use as reference for last run')
+    parser.add_argument('--ascsv', '-c', action='store_true',
+                        help='output csv data (no highlighting)')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
     args = parser.parse_args()
 
-    csvinput = args.csvfile
-    if csvinput is None:
-        csvinput, _ = latest_report(
-            None, rdir=clinicdir,
-            nre=r'^(\d{8}).csv$',
-            n2dt=lambda m: datetime.strptime(m.group(1), '%d%m%Y'),
-            verbose=args.verbose
+    if args.csvfile is not None:
+        csvfile = args.csvfile
+        reffile = args.reference
+    else:
+        def repkey(e):
+            _, m = e
+            dstr, suff = m.groups()
+            dt = datetime.strptime(dstr, '%d%m%Y')
+            if suff is not None:
+                dt += datetime.timedelta(seconds=int(suff[1:]))
+            return dt
+        rlist = sorted(
+            get_reports(None, clinicdir, r'^(\d{8})(-\d)?.csv$', args.verbose),
+            key=repkey,
         )
-        if csvinput is None:
-            raise RuntimeError('no trybooking report found!')
-        if args.verbose:
+        try:
+            csvfile = os.path.join(clinicdir, rlist.pop()[0])
+        except IndexError:
+            raise RuntimeError('No Trybooking reports found!')
+        try:
+            reffile = os.path.join(clinicdir, rlist.pop()[0])
+        except IndexError:
+            reffile = None
+
+    if args.verbose:
+        print(
+            '[trybooking report selected: {}]'.format(csvfile),
+            file=sys.stderr
+        )
+        if reffile is not None:
             print(
-                '[trybooking report selected: {}]'.format(csvinput),
+                '[reference file selected: {}]'.format(reffile),
                 file=sys.stderr
             )
 
-    with open(csvinput, 'r', newline='') as infile:
+    with open(csvfile, 'r', newline='') as infile:
 
         _ = infile.read(1)
 
@@ -103,18 +127,17 @@ def main():
             )
 
     if len(orecs) == 0:
-        print('No CSV records in "{}"'.format(csvinput))
+        print('No CSV records in "{}"'.format(csvfile))
         sys.exit(0)
 
-    with TextIOWrapper(sys.stdout.buffer, newline='') as outfile:
-
-        writer = DictWriter(outfile, fieldnames=orecs[0].keys())
-
-        writer.writeheader()
-
-        for outrec in orecs:
-
-            writer.writerow(outrec)
+    if args.ascsv:
+        with TextIOWrapper(sys.stdout.buffer, newline='') as outfile:
+            writer = DictWriter(outfile, fieldnames=orecs[0].keys())
+            writer.writeheader()
+            for outrec in orecs:
+                writer.writerow(outrec)
+    else:
+        raise NotImplementedError('html/xls output not implemented!')
 
     return 0
 
