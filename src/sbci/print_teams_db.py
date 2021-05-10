@@ -79,14 +79,13 @@ def main():
             continue
 
         if args.terse:
-            snm = t.sname[:9] + '...' if len(t.sname) > 12 else t.sname
-            tmn = t.tm_name[:15] + '...' if len(t.tm_name) > 18 else t.tm_name
-            tme = t.tm_email[:22] + '...' if len(t.tm_email) > 25 \
-                else t.tm_email
+            # snm = t.sname[:9] + '...' if len(t.sname) > 12 else t.sname
+            # tmn = t.tm_name[:15] + '...' if len(t.tm_name) > 18 else t.tm_name
+            # tme = t.tm_email[:22] + '...' if len(t.tm_email) > 25 \
+            #     else t.tm_email
             print(
-                '{} {} {:12} {:18} {:25} {}'.format(
-                    t.edjba_code, t.grade if t.grade else '',
-                    snm, tmn, tme, t.tm_mobile
+                '{} {:12} {:18} {:40} {}'.format(
+                    t.edjba_code, t.sname, t.tm_name, t.tm_email, t.tm_mobile
                 )
             )
         elif args.urls:
