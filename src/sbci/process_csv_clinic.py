@@ -1,23 +1,34 @@
 from argparse import ArgumentParser
-from csv import DictReader, DictWriter
-from datetime import datetime
+from collections import OrderedDict
+from csv import DictReader
+from datetime import datetime, timedelta
+from dateutil.parser import parse as dateutil_parse
 from io import TextIOWrapper
 import os
+from six import ensure_str
 import sys
 
 from sbci import make_address, make_phone, clinicdir, clinicterm, \
-    cliniclabel, get_reports
+    cliniclabel, get_reports, load_config
 
 
 def main():
 
     parser = ArgumentParser()
-    parser.add_argument('--csvfile', '-C', default=None, metavar='F',
+    parser.add_argument('--csvfile', default=None, metavar='F',
                         help='csv file containing trybooking report')
-    parser.add_argument('--reffile', '-R', default=None, metavar='F',
+    parser.add_argument('--reffile', default=None, metavar='F',
                         help='file to use as reference for last run')
-    parser.add_argument('--ascsv', '-c', action='store_true',
+    parser.add_argument('--refdt', default=None, metavar='D',
+                        help='datetime to use as reference for last run')
+    parser.add_argument('--basename', default='-', metavar='S',
+                        help='basename of output file (- = stdout)')
+    parser.add_argument('--ascsv', action='store_true',
                         help='output csv data (no highlighting)')
+    parser.add_argument('--ashtml', action='store_true',
+                        help='output html data')
+    parser.add_argument('--asxls', action='store_true',
+                        help='output excel data')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
     args = parser.parse_args()
@@ -48,14 +59,26 @@ def main():
 
     if args.verbose:
         print(
-            '[trybooking report selected: {}]'.format(csvfile),
+            '[trybooking report file: {}]'.format(csvfile),
             file=sys.stderr
         )
         if reffile is not None:
             print(
-                '[reference file selected: {}]'.format(reffile),
+                '[reference datetime file: {}]'.format(reffile),
                 file=sys.stderr
             )
+
+    if args.refdt is not None:
+        refdt = dateutil_parse(args.refdt, dayfirst=True, fuzzy=True)
+    elif reffile is not None:
+        refdt = datetime.fromtimestamp(os.stat(reffile).st_mtime)
+    else:
+        refdt = None
+
+    if refdt is not None and args.verbose:
+        print('[reference datetime: {}]'.format(refdt), file=sys.stderr)
+
+    config = load_config(prefix=clinicdir)
 
     with open(csvfile, 'r', newline='') as infile:
 
@@ -85,8 +108,10 @@ def main():
 
             name = inrec['Ticket Data: Player\'s First Name'] + ' ' + \
                 inrec['Ticket Data: Player\'s Surname']
-            date_of_birth = inrec['Ticket Data: Player\'s Date-of-Birth']
-            paid = inrec['Net Booking']
+            date_of_birth = datetime.strptime(
+                inrec['Ticket Data: Player\'s Date-of-Birth'], '%Y-%m-%d'
+            ).date()
+            paid = float(inrec['Net Booking'])
             medical = inrec[
                 'Ticket Data: Special Requirements/Medical Conditions'
             ]
@@ -113,8 +138,20 @@ def main():
                 phone = inrec['Ticket Data: Parent/Guardian Phone']
                 email = inrec['Ticket Data: Parent/Guardian Email']
 
+            # "27Apr21","1:58:48 PM"
+            dbdt = datetime.strptime(inrec['Date Booked (UTC+10)'], '%d%b%y')
+            tbt = datetime.strptime(inrec['Time Booked'], '%I:%M:%S %p').time()
+            booked = dbdt + timedelta(
+                hours=tbt.hour, minutes=tbt.minute, seconds=tbt.second
+            )
+            if refdt is None or refdt < booked:
+                new = '*'
+            else:
+                new = ''
+
             orecs.append(
-                dict(
+                OrderedDict(
+                    new=new,
                     paid=paid,
                     name=name,
                     date_of_birth=date_of_birth,
@@ -123,6 +160,7 @@ def main():
                     phone=make_phone(phone),
                     address=address.title(),
                     medical=medical,
+                    booked=booked,
                 )
             )
 
@@ -131,13 +169,123 @@ def main():
         sys.exit(0)
 
     if args.ascsv:
+        from csv import DictWriter
         with TextIOWrapper(sys.stdout.buffer, newline='') as outfile:
             writer = DictWriter(outfile, fieldnames=orecs[0].keys())
             writer.writeheader()
             for outrec in orecs:
                 writer.writerow(outrec)
-    else:
-        raise NotImplementedError('html/xls output not implemented!')
+
+    if args.ashtml:
+        raise NotImplementedError('html output not implemented!')
+
+    if args.asxls:
+        from xlwt import Workbook
+        from xlwt.Style import easyxf
+        styles = {
+            'heading': easyxf(
+                'font: name Arial, height 280, bold on; '
+                'align: wrap off, vertical centre, horizontal centre; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='@',
+            ),
+            'normal': easyxf(
+                'font: name Arial, height 280; '
+                'align: wrap off, vertical centre, horizontal left; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='@',
+            ),
+            'centred': easyxf(
+                'font: name Arial, height 280; '
+                'align: wrap off, vertical centre, horizontal centre; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='@',
+            ),
+            'currency': easyxf(
+                'font: name Arial, height 280; '
+                'align: wrap off, vertical centre, horizontal right; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='$#,##0.00',
+            ),
+            'date': easyxf(
+                'font: name Arial, height 280; '
+                'align: wrap off, vertical centre, horizontal centre; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='YYYY-MM-DD',
+            ),
+            'datetime': easyxf(
+                'font: name Arial, height 280; '
+                'align: wrap off, vertical centre, horizontal centre; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='YYYY-MM-DD HH:MM:SS AM/PM',
+            ),
+            'normal_highlighted': easyxf(
+                'font: name Arial, height 280; '
+                'pattern: pattern solid, back_colour light_yellow; '
+                'align: wrap off, vertical centre, horizontal left; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='@',
+            ),
+            'centred_highlighted': easyxf(
+                'font: name Arial, height 280; '
+                'pattern: pattern solid, back_colour light_yellow; '
+                'align: wrap off, vertical centre, horizontal centre; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='@',
+            ),
+            'currency_highlighted': easyxf(
+                'font: name Arial, height 280; '
+                'pattern: pattern solid, back_colour light_yellow; '
+                'align: wrap off, vertical centre, horizontal right; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='$#,##0.00',
+            ),
+            'date_highlighted': easyxf(
+                'font: name Arial, height 280; '
+                'pattern: pattern solid, back_colour light_yellow; '
+                'align: wrap off, vertical centre, horizontal centre; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='YYYY-MM-DD',
+            ),
+            'datetime_highlighted': easyxf(
+                'font: name Arial, height 280; '
+                'pattern: pattern solid, back_colour light_yellow; '
+                'align: wrap off, vertical centre, horizontal centre; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='YYYY-MM-DD HH:MM:SS AM/PM',
+            ),
+        }
+        colstyles = {
+            'new':           'centred',
+            'paid':          'currency',
+            'name':          'normal',
+            'date_of_birth': 'date',
+            'parent':        'normal',
+            'email':         'normal',
+            'phone':         'centred',
+            'address':       'normal',
+            'medical':       'normal',
+            'booked':        'datetime',
+        }
+        book = Workbook()
+        sheet = book.add_sheet(config['label'])
+        r = 0
+        for c, v in enumerate(orecs[0].keys()):
+            sheet.write(r, c, ensure_str(v), styles['heading'])
+        sheet.set_panes_frozen(True)
+        sheet.set_horz_split_pos(1)
+        sheet.set_remove_splits(True)
+        for outrec in orecs:
+            r += 1
+            is_new = outrec['new'] == '*'
+            for c, (k, v) in enumerate(outrec.items()):
+                if k == 'address':
+                    v = v.replace('\n', ', ')
+                s = colstyles[k]
+                if is_new:
+                    s += '_highlighted'
+                sheet.write(r, c, v, styles[s])
+        book.save(sys.stdout.buffer)
 
     return 0
 

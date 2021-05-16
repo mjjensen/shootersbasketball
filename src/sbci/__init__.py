@@ -174,10 +174,10 @@ def find_team(teams, func=any, **kwds):
     return None
 
 
-def load_config(filename='config.json'):
+def load_config(filename='config.json', prefix=seasondir):
     config = {}
     if not os.path.exists(filename):
-        filename = os.path.join(seasondir, filename)
+        filename = os.path.join(prefix, filename)
     if os.path.exists(filename):
         with open(filename, 'rb') as cfd:
             config.update(loads(cfd.read().decode()))
