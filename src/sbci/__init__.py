@@ -417,6 +417,15 @@ def fetch_trybooking(tbmap=None, report_file=None, verbose=False):
             txid = entry['Booking ID']
             tnum = entry['Ticket Number']
 
+            if to_bool(entry['Void']):
+                if verbose:
+                    print(
+                        '[ignore void ticket: {} - {}, {}]'.format(
+                            name, tnum, txid
+                        )
+                    )
+                continue
+
             tb.setdefault('by-name', {}).setdefault(name, []).append(entry)
             tb.setdefault('by-txid', {}).setdefault(txid, []).append(entry)
             tb.setdefault('by-tnum', {}).setdefault(tnum, []).append(entry)
@@ -433,12 +442,30 @@ def to_fullname(fn, ln):
     return ln + ',' + fn
 
 
-def to_date(s, fmt='%d/%m/%Y'):
-    '''convert a string to a date object'''
+def to_datetime(s, fmt='%d/%m/%Y'):
+    '''convert a string to a datetime object'''
     if s is None:
         return None
     else:
-        return datetime.strptime(s.strip(), fmt).date()
+        return datetime.strptime(s.strip(), fmt)
+
+
+def to_date(s, fmt='%d/%m/%Y'):
+    '''convert a string to a date object'''
+    dt = to_datetime(s, fmt)
+    if dt is None:
+        return None
+    else:
+        return dt.date()
+
+
+def to_time(s, fmt='%H:%M:%S'):
+    '''convert a string to a time object'''
+    dt = to_datetime(s, fmt)
+    if dt is None:
+        return None
+    else:
+        return dt.time()
 
 
 _binary_types = (binary_type, bytearray)

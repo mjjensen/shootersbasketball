@@ -9,7 +9,8 @@ from six import ensure_str
 import sys
 
 from sbci import make_address, make_phone, clinicdir, clinicterm, \
-    cliniclabel, get_reports, load_config
+    cliniclabel, get_reports, load_config, to_bool, to_date, to_datetime, \
+    to_time
 
 
 def main():
@@ -90,7 +91,7 @@ def main():
 
         for inrec in reader:
 
-            if inrec['Void'] == 'Yes':
+            if to_bool(inrec['Void']):
                 if args.verbose:
                     print(
                         'ignore VOID record: {}'.format(inrec),
@@ -108,18 +109,16 @@ def main():
 
             name = inrec['Ticket Data: Player\'s First Name'] + ' ' + \
                 inrec['Ticket Data: Player\'s Surname']
-            date_of_birth = datetime.strptime(
+            date_of_birth = to_date(
                 inrec['Ticket Data: Player\'s Date-of-Birth'], '%Y-%m-%d'
-            ).date()
+            )
             paid = float(inrec['Net Booking'])
             medical = inrec[
                 'Ticket Data: Special Requirements/Medical Conditions'
-            ]
+            ].strip()
 
-            isparent = (
+            isparent = to_bool(
                 inrec['Ticket Data: Is Purchaser the child\'s Parent/Guardian']
-                ==
-                'Yes'
             )
             if isparent:
                 parent = inrec['Booking First Name'] + ' ' + \
@@ -139,8 +138,8 @@ def main():
                 email = inrec['Ticket Data: Parent/Guardian Email']
 
             # "27Apr21","1:58:48 PM"
-            dbdt = datetime.strptime(inrec['Date Booked (UTC+10)'], '%d%b%y')
-            tbt = datetime.strptime(inrec['Time Booked'], '%I:%M:%S %p').time()
+            dbdt = to_datetime(inrec['Date Booked (UTC+10)'], '%d%b%y')
+            tbt = to_time(inrec['Time Booked'], '%I:%M:%S %p')
             booked = dbdt + timedelta(
                 hours=tbt.hour, minutes=tbt.minute, seconds=tbt.second
             )
@@ -158,7 +157,7 @@ def main():
                     parent=parent,
                     email=email,
                     phone=make_phone(phone),
-                    address=address.title(),
+                    address=address.title().replace('\n', ', '),
                     medical=medical,
                     booked=booked,
                 )
