@@ -49,7 +49,10 @@ def main():
         if report_file is None:
             raise RuntimeError('no advanced fixture report found!')
         if args.verbose:
-            print('[advanced fixture report selected: {}]'.format(report_file))
+            print(
+                '[advanced fixture report selected: {}]'.format(report_file),
+                file=sys.stderr
+            )
 
     if args.upcoming:
         print('grade,team1,team2')
@@ -114,7 +117,7 @@ def main():
     results = []
     for t in teams.values():
         e = [t.sname, t.edjba_code]
-        rcnt = totfor = totag = 0
+        rcnt = totfor = totag = totmarg = 0
         for (r, _), v in t.results.items():
             rcnt += 1
             if args.nrounds > 0 and rcnt > args.nrounds:
@@ -135,7 +138,9 @@ def main():
                     e.append('{}{:02d}-{:02d}'.format(s, f, a))
                     totfor += f
                     totag += a
+                    totmarg += f - a
         e.append('{:.2f}'.format(float(totfor * 100) / float(totag)))
+        e.append('{:.2f}'.format(float(totmarg) / float(rcnt)))
         results.append(e)
 
     if args.summary:
