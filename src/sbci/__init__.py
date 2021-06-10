@@ -577,6 +577,8 @@ def make_address(addr1, addr2, suburb, postcode):
 
 def make_phone(inphone):
     s = inphone.strip()
+    if s == '':
+        return ''
     if s.startswith('+'):
         s = s[1:]
     if s.startswith('61'):

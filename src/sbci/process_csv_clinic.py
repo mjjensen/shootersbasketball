@@ -13,6 +13,28 @@ from sbci import make_address, make_phone, clinicdir, clinicterm, \
     to_time
 
 
+def booking_data(inrec):
+    parent = inrec['Booking First Name'] + ' ' + \
+        inrec['Booking Last Name']
+    address = make_address(
+        inrec['Booking Address 1'],
+        inrec['Booking Address 2'],
+        inrec['Booking Suburb'],
+        inrec['Booking Post Code'],
+    )
+    phone = inrec['Booking Telephone']
+    email = inrec['Booking Email']
+    return parent, address, phone, email
+
+
+def ticket_data(inrec):
+    parent = inrec['Ticket Data: Parent/Guardian Name']
+    address = inrec['Ticket Data: Parent/Guardian Address']
+    phone = inrec['Ticket Data: Parent/Guardian Phone']
+    email = inrec['Ticket Data: Parent/Guardian Email']
+    return parent, address, phone, email
+
+
 def main():
 
     parser = ArgumentParser()
@@ -30,6 +52,8 @@ def main():
                         help='output html data')
     parser.add_argument('--asxls', action='store_true',
                         help='output excel data')
+    parser.add_argument('--email', action='store_true',
+                        help='print a list of email addresses')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
     args = parser.parse_args()
@@ -121,21 +145,20 @@ def main():
                 inrec['Ticket Data: Is Purchaser the child\'s Parent/Guardian']
             )
             if isparent:
-                parent = inrec['Booking First Name'] + ' ' + \
-                    inrec['Booking Last Name']
-                address = make_address(
-                    inrec['Booking Address 1'],
-                    inrec['Booking Address 2'],
-                    inrec['Booking Suburb'],
-                    inrec['Booking Post Code'],
-                )
-                phone = inrec['Booking Telephone']
-                email = inrec['Booking Email']
+                parent_data = booking_data(inrec)
             else:
-                parent = inrec['Ticket Data: Parent/Guardian Name']
-                address = inrec['Ticket Data: Parent/Guardian Address']
-                phone = inrec['Ticket Data: Parent/Guardian Phone']
-                email = inrec['Ticket Data: Parent/Guardian Email']
+                parent_data = ticket_data(inrec)
+                if not any(parent_data):
+                    # they answered No to isparent, but did not fill in
+                    # parent ticket data - use the booking data instead ...
+                    parent_data = booking_data(inrec)
+                    print(
+                        'empty ticket data - using booking data ({})'.format(
+                            parent_data
+                        ),
+                        file=sys.stderr
+                    )
+            parent, address, phone, email = parent_data
 
             # "27Apr21","1:58:48 PM"
             dbdt = to_datetime(inrec['Date Booked (UTC+10)'], '%d%b%y')
@@ -162,6 +185,13 @@ def main():
                     booked=booked,
                 )
             )
+
+    if args.email:
+        emails = set()
+        for outrec in orecs:
+            emails.add(outrec['email'].strip().lower())
+        for email in sorted(emails):
+            print(email)
 
     if len(orecs) == 0:
         print('No CSV records in "{}"'.format(csvfile))
