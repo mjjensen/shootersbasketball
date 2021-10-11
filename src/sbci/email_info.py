@@ -77,6 +77,8 @@ def main():
                         help='specify trybooking report file to use')
     parser.add_argument('--trybooking', '-T', action='store_true',
                         help='check trybooking payment and include in details')
+    parser.add_argument('--header', default=None, metavar='F',
+                        help='specify file to prepend to html body')
     parser.add_argument('--trailer', default=None, metavar='F',
                         help='specify file to append to html body')
     args = parser.parse_args()
@@ -106,9 +108,11 @@ def main():
  </head>
  <body>
   <p><i>[automated email - send queries to: {}]</i></p>
+{}\
   <table>
    <tr>
-    <td>Season:</td><td>&nbsp;</td><td><b><tt>''' + season.replace('-', ' ').title() + '''</tt></b></td>
+    <td>Season:</td><td>&nbsp;</td><td><b><tt>''' \
+        + season.replace('-', ' ').title() + '''</tt></b></td>
    </tr>
    <tr>
     <td></td><td></td><td></td>
@@ -127,13 +131,24 @@ def main():
      <td>Rego Link:</td><td>&nbsp;</td><td><a href="{}"><tt>{}</tt></a></td>
    </tr>
   </table>
-{}\
+{}{}\
  <body>
 </html>'''
 
     teams = fetch_teams()
 
     if args.details:
+
+        player_keys = [
+            ('last name', 'surname'),
+            ('first name', 'firstname'),
+            ('uniform number', 'singlet#'),
+            ('date of birth', 'd.o.b'),
+            ('parent/guardian1 first name', 'parent firstname'),
+            ('parent/guardian1 last name', 'parent surname'),
+            ('parent/guardian1 mobile number', 'parent mobile'),
+            ('parent/guardian1 email', 'parent email'),
+        ]
 
         fetch_participants(teams, args.partreport, args.verbose)
 
@@ -146,17 +161,6 @@ def main():
                 raise RuntimeError(
                     'no trybooking data in {}'.format(args.tbreport)
                 )
-
-    player_keys = [
-        ('last name', 'surname'),
-        ('first name', 'firstname'),
-        ('uniform number', 'singlet#'),
-        ('date of birth', 'd.o.b'),
-        ('parent/guardian1 first name', 'parent firstname'),
-        ('parent/guardian1 last name', 'parent surname'),
-        ('parent/guardian1 mobile number', 'parent mobile'),
-        ('parent/guardian1 email', 'parent email'),
-    ]
 
     # ssl_ctx = create_default_context()
     # with SMTP_SSL(smtp_host, smtp_port, context=ssl_ctx) as smtp:
@@ -188,7 +192,13 @@ def main():
                 print('\tSKIPPING (no recipients).', file=sys.stderr)
                 continue
 
-            pt = []
+            header = []
+            if args.header:
+                with open(args.header, 'r') as fd:
+                    for line in fd.read().splitlines():
+                        header.append('{}\n'.format(line))
+
+            pt = []  # player table
             if args.details:
                 pt.append('  <table class="pt">\n')
                 pt.append('   <thead>\n')
@@ -226,15 +236,17 @@ def main():
                 pt.append('   </tbody>\n')
                 pt.append('  </table>\n')
 
+            trailer = []
             if args.trailer:
                 with open(args.trailer, 'r') as fd:
                     for line in fd.read().splitlines():
-                        pt.append('{}\n'.format(line))
+                        trailer.append('{}\n'.format(line))
 
             msg = MIMEText(
                 body_fmt.format(
                     '{', '}',
                     nesc(admin_email),
+                    ''.join(header),
                     nesc(t.name),
                     nesc(t.edjba_id),
                     nesc(t.edjba_code),
@@ -250,6 +262,7 @@ def main():
                     nesc(t.regurl),
                     nesc(t.regurl),
                     ''.join(pt),
+                    ''.join(trailer),
                 ),
                 'html',
             )

@@ -2,10 +2,10 @@ PREFIX = $(HOME)/basketball/shooters
 
 all:
 
+# _PYTHON_SYSCONFIGDATA_NAME=_sysconfigdata__linux_x86_64-linux-gnu
 install: all
-	_PYTHON_SYSCONFIGDATA_NAME=_sysconfigdata__linux_x86_64-linux-gnu \
-		python3 setup.py install --prefix "$(PREFIX)" \
-			--single-version-externally-managed --root=/
+	python3 setup.py install --prefix "$(PREFIX)" \
+		--single-version-externally-managed --root=/
 
 uninstall:
 	rm -rf "$(PREFIX)/bin" "$(PREFIX)/lib"
