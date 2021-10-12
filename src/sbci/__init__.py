@@ -21,8 +21,7 @@ from urllib.request import urlopen
 from urllib3.poolmanager import PoolManager
 
 
-# season = os.getenv('SEASON', '2021-summer')
-season = os.getenv('SEASON', '2021-winter')
+season = os.getenv('SEASON', '2022-summer')
 provider = os.getenv('PROVIDER', 'PlayHQ')
 shootersdir = os.getenv(
     'SHOOTERSDIR',
@@ -40,8 +39,8 @@ trybookingdir = os.getenv(
 )
 
 
-clinicterm = os.getenv('CLINICTERM', '2021-Term2')
-cliniclabel = os.getenv('CLINICLABEL', 'Term 2, 2021')
+clinicterm = os.getenv('CLINICTERM', '2021-Term4')
+cliniclabel = os.getenv('CLINICLABEL', 'Term 4, 2021')
 clinicdir = os.getenv(
     'CLINICDIR',
     os.path.join(trybookingdir, 'Clinic', clinicterm)

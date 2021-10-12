@@ -99,6 +99,7 @@ def main():
     admin_email = 'admin@shootersbasketball.org.au'
     testing_email = 'murrayjens@gmail.com'
     subject_fmt = 'Registration info for {}'
+    season_label = config.get('season', season.replace('-', ' ').title())
     body_fmt = '''\
 <html>
  <head>
@@ -115,7 +116,7 @@ def main():
   <table>
    <tr>
     <td>Season:</td><td>&nbsp;</td><td><b><tt>''' \
-        + season.replace('-', ' ').title() + '''</tt></b></td>
+        + season_label + '''</tt></b></td>
    </tr>
    <tr>
     <td></td><td></td><td></td>
