@@ -1,16 +1,19 @@
-from __future__ import print_function
-from argparse import ArgumentParser
-from html import escape
-from email.mime.text import MIMEText
-from getpass import getpass
-import os
-from sbci import fetch_teams, fetch_participants, load_config, \
-    fetch_trybooking, find_in_tb, to_fullname, season
-from smtplib import SMTP, SMTPException
 # from smtplib import SMTP_SSL
 # from ssl import create_default_context, SSLError
+
+from __future__ import print_function
+
+from argparse import ArgumentParser
+from email.mime.text import MIMEText
+from getpass import getpass
+from html import escape
+import os
+from smtplib import SMTP, SMTPException
 import sys
 from time import sleep
+
+from sbci import fetch_teams, fetch_participants, load_config, \
+    fetch_trybooking, find_in_tb, to_fullname, season
 
 
 def nesc(s):
@@ -59,7 +62,7 @@ def main():
                         help='send to coaches instead of team managers')
     parser.add_argument('--details', '-d', action='store_true',
                         help='include coach and player details')
-    parser.add_argument('--nocoach', action='store_true',
+    parser.add_argument('--nocoach', '-N', action='store_true',
                         help='do not include coach details')
     parser.add_argument('--dryrun', '-n', action='store_true',
                         help='dont actually send email')
@@ -77,9 +80,9 @@ def main():
                         help='specify trybooking report file to use')
     parser.add_argument('--trybooking', '-T', action='store_true',
                         help='check trybooking payment and include in details')
-    parser.add_argument('--header', default=None, metavar='F',
+    parser.add_argument('--prepend', '-P', default=None, metavar='F',
                         help='specify file to prepend to html body')
-    parser.add_argument('--trailer', default=None, metavar='F',
+    parser.add_argument('--append', '-A', default=None, metavar='F',
                         help='specify file to append to html body')
     args = parser.parse_args()
 
@@ -192,11 +195,11 @@ def main():
                 print('\tSKIPPING (no recipients).', file=sys.stderr)
                 continue
 
-            header = []
-            if args.header:
-                with open(args.header, 'r') as fd:
+            prepend_html = []
+            if args.prepend:
+                with open(args.prepend, 'r') as fd:
                     for line in fd.read().splitlines():
-                        header.append('{}\n'.format(line))
+                        prepend_html.append('{}\n'.format(line))
 
             pt = []  # player table
             if args.details:
@@ -236,17 +239,17 @@ def main():
                 pt.append('   </tbody>\n')
                 pt.append('  </table>\n')
 
-            trailer = []
-            if args.trailer:
-                with open(args.trailer, 'r') as fd:
+            append_html = []
+            if args.append:
+                with open(args.append, 'r') as fd:
                     for line in fd.read().splitlines():
-                        trailer.append('{}\n'.format(line))
+                        append_html.append('{}\n'.format(line))
 
             msg = MIMEText(
                 body_fmt.format(
                     '{', '}',
                     nesc(admin_email),
-                    ''.join(header),
+                    ''.join(prepend_html),
                     nesc(t.name),
                     nesc(t.edjba_id),
                     nesc(t.edjba_code),
@@ -262,7 +265,7 @@ def main():
                     nesc(t.regurl),
                     nesc(t.regurl),
                     ''.join(pt),
-                    ''.join(trailer),
+                    ''.join(append_html),
                 ),
                 'html',
             )
