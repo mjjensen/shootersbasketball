@@ -78,7 +78,6 @@ def main():
 
             name = to_fullname(p['first name'], p['last name'])
             dob = to_date(p['date of birth'])
-            snum = p['uniform number'].strip()
 
             if args.rollover:
                 cag = int(find_age_group(config['age_groups'], dob)[1:])
@@ -166,10 +165,9 @@ def main():
                         )
 
                 lines.append(
-                    '    {:30} - {}{}, #{:>2}{}{}'.format(
+                    '    {:30} - {}{}{}{}'.format(
                         name,
                         dob.strftime('%d/%m/%Y'), extra1,
-                        snum,
                         extra2,
                         extra3,
                     )

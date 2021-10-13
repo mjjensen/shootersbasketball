@@ -126,10 +126,10 @@ def main():
 
             if dob < ag_start or (args.younger and ag_end and dob > ag_end):
                 print(
-                    '***** {:12} [{}] : {} - {}, #{:>2}'.format(
+                    '***** {:12} [{}] : {} - {}'.format(
                         t.sname, t.edjba_code,
                         to_fullname(p['first name'], p['last name']),
-                        p['date of birth'], p['uniform number'].strip(),
+                        p['date of birth'],
                     )
                 )
                 # print('S={},E={},D={}'.format(ag_start, ag_end, dob))

@@ -146,7 +146,6 @@ def main():
         player_keys = [
             ('last name', 'surname'),
             ('first name', 'firstname'),
-            ('uniform number', 'singlet#'),
             ('date of birth', 'd.o.b'),
             ('parent/guardian1 first name', 'parent firstname'),
             ('parent/guardian1 last name', 'parent surname'),
