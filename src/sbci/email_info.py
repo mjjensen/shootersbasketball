@@ -67,7 +67,7 @@ def main():
     parser.add_argument('--dryrun', '-n', action='store_true',
                         help='dont actually send email')
     parser.add_argument('--pause', '-p', action='store_true',
-                        help='pause for 2 secs between messages')
+                        help='pause for 5 secs between messages')
     parser.add_argument('--partreport', default=None, metavar='F',
                         help='specify participants report file to use')
     parser.add_argument('--testing', '-t', action='store_true',
@@ -274,6 +274,7 @@ def main():
             msg['To'] = ', '.join(recips)
             msg['Cc'] = admin_email
             msg['Subject'] = subject_fmt.format(t.name)
+            msg['Return-Path'] = admin_email
 
             print('\tsending to {}...'.format(recips), end='', file=sys.stderr)
             if args.testing:
@@ -304,7 +305,7 @@ def main():
             if args.testing:
                 break
             if args.pause:
-                sleep(2)
+                sleep(5)
 
         smtp.quit()
 
