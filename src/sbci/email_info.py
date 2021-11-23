@@ -3,12 +3,13 @@
 
 from __future__ import print_function
 
-from argparse import ArgumentParser
+from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from email.mime.text import MIMEText
 from getpass import getpass
 from html import escape
 import os
 from smtplib import SMTP, SMTPException
+from ssl import create_default_context, Purpose
 import sys
 from time import sleep
 
@@ -37,6 +38,12 @@ class SMTP_dummy(object):
             os.mkdir('out')
         self.num = 0
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        pass
+
     def set_debuglevel(self, n):
         pass
 
@@ -55,7 +62,7 @@ class SMTP_dummy(object):
 
 def main():
 
-    parser = ArgumentParser()
+    parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument('--auth', '-a', action='store_true',
                         help='authenticate to the email server')
     parser.add_argument('--coaches', '-c', action='store_true',
@@ -84,17 +91,36 @@ def main():
                         help='specify file to prepend to html body')
     parser.add_argument('--append', '-A', default=None, metavar='F',
                         help='specify file to append to html body')
+    parser.add_argument('--relay', '-R', default='smtp-relay.gmail.com:587',
+                        metavar='H[:P]', help='specify relay host and port')
+    parser.add_argument('--fqdn', '-F', default=None, metavar='H',
+                        help='specify the fqdn for the EHLO request')
     args = parser.parse_args()
 
     config = load_config()
 
-    smtp_host = '192.168.128.200'
+    if ':' in args.relay:
+        smtp_host, smtp_port = args.relay.split(':')
+    else:
+        smtp_host = args.relay
+        smtp_port = 587
+
     if args.auth:
         if 'email_auth' in config:
             smtp_user, smtp_pass = config['email_auth']
         else:
             smtp_user = input('SMTP User: ')
             smtp_pass = getpass('SMTP Password: ')
+
+    smtp_fqdn = args.fqdn
+    if smtp_fqdn is None and 'email_fqdn' in config:
+        smtp_fqdn = config['email_fqdn']
+
+    if args.writefiles:
+        smtp_class = SMTP_dummy
+    else:
+        smtp_class = SMTP
+
 
     admin_email = 'admin@shootersbasketball.org.au'
     testing_email = 'murrayjens@gmail.com'
@@ -165,17 +191,19 @@ def main():
                     'no trybooking data in {}'.format(args.tbreport)
                 )
 
-    # ssl_ctx = create_default_context()
-    # with SMTP_SSL(smtp_host, smtp_port, context=ssl_ctx) as smtp:
-    if True:
-        if args.writefiles:
-            smtp = SMTP_dummy()
-        else:
-            smtp = SMTP(smtp_host)
+    # used this:
+    # https://stackoverflow.com/a/60301124
+
+    with smtp_class(smtp_host, int(smtp_port), smtp_fqdn) as smtp:
 
         # smtp.set_debuglevel(99)
-        if args.auth:
-            smtp.login(smtp_user, smtp_pass)
+
+        if smtp_class is SMTP:
+            smtp.starttls(
+                context=create_default_context(purpose=Purpose.CLIENT_AUTH)
+            )
+            if args.auth:
+                smtp.login(smtp_user, smtp_pass)
 
         for t in teams.values():
 
@@ -307,48 +335,46 @@ def main():
             if args.pause:
                 sleep(5)
 
-        smtp.quit()
+    if args.details and args.trybooking:
 
-        if args.details and args.trybooking:
+        if tb['by-name']:
 
-            if tb['by-name']:
+            print(
+                '{} trybooking tickets unmatched'.format(
+                    len(tb['by-name'])
+                ),
+                file=sys.stderr
+            )
+
+            for name, elist in tb['by-name'].items():
 
                 print(
-                    '{} trybooking tickets unmatched'.format(
-                        len(tb['by-name'])
+                    '\t{} [{}]'.format(
+                        name, ','.join(e['Ticket Number'] for e in elist)
                     ),
                     file=sys.stderr
                 )
 
-                for name, elist in tb['by-name'].items():
+        if tb['by-tnum']:
 
-                    print(
-                        '\t{} [{}]'.format(
-                            name, ','.join(e['Ticket Number'] for e in elist)
-                        ),
-                        file=sys.stderr
-                    )
+            print('{} trybooking tickets unused'.format(len(tb['by-tnum'])),
+                  file=sys.stderr)
 
-            if tb['by-tnum']:
+            for tnum, elist in tb['by-tnum'].items():
 
-                print('{} trybooking tickets unused'.format(len(tb['by-tnum'])),
-                      file=sys.stderr)
+                if len(elist) != 1:
+                    raise RuntimeError('huh? (1)')
 
-                for tnum, elist in tb['by-tnum'].items():
+                entry = elist[0]
+                if entry['Ticket Number'] != tnum:
+                    raise RuntimeError('huh? (2)')
 
-                    if len(elist) != 1:
-                        raise RuntimeError('huh? (1)')
+                name = to_fullname(
+                    entry['Ticket Data: Player First Name'],
+                    entry['Ticket Data: Player Family Name'],
+                )
 
-                    entry = elist[0]
-                    if entry['Ticket Number'] != tnum:
-                        raise RuntimeError('huh? (2)')
-
-                    name = to_fullname(
-                        entry['Ticket Data: Player First Name'],
-                        entry['Ticket Data: Player Family Name'],
-                    )
-
-                    print('\t{} [{}]'.format(name, tnum), file=sys.stderr)
+                print('\t{} [{}]'.format(name, tnum), file=sys.stderr)
 
     return 0
 

@@ -66,9 +66,9 @@ def main():
             ngteams += 1
             ngirls += len(t.players)
 
+        ctag = None
+        cags = {}
         if args.rollover:
-            ctag = None
-            cags = {}
             ntag = None
             nags = {}
 
@@ -79,12 +79,12 @@ def main():
             name = to_fullname(p['first name'], p['last name'])
             dob = to_date(p['date of birth'])
 
-            if args.rollover:
-                cag = int(find_age_group(config['age_groups'], dob)[1:])
-                cags[cag] = cags.setdefault(cag, 0) + 1
-                if ctag is None or cag > ctag:
-                    ctag = cag
+            cag = int(find_age_group(config['age_groups'], dob)[1:])
+            cags[cag] = cags.setdefault(cag, 0) + 1
+            if ctag is None or cag > ctag:
+                ctag = cag
 
+            if args.rollover:
                 nag = int(
                     find_age_group(config['age_groups_next_season'], dob)[1:]
                 )
@@ -174,7 +174,12 @@ def main():
                 )
 
         extra = ''
-        if args.rollover:
+        if not args.rollover:
+            extra += ' ['
+            for k, v in sorted(cags.items(), key=lambda i: i[0]):
+                extra += ' {:d}xU{:02d}'.format(v, k)
+            extra += ' ]'
+        else:
             if ctag is None:
                 sctag = '___'
             else:
