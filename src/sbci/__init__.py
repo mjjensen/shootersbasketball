@@ -192,13 +192,23 @@ def find_team(teams, func=any, **kwds):
     return None
 
 
-def load_config(filename='config.json', prefix=seasondir):
+def load_config(filename='config.json', prefix=seasondir, verbose=False):
     config = {}
     if not os.path.exists(filename):
         filename = os.path.join(prefix, filename)
     if os.path.exists(filename):
+        if verbose:
+            print(
+                'load_config: using file: {} (realpath={})'.format(
+                    filename, os.path.realpath(filename)
+                ),
+                file=sys.stderr
+            )
         with open(filename, 'rb') as cfd:
             config.update(loads(cfd.read().decode()))
+    else:
+        if verbose:
+            print('load_config: no config file found!', file=sys.stderr)
     return config
 
 

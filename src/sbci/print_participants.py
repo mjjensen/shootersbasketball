@@ -30,9 +30,9 @@ def main():
                         help='print verbose messages')
     args = parser.parse_args()
 
-    config = load_config()
+    config = load_config(verbose=args.verbose)
 
-    teams = fetch_teams()
+    teams = fetch_teams(verbose=args.verbose)
 
     fetch_participants(teams, args.partreport, args.verbose)
 
