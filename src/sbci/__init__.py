@@ -118,11 +118,30 @@ sql_query = '''
 '''.format(', '.join(map(lambda elem: elem[0], sql_attr_map)))
 
 
-def fetch_teams(teamsfile='teams.sqlite3'):
+def verbose_info(dest=sys.stderr):
+    print(
+        'season={}\nprovider={}\nshootersdir={}\nseasondir={}'.format(
+            season, provider, shootersdir, seasondir
+        ),
+        file=dest
+    )
+
+
+def fetch_teams(teamsfile='teams.sqlite3', verbose=False):
+    '''TODO - document this'''
+
     if not os.path.exists(teamsfile):
         teamsfile = os.path.join(seasondir, teamsfile)
         if not os.path.exists(teamsfile):
             raise RuntimeError('cannot locate teams sqlite database')
+
+    if verbose:
+        print(
+            'fetch_teams: using DB file: {} (realpath={})'.format(
+                teamsfile, os.path.realpath(teamsfile)
+            ),
+            file=sys.stderr
+        )
 
     conn = connect(teamsfile)
     conn.row_factory = Row

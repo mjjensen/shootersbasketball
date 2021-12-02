@@ -1,6 +1,6 @@
 from __future__ import print_function
 from argparse import ArgumentParser
-from sbci import fetch_teams
+from sbci import fetch_teams, verbose_info
 from re import sub
 import sys
 
@@ -20,13 +20,15 @@ def main():
                         help='print info as csv instead of multi-line text')
     parser.add_argument('--terse', action='store_true',
                         help='print one terse line instead of multi-line text')
+    parser.add_argument('--verbose', action='store_true',
+                        help='be verbose about actions')
     parser.add_argument('--details', action='store_true',
                         help='print more detail in multi-line text')
     parser.add_argument('--urls', action='store_true',
                         help='print list of teams and urls')
     args = parser.parse_args()
 
-    teams = fetch_teams()
+    teams = fetch_teams(verbose=args.verbose)
 
     # info to print for a person
     p_fmt = '{} <{}>, {} [WWC: #{}, exp: {}]'
