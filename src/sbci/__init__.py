@@ -39,18 +39,18 @@ trybookingdir = os.getenv(
 )
 
 
-clinicterm = os.getenv('CLINICTERM', '2021-Term4')
-cliniclabel = os.getenv('CLINICLABEL', 'Term 4, 2021')
+clinicterm = os.getenv('CLINICTERM', '2022-Term1')
+cliniclabel = os.getenv('CLINICLABEL', 'Term 1, 2022')
 clinicdir = os.getenv(
     'CLINICDIR',
-    os.path.join(trybookingdir, 'Clinic', clinicterm)
+    os.path.join(shootersdir, provider, 'Clinic', clinicterm)
 )
 
 
-develterm = os.getenv('DEVELTERM', '2021-Term1-Monday')
+develterm = os.getenv('DEVELTERM', '2022-Term1-Friday')
 develdir = os.getenv(
     'DEVELDIR',
-    os.path.join(trybookingdir, 'Devel', develterm)
+    os.path.join(shootersdir, provider, 'Devel', develterm)
 )
 
 
