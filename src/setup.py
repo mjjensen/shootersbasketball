@@ -50,6 +50,7 @@ Copyright (C) 2018-21 Murray Jensen - All Rights Reserved.
             'print_participants = sbci.print_participants:main',
             'print_teams_db = sbci.print_teams_db:main',
             'process_csv_clinic = sbci.process_csv_clinic:main',
+            'process_csv_clinic2 = sbci.process_csv_clinic2:main',
             'process_csv_development_teams'
             ' = sbci.process_csv_development_teams:main',
             'process_csv_training_forms = sbci.process_csv_training_forms:main',

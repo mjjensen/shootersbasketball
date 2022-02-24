@@ -40,7 +40,6 @@ trybookingdir = os.getenv(
 
 
 clinicterm = os.getenv('CLINICTERM', '2022-Term1')
-cliniclabel = os.getenv('CLINICLABEL', 'Term 1, 2022')
 clinicdir = os.getenv(
     'CLINICDIR',
     os.path.join(shootersdir, provider, 'Clinic', clinicterm)
