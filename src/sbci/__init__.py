@@ -288,7 +288,11 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True):
         if report_file is None:
             raise RuntimeError('no participant report found!')
         if verbose:
-            print('[participant report selected: {}]'.format(report_file))
+            print(
+                '[participant report selected: {} (realpath={})]'.format(
+                    report_file, os.path.realpath(report_file)
+                )
+            )
 
     with open(report_file, 'r', newline='') as csvfile:
 
@@ -378,7 +382,11 @@ def fetch_trybooking(tbmap=None, report_file=None, verbose=False):
         if report_file is None:
             raise RuntimeError('no trybooking report found!')
         if verbose:
-            print('[trybooking report selected: {}]'.format(report_file))
+            print(
+                '[trybooking report selected: {} (realpath={})]'.format(
+                    report_file, os.path.realpath(report_file)
+                )
+            )
 
     tb = {}
 
