@@ -16,9 +16,20 @@ def main():
     parser = ArgumentParser()
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
+    parser.add_argument('teams', nargs='*',
+                        help='limit checks to specified teams')
     args = parser.parse_args()
 
     teams = fetch_teams()
+
+    if args.teams:
+        newteams = {}
+        for name in args.teams:
+            if name not in teams:
+                print('unknown team name: {}'.format(name), file=sys.stderr)
+                sys.exit(1)
+            newteams[name] = teams[name]
+        teams = newteams
 
     for t in teams.values():
 
