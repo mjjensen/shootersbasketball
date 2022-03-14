@@ -10,6 +10,7 @@ import sys
 
 from sbci import make_address, make_phone, clinicdir, clinicterm, \
     load_config, to_bool, to_date, to_datetime, to_time, latest_report
+from pathlib import Path
 
 
 def main():
@@ -25,6 +26,8 @@ def main():
                         help='file to use as reference for last run')
     parser.add_argument('--refdt', default=None, metavar='T',
                         help='datetime to use as reference for last run')
+    parser.add_argument('--notouch', action='store_true',
+                        help='do not touch the reference file')
     parser.add_argument('--basename', default='-', metavar='N',
                         help='basename of output file (- = stdout)')
     parser.add_argument('--asxls', action='store_true',
@@ -72,15 +75,30 @@ def main():
             ), file=sys.stderr
         )
 
+    reffile = args.reffile
+    if reffile is None:
+        reffile = '.reffile'
+        if not os.path.exists(reffile):
+            reffile = os.path.join(clinicdir, reffile)
+    if args.verbose:
+        print(
+            '[reference file = {} (realpath={})]'.format(
+                reffile, os.path.realpath(reffile)
+            ), file=sys.stderr
+        )
+
     if args.refdt is not None:
         refdt = dateutil_parse(args.refdt, dayfirst=True, fuzzy=True)
-    elif args.reffile is not None:
-        refdt = datetime.fromtimestamp(os.stat(args.reffile).st_mtime)
     else:
-        refdt = None
-
-    if refdt is not None and args.verbose:
-        print('[reference datetime: {}]'.format(refdt), file=sys.stderr)
+        if os.path.exists(reffile):
+            refdt = datetime.fromtimestamp(os.stat(reffile).st_mtime)
+        else:
+            refdt = None
+    if args.verbose:
+        if refdt is not None:
+            print('[reference datetime = {}]'.format(refdt), file=sys.stderr)
+        else:
+            print('[No reference datetime available]', file=sys.stderr)
 
     config = load_config(prefix=clinicdir)
 
@@ -120,7 +138,7 @@ def main():
                 inrec['parent/guardian1 last name']
 
             regodt = to_datetime(inrec['registration date'], '%d/%m/%Y')
-            if refdt is None or refdt < regodt:
+            if refdt is not None and refdt < regodt:
                 new = '*'
             else:
                 new = ''
@@ -132,11 +150,11 @@ def main():
                 parent=parent,
                 email=email,
                 phone=make_phone(phone),
-                prepaid=0,
+                prepaid=[],
             )
 
     if len(orecs) == 0:
-        print('No CSV records in "{}"'.format(partfile))
+        print('No CSV records in "{}"'.format(partfile), file=sys.stderr)
         sys.exit(0)
 
     with open(merchfile, 'r', newline='') as infile:
@@ -144,6 +162,7 @@ def main():
         reader = DictReader(infile)
 
         for inrec in reader:
+            orderdt = to_datetime(inrec['Order Date'], '%d/%m/%Y')
             name = inrec['First Name'] + ' ' + inrec['Last Name']
             quantity = int(inrec['Quantity'])
             sku = inrec['Merchandise SKU']
@@ -156,16 +175,24 @@ def main():
                     raise RuntimeError(
                         'quantity for FULLTERM is not 1 ({:d})'.format(quantity)
                     )
-                orecs[name]['prepaid'] += len(config['dates'])
-            elif sku == 'SINGLE':
-                orecs[name]['prepaid'] += quantity
+                quantity = len(config['dates'])
+            elif sku != 'SINGLE':
+                raise RuntimeError('Unknown SKU {}!'.format(sku))
+
+            if refdt is not None and refdt < orderdt:
+                val = 'new'
+            else:
+                val = 'old'
+
+            for _ in range(quantity):
+                orecs[name]['prepaid'].append(val)
 
     if args.email:
-        emails = set()
+        emails = set()  # using a set() will remove duplicates
         for outrec in orecs.values():
             emails.add(outrec['email'].strip().lower())
         for email in sorted(emails):
-            print(email)
+            print(email, file=sys.stderr)
 
     if args.asxls:
         from xlwt import Workbook
@@ -271,31 +298,46 @@ def main():
         sheet.set_remove_splits(True)
         ndates = len(config['dates'])
         pnum = 0
-        for outrec in orecs.values():
+        for outrec in sorted(orecs.values(), key=lambda d: d['name'].lower()):
             pnum += 1
             r += 1
-            sheet.write(r, 0, str(pnum), styles['normal'])
-            sheet.write(r, 1, ' ', styles['normal'])
+            if outrec['new'] == '*':
+                style = styles['normal_highlighted']
+                ssuf = '_highlighted'
+            else:
+                style = styles['normal']
+                ssuf = ''
+            sheet.write(r, 0, str(pnum), style)
+            sheet.write(r, 1, ' ', style)
             for c, (k, s) in enumerate(col1styles.items()):
                 v = outrec[k]
                 s = col1styles[k]
-                sheet.write(r, 2 + c, v, styles[s])
-            for i in range(outrec['prepaid']):
-                sheet.write(r, 2 + c + 1 + i, 'PP', styles['normal'])
+                sheet.write(r, 2 + c, v, styles[s + ssuf])
+            i = 0
+            for v in outrec['prepaid']:
+                if v == 'old':
+                    ppstyle = styles['normal']
+                else:
+                    ppstyle = styles['normal_highlighted']
+                sheet.write(r, 2 + c + 1 + i, 'PP', ppstyle)
+                i += 1
             while i < ndates - 1:
-                sheet.write(r, 2 + c + 2 + i, '  ', styles['normal'])
+                sheet.write(r, 2 + c + 2 + i, '  ', style)
                 i += 1
             r += 1
             for c, (k, s) in enumerate(col2styles.items()):
                 v = outrec[k]
                 s = col2styles[k]
-                sheet.write(r, 2 + c, v, styles[s])
+                sheet.write(r, 2 + c, v, styles[s + ssuf])
             c += 1
-            sheet.write(r, 2 + c, '  ', styles['normal'])
+            sheet.write(r, 2 + c, '  ', style)
             c += 1
             for i in range(len(config['dates'])):
-                sheet.write(r, 2 + c + i, '  ', styles['normal'])
+                sheet.write(r, 2 + c + i, '  ', style)
         book.save(sys.stdout.buffer)
+
+    if not args.notouch:
+        Path(reffile).touch()
 
     return 0
 
