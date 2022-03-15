@@ -42,7 +42,7 @@ def main():
     if not os.path.isdir(reportdir):
         reportdir = os.path.join(clinicdir, args.reportdir)
     if not os.path.isdir(reportdir):
-        raise RuntimeError('cannot locate reports directory')
+        raise RuntimeError('cannot locate reports directory!')
     if args.verbose:
         print(
             '[reports found in directory {} (realpath={})]'.format(
@@ -55,6 +55,8 @@ def main():
         partfile, dt = latest_report(
             'program_participant', reportdir, verbose=args.verbose
         )
+        if partfile is None:
+            raise RuntimeError('cannot locate program participant file!')
     if args.verbose:
         print(
             '[program participant report file = {} (realpath={})]'.format(
@@ -68,6 +70,8 @@ def main():
             'merchandiseorders', reportdir, r'^merchandiseorders_(\d{8})\.csv$',
             lambda m: datetime.strptime(m.group(1), '%Y%m%d'), args.verbose
         )
+        if merchfile is None:
+            raise RuntimeError('cannot locate merchandise order file!')
     if args.verbose:
         print(
             '[merchandise orders report file = {} (realpath={})]'.format(
@@ -98,7 +102,7 @@ def main():
         if refdt is not None:
             print('[reference datetime = {}]'.format(refdt), file=sys.stderr)
         else:
-            print('[No reference datetime available]', file=sys.stderr)
+            print('[No reference datetime available!]', file=sys.stderr)
 
     config = load_config(prefix=clinicdir)
 
@@ -151,6 +155,7 @@ def main():
                 email=email,
                 phone=make_phone(phone),
                 prepaid=[],
+                paid=' ',
             )
 
     if len(orecs) == 0:
@@ -161,11 +166,16 @@ def main():
 
         reader = DictReader(infile)
 
+        inrecs = []
         for inrec in reader:
             orderdt = to_datetime(inrec['Order Date'], '%d/%m/%Y')
             name = inrec['First Name'] + ' ' + inrec['Last Name']
             quantity = int(inrec['Quantity'])
             sku = inrec['Merchandise SKU']
+            inrecs.append((orderdt, name, quantity, sku))
+
+        for data in sorted(inrecs, key=lambda t: t[0]):
+            orderdt, name, quantity, sku = data
 
             if name not in orecs:
                 raise RuntimeError('unknown participant {}!'.format(name))
@@ -176,6 +186,7 @@ def main():
                         'quantity for FULLTERM is not 1 ({:d})'.format(quantity)
                     )
                 quantity = len(config['dates'])
+                orecs[name]['paid'] = 'Full'
             elif sku != 'SINGLE':
                 raise RuntimeError('Unknown SKU {}!'.format(sku))
 
@@ -224,6 +235,12 @@ def main():
                 'borders: left thin, right thin, top thin, bottom thin',
                 num_format_str='@',
             ),
+            'right': easyxf(
+                'font: name Arial, height 280; '
+                'align: wrap off, vertical centre, horizontal right; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='@',
+            ),
             'currency': easyxf(
                 'font: name Arial, height 280; '
                 'align: wrap off, vertical centre, horizontal right; '
@@ -243,36 +260,37 @@ def main():
                 num_format_str='YYYY-MM-DD HH:MM:SS AM/PM',
             ),
             'normal_highlighted': easyxf(
-                'font: name Arial, height 280; '
-                'pattern: pattern solid, back_colour light_yellow; '
+                'font: name Arial, height 280, colour red; '
                 'align: wrap off, vertical centre, horizontal left; '
                 'borders: left thin, right thin, top thin, bottom thin',
                 num_format_str='@',
             ),
             'centred_highlighted': easyxf(
-                'font: name Arial, height 280; '
-                'pattern: pattern solid, back_colour light_yellow; '
+                'font: name Arial, height 280, colour red; '
                 'align: wrap off, vertical centre, horizontal centre; '
                 'borders: left thin, right thin, top thin, bottom thin',
                 num_format_str='@',
             ),
+            'right_highlighted': easyxf(
+                'font: name Arial, height 280, colour red; '
+                'align: wrap off, vertical centre, horizontal right; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='@',
+            ),
             'currency_highlighted': easyxf(
-                'font: name Arial, height 280; '
-                'pattern: pattern solid, back_colour light_yellow; '
+                'font: name Arial, height 280, colour red; '
                 'align: wrap off, vertical centre, horizontal right; '
                 'borders: left thin, right thin, top thin, bottom thin',
                 num_format_str='$#,##0.00',
             ),
             'date_highlighted': easyxf(
-                'font: name Arial, height 280; '
-                'pattern: pattern solid, back_colour light_yellow; '
+                'font: name Arial, height 280, colour red; '
                 'align: wrap off, vertical centre, horizontal centre; '
                 'borders: left thin, right thin, top thin, bottom thin',
                 num_format_str='YYYY-MM-DD',
             ),
             'datetime_highlighted': easyxf(
-                'font: name Arial, height 280; '
-                'pattern: pattern solid, back_colour light_yellow; '
+                'font: name Arial, height 280, colour red; '
                 'align: wrap off, vertical centre, horizontal centre; '
                 'borders: left thin, right thin, top thin, bottom thin',
                 num_format_str='YYYY-MM-DD HH:MM:SS AM/PM',
@@ -302,13 +320,17 @@ def main():
             pnum += 1
             r += 1
             if outrec['new'] == '*':
-                style = styles['normal_highlighted']
+                normal_style = styles['normal_highlighted']
+                centred_style = styles['centred_highlighted']
+                right_style = styles['right_highlighted']
                 ssuf = '_highlighted'
             else:
-                style = styles['normal']
+                normal_style = styles['normal']
+                centred_style = styles['centred']
+                right_style = styles['right']
                 ssuf = ''
-            sheet.write(r, 0, str(pnum), style)
-            sheet.write(r, 1, ' ', style)
+            sheet.write(r, 0, str(pnum), right_style)
+            sheet.write(r, 1, outrec['paid'], centred_style)
             for c, (k, s) in enumerate(col1styles.items()):
                 v = outrec[k]
                 s = col1styles[k]
@@ -316,24 +338,26 @@ def main():
             i = 0
             for v in outrec['prepaid']:
                 if v == 'old':
-                    ppstyle = styles['normal']
+                    ppstyle = styles['centred']
                 else:
-                    ppstyle = styles['normal_highlighted']
+                    ppstyle = styles['centred_highlighted']
                 sheet.write(r, 2 + c + 1 + i, 'PP', ppstyle)
                 i += 1
             while i < ndates - 1:
-                sheet.write(r, 2 + c + 2 + i, '  ', style)
+                sheet.write(r, 2 + c + 2 + i, '  ', centred_style)
                 i += 1
             r += 1
+            sheet.write(r, 0, '  ', normal_style)
+            sheet.write(r, 1, '  ', normal_style)
             for c, (k, s) in enumerate(col2styles.items()):
                 v = outrec[k]
                 s = col2styles[k]
                 sheet.write(r, 2 + c, v, styles[s + ssuf])
             c += 1
-            sheet.write(r, 2 + c, '  ', style)
+            sheet.write(r, 2 + c, '  ', normal_style)
             c += 1
             for i in range(len(config['dates'])):
-                sheet.write(r, 2 + c + i, '  ', style)
+                sheet.write(r, 2 + c + i, '  ', normal_style)
         book.save(sys.stdout.buffer)
 
     if not args.notouch:
