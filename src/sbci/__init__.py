@@ -33,6 +33,12 @@ seasondir = os.getenv(
 )
 
 
+xerodir = os.getenv(
+    'XERODIR',
+    os.path.join(shootersdir, provider, 'Xero')
+)
+
+
 trybookingdir = os.getenv(
     'TRYBOOKINGDIR',
     os.path.join(shootersdir, 'Trybooking')
