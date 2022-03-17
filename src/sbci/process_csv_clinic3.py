@@ -161,22 +161,22 @@ def main():
             total_subtotal += subtotal
 
             orec = {
-                'Date': pdate.strftime('%d/%m/%Y'),
+                'Date': xdate.strftime('%d/%m/%Y'),
                 'Amount': '{:.2f}'.format(float(netamount) / 100),
                 'Payee': name,
-                'Description': '{} - {}, Price {:.2f}, Quantity {:d}'.format(
+                'Description': '{} - {} - Price {:.2f}, Quantity {:d}'.format(
                     product, label, float(oprice) / 100, quantity
                 ),
-                'Reference': onum,
-                'Cheque Number': pid,
+                'Reference': pid,
+                'Cheque Number': onum,
                 'Account code': config['account'],
                 'Tax Rate (Display Name)': config['taxrate'],
                 'Tracking1': config['tracking1'],
                 'Tracking2': config['tracking2'],
-                'Transaction Type': None,
-                'Analysis code': None,
+                'Transaction Type': 'credit',
+                'Analysis code': oid,
                 'PlayHQ Fee': '{:.2f}'.format(float(phqfee) / 100),
-                'Payout ID': pid,
+                'Payout Date:': pdate.strftime('%d/%m/%Y'),
             }
 
             orecs.append(orec)
@@ -194,15 +194,8 @@ def main():
             order_item_ids[oid].append(orec)
 
     if len(orecs) == 0:
-        raise RuntimeError('No records were collected.')
-
-    if args.verbose:
-        print('total subtotal = ${:.2f}'.format(float(total_subtotal) / 100),
-              file=sys.stderr)
-        print('total phqfee = ${:.2f}'.format(float(total_phqfee) / 100),
-              file=sys.stderr)
-        print('total netamount = ${:.2f}'.format(float(total_netamount) / 100),
-              file=sys.stderr)
+        print('No records were collected.', file=sys.stderr)
+        return 0
 
     if total_subtotal - total_phqfee != total_netamount:
         raise RuntimeError(
@@ -212,6 +205,15 @@ def main():
                 float(total_netamount) / 100
             )
         )
+
+    if args.verbose:
+        print('{} records were collected.'.format(len(orecs)), file=sys.stderr)
+        print('total subtotal = ${:.2f}'.format(float(total_subtotal) / 100),
+              file=sys.stderr)
+        print('total phqfee = ${:.2f}'.format(float(total_phqfee) / 100),
+              file=sys.stderr)
+        print('total netamount = ${:.2f}'.format(float(total_netamount) / 100),
+              file=sys.stderr)
 
     if os.path.exists(xerofile):
         raise RuntimeError('will not overwrite file {}'.format(xerofile))
@@ -223,7 +225,7 @@ def main():
             writer.writerow(outrec)
 
     for outrec in orecs:
-        db.set(outrec['Payout ID'], dumps(outrec))
+        db.set(outrec['Reference'], dumps(outrec))
 
     return 0
 
