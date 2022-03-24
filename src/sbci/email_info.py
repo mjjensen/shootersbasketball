@@ -33,7 +33,7 @@ def person_tr(label, name, email, mobile):
 
 class SMTP_dummy(object):
 
-    def __init__(self, host=None):
+    def __init__(self, *_args):
         if not os.path.isdir('out'):
             os.mkdir('out')
         self.num = 0
