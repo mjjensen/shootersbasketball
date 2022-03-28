@@ -86,7 +86,7 @@ def main():
             # tme = t.tm_email[:22] + '...' if len(t.tm_email) > 25 \
             #     else t.tm_email
             print(
-                '{} {:12} {:18} {:40} {}'.format(
+                '{} {:12} {:20} {:40} {}'.format(
                     t.edjba_code, t.sname, t.tm_name, t.tm_email, t.tm_mobile
                 )
             )
