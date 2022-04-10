@@ -1,20 +1,13 @@
 from argparse import ArgumentParser
-from collections import OrderedDict
 from csv import DictReader, DictWriter
-from datetime import datetime, timedelta
-from io import TextIOWrapper
-from math import isclose
+from datetime import datetime
+from json import dumps
 import os
-from pathlib import Path
-from pupdb.core import PupDB
 import sys
 
-from dateutil.parser import parse as dateutil_parse
-from six import ensure_str
+from pupdb.core import PupDB
 
-from sbci import make_address, make_phone, clinicdir, clinicterm, xerodir, \
-    load_config, to_bool, to_date, to_datetime, to_time, latest_report
-from json import dumps
+from sbci import xerodir, latest_report, load_config, to_date
 
 
 def main():
@@ -34,7 +27,7 @@ def main():
 
     reportdir = args.reportdir
     if not os.path.isdir(reportdir):
-        reportdir = os.path.join(clinicdir, args.reportdir)
+        reportdir = os.path.join(xerodir, args.reportdir)
     if not os.path.isdir(reportdir):
         raise RuntimeError('cannot locate reports directory!')
     if args.verbose:
@@ -46,7 +39,7 @@ def main():
 
     xactfile = args.xactfile
     if xactfile is None:
-        xactfile, dt = latest_report(
+        xactfile, _ = latest_report(
             'transactions', reportdir, r'^transactions_(\d{8})\.csv$',
             lambda m: datetime.strptime(m.group(1), '%Y%m%d'), args.verbose
         )
@@ -81,7 +74,7 @@ def main():
             ), file=sys.stderr
         )
 
-    config = load_config(prefix=clinicdir)
+    config = load_config(prefix=xerodir)
 
     db = PupDB(pupdbfile)
 

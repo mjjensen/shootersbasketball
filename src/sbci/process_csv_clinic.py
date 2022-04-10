@@ -1,54 +1,34 @@
 from argparse import ArgumentParser
-from collections import OrderedDict
 from csv import DictReader
-from datetime import datetime, timedelta
-from dateutil.parser import parse as dateutil_parse
-from io import TextIOWrapper
+from datetime import datetime
 import os
-from six import ensure_str
+from pathlib import Path
 import sys
 
-from sbci import make_address, make_phone, clinicterm, clinicdir, \
-    get_reports, load_config, to_bool, to_date, to_datetime, to_time
+from dateutil.parser import parse as dateutil_parse
+from six import ensure_str
 
-
-def booking_data(inrec):
-    parent = inrec['Booking First Name'] + ' ' + \
-        inrec['Booking Last Name']
-    address = make_address(
-        inrec['Booking Address 1'],
-        inrec['Booking Address 2'],
-        inrec['Booking Suburb'],
-        inrec['Booking Post Code'],
-    )
-    phone = inrec['Booking Telephone']
-    email = inrec['Booking Email']
-    return parent, address, phone, email
-
-
-def ticket_data(inrec):
-    parent = inrec['Ticket Data: Parent/Guardian Name']
-    address = inrec['Ticket Data: Parent/Guardian Address']
-    phone = inrec['Ticket Data: Parent/Guardian Phone']
-    email = inrec['Ticket Data: Parent/Guardian Email']
-    return parent, address, phone, email
+from sbci import make_phone, clinicdir, load_config, to_date, to_datetime, \
+    latest_report
 
 
 def main():
 
     parser = ArgumentParser()
-    parser.add_argument('--csvfile', default=None, metavar='F',
-                        help='csv file containing trybooking report')
+    parser.add_argument('--reportdir', default='reports', metavar='D',
+                        help='directory containing report files')
+    parser.add_argument('--partfile', default=None, metavar='F',
+                        help='csv file containing program participant report')
+    parser.add_argument('--merchfile', default=None, metavar='F',
+                        help='csv file containing merchandise orders report')
     parser.add_argument('--reffile', default=None, metavar='F',
                         help='file to use as reference for last run')
-    parser.add_argument('--refdt', default=None, metavar='D',
+    parser.add_argument('--refdt', default=None, metavar='T',
                         help='datetime to use as reference for last run')
-    parser.add_argument('--basename', default='-', metavar='S',
+    parser.add_argument('--notouch', action='store_true',
+                        help='do not touch the reference file')
+    parser.add_argument('--basename', default='-', metavar='N',
                         help='basename of output file (- = stdout)')
-    parser.add_argument('--ascsv', action='store_true',
-                        help='output csv data (no highlighting)')
-    parser.add_argument('--ashtml', action='store_true',
-                        help='output html data')
     parser.add_argument('--asxls', action='store_true',
                         help='output excel data')
     parser.add_argument('--email', action='store_true',
@@ -57,159 +37,184 @@ def main():
                         help='print verbose messages')
     args = parser.parse_args()
 
-    if args.csvfile is not None:
-        csvfile = args.csvfile
-        reffile = args.reference
-    else:
-        def repkey(e):
-            _, m = e
-            dstr, suff = m.groups()
-            dt = datetime.strptime(dstr, '%d%m%Y')
-            if suff is not None:
-                dt += datetime.timedelta(seconds=int(suff[1:]))
-            return dt
-        rlist = sorted(
-            get_reports(None, clinicdir, r'^(\d{8})(-\d)?.csv$', args.verbose),
-            key=repkey,
-        )
-        try:
-            csvfile = os.path.join(clinicdir, rlist.pop()[0])
-        except IndexError:
-            raise RuntimeError('No Trybooking reports found!')
-        try:
-            reffile = os.path.join(clinicdir, rlist.pop()[0])
-        except IndexError:
-            reffile = None
-
+    reportdir = args.reportdir
+    if not os.path.isdir(reportdir):
+        reportdir = os.path.join(clinicdir, args.reportdir)
+    if not os.path.isdir(reportdir):
+        raise RuntimeError('cannot locate reports directory!')
     if args.verbose:
         print(
-            '[trybooking report file: {}]'.format(csvfile),
-            file=sys.stderr
+            '[reports found in directory {} (realpath={})]'.format(
+                reportdir, os.path.realpath(reportdir)
+            ), file=sys.stderr
         )
-        if reffile is not None:
-            print(
-                '[reference datetime file: {}]'.format(reffile),
-                file=sys.stderr
-            )
+
+    partfile = args.partfile
+    if partfile is None:
+        partfile, _ = latest_report(
+            'program_participant', reportdir, verbose=args.verbose
+        )
+        if partfile is None:
+            raise RuntimeError('cannot locate program participant file!')
+    if args.verbose:
+        print(
+            '[program participant report file = {} (realpath={})]'.format(
+                partfile, os.path.realpath(partfile)
+            ), file=sys.stderr
+        )
+
+    merchfile = args.merchfile
+    if merchfile is None:
+        merchfile, _ = latest_report(
+            'merchandiseorders', reportdir, r'^merchandiseorders_(\d{8})\.csv$',
+            lambda m: datetime.strptime(m.group(1), '%Y%m%d'), args.verbose
+        )
+        if merchfile is None:
+            raise RuntimeError('cannot locate merchandise order file!')
+    if args.verbose:
+        print(
+            '[merchandise orders report file = {} (realpath={})]'.format(
+                merchfile, os.path.realpath(merchfile)
+            ), file=sys.stderr
+        )
+
+    reffile = args.reffile
+    if reffile is None:
+        reffile = '.reffile'
+        if not os.path.exists(reffile):
+            reffile = os.path.join(clinicdir, reffile)
+    if args.verbose:
+        print(
+            '[reference file = {} (realpath={})]'.format(
+                reffile, os.path.realpath(reffile)
+            ), file=sys.stderr
+        )
 
     if args.refdt is not None:
         refdt = dateutil_parse(args.refdt, dayfirst=True, fuzzy=True)
-    elif reffile is not None:
-        refdt = datetime.fromtimestamp(os.stat(reffile).st_mtime)
     else:
-        refdt = None
-
-    if refdt is not None and args.verbose:
-        print('[reference datetime: {}]'.format(refdt), file=sys.stderr)
+        if os.path.exists(reffile):
+            refdt = datetime.fromtimestamp(os.stat(reffile).st_mtime)
+        else:
+            refdt = None
+    if args.verbose:
+        if refdt is not None:
+            print('[reference datetime = {}]'.format(refdt), file=sys.stderr)
+        else:
+            print('[No reference datetime available!]', file=sys.stderr)
 
     config = load_config(prefix=clinicdir)
 
-    with open(csvfile, 'r', newline='') as infile:
-
-        _ = infile.read(1)
+    with open(partfile, 'r', newline='') as infile:
 
         reader = DictReader(infile)
 
-        orecs = []
+        orecs = {}
 
         for inrec in reader:
 
-            if to_bool(inrec['Void']):
+            if inrec['role'] != 'Player' or inrec['status'] != 'Active':
                 if args.verbose:
                     print(
-                        'ignore VOID record: {}'.format(inrec),
+                        'ignore Non-Player or Inactive rec: {}'.format(inrec),
                         file=sys.stderr
                     )
                 continue
 
-            school_term = inrec['Ticket Data: School Term']
+            school_term = inrec['season']
             if school_term != config['label']:
                 raise RuntimeError(
                     'School Term mismatch! ({}!={})'.format(
-                        school_term, clinicterm
+                        school_term, config['label']
                     )
                 )
 
-            name = inrec['Ticket Data: Player\'s First Name'] + ' ' + \
-                inrec['Ticket Data: Player\'s Surname']
-            date_of_birth = to_date(
-                inrec['Ticket Data: Player\'s Date-of-Birth'], '%Y-%m-%d'
-            )
-            paid = float(inrec['Net Booking'])
-            medical = inrec[
-                'Ticket Data: Special Requirements/Medical Conditions'
-            ].strip()
+            name = inrec['first name'] + ' ' + inrec['last name']
+            date_of_birth = to_date(inrec['date of birth'], '%d/%m/%Y')
+            email = inrec['email']
+            if not email:
+                email = inrec['parent/guardian1 email']
+            phone = inrec['mobile number']
+            if not phone:
+                phone = inrec['parent/guardian1 mobile number']
+            parent = inrec['parent/guardian1 first name'] + ' ' + \
+                inrec['parent/guardian1 last name']
 
-            isparent = to_bool(
-                inrec['Ticket Data: Is Purchaser the child\'s Parent/Guardian']
-            )
-            if isparent:
-                parent_data = booking_data(inrec)
-            else:
-                parent_data = ticket_data(inrec)
-                if not any(parent_data):
-                    # they answered No to isparent, but did not fill in
-                    # parent ticket data - use the booking data instead ...
-                    parent_data = booking_data(inrec)
-                    print(
-                        'empty ticket data - using booking data ({})'.format(
-                            parent_data
-                        ),
-                        file=sys.stderr
-                    )
-            parent, address, phone, email = parent_data
-
-            # "27Apr21","1:58:48 PM"
-            dbdt = to_datetime(inrec['Date Booked (UTC+10)'], '%d%b%y')
-            tbt = to_time(inrec['Time Booked'], '%I:%M:%S %p')
-            booked = dbdt + timedelta(
-                hours=tbt.hour, minutes=tbt.minute, seconds=tbt.second
-            )
-            if refdt is None or refdt < booked:
+            regodt = to_datetime(inrec['registration date'], '%d/%m/%Y')
+            if refdt is not None and refdt < regodt:
                 new = '*'
             else:
                 new = ''
 
-            orecs.append(
-                OrderedDict(
-                    new=new,
-                    paid=paid,
-                    name=name,
-                    date_of_birth=date_of_birth,
-                    parent=parent,
-                    email=email,
-                    phone=make_phone(phone),
-                    address=address.title().replace('\n', ', '),
-                    medical=medical,
-                    booked=booked,
-                )
+            orecs[name] = dict(
+                new=new,
+                name=name,
+                date_of_birth=date_of_birth,
+                parent=parent,
+                email=email,
+                phone=make_phone(phone),
+                prepaid=[],
+                paid=' ',
             )
 
-    if args.email:
-        emails = set()
-        for outrec in orecs:
-            emails.add(outrec['email'].strip().lower())
-        for email in sorted(emails):
-            print(email)
-
     if len(orecs) == 0:
-        print('No CSV records in "{}"'.format(csvfile))
+        print('No CSV records in "{}"'.format(partfile), file=sys.stderr)
         sys.exit(0)
 
-    if args.ascsv:
-        from csv import DictWriter
-        with TextIOWrapper(sys.stdout.buffer, newline='') as outfile:
-            writer = DictWriter(outfile, fieldnames=orecs[0].keys())
-            writer.writeheader()
-            for outrec in orecs:
-                writer.writerow(outrec)
+    with open(merchfile, 'r', newline='') as infile:
 
-    if args.ashtml:
-        raise NotImplementedError('html output not implemented!')
+        reader = DictReader(infile)
+
+        inrecs = []
+        for inrec in reader:
+            orderdt = to_datetime(inrec['Order Date'], '%d/%m/%Y')
+            name = inrec['First Name'] + ' ' + inrec['Last Name']
+            quantity = int(inrec['Quantity'])
+            sku = inrec['Merchandise SKU']
+            inrecs.append((orderdt, name, quantity, sku))
+
+        for data in sorted(inrecs, key=lambda t: t[0]):
+            orderdt, name, quantity, sku = data
+
+            if name not in orecs:
+                raise RuntimeError('unknown participant {}!'.format(name))
+
+            if sku == 'FULLTERM':
+                if quantity != 1:
+                    raise RuntimeError(
+                        'quantity for FULLTERM is not 1 ({:d})'.format(quantity)
+                    )
+                quantity = len(config['dates'])
+                orecs[name]['paid'] = 'Full'
+            elif sku != 'SINGLE':
+                raise RuntimeError('Unknown SKU {}!'.format(sku))
+
+            if refdt is not None and refdt < orderdt:
+                val = 'new'
+            else:
+                val = 'old'
+
+            for _ in range(quantity):
+                orecs[name]['prepaid'].append(val)
+
+    if args.email:
+        emails = set()  # using a set() will remove duplicates
+        for outrec in orecs.values():
+            emails.add(outrec['email'].strip().lower())
+        for email in sorted(emails):
+            print(email, file=sys.stderr)
 
     if args.asxls:
         from xlwt import Workbook
         from xlwt.Style import easyxf
+        headings = [
+            '#',
+            'Paid',
+            'Parent/Guardian Contact Details',
+            'DoB/Mobile',
+            'Name',
+        ]
+        headings.extend(config['dates'])
         styles = {
             'heading': easyxf(
                 'font: name Arial, height 280, bold on; '
@@ -226,6 +231,12 @@ def main():
             'centred': easyxf(
                 'font: name Arial, height 280; '
                 'align: wrap off, vertical centre, horizontal centre; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='@',
+            ),
+            'right': easyxf(
+                'font: name Arial, height 280; '
+                'align: wrap off, vertical centre, horizontal right; '
                 'borders: left thin, right thin, top thin, bottom thin',
                 num_format_str='@',
             ),
@@ -248,72 +259,108 @@ def main():
                 num_format_str='YYYY-MM-DD HH:MM:SS AM/PM',
             ),
             'normal_highlighted': easyxf(
-                'font: name Arial, height 280; '
-                'pattern: pattern solid, back_colour light_yellow; '
+                'font: name Arial, height 280, colour red; '
                 'align: wrap off, vertical centre, horizontal left; '
                 'borders: left thin, right thin, top thin, bottom thin',
                 num_format_str='@',
             ),
             'centred_highlighted': easyxf(
-                'font: name Arial, height 280; '
-                'pattern: pattern solid, back_colour light_yellow; '
+                'font: name Arial, height 280, colour red; '
                 'align: wrap off, vertical centre, horizontal centre; '
                 'borders: left thin, right thin, top thin, bottom thin',
                 num_format_str='@',
             ),
+            'right_highlighted': easyxf(
+                'font: name Arial, height 280, colour red; '
+                'align: wrap off, vertical centre, horizontal right; '
+                'borders: left thin, right thin, top thin, bottom thin',
+                num_format_str='@',
+            ),
             'currency_highlighted': easyxf(
-                'font: name Arial, height 280; '
-                'pattern: pattern solid, back_colour light_yellow; '
+                'font: name Arial, height 280, colour red; '
                 'align: wrap off, vertical centre, horizontal right; '
                 'borders: left thin, right thin, top thin, bottom thin',
                 num_format_str='$#,##0.00',
             ),
             'date_highlighted': easyxf(
-                'font: name Arial, height 280; '
-                'pattern: pattern solid, back_colour light_yellow; '
+                'font: name Arial, height 280, colour red; '
                 'align: wrap off, vertical centre, horizontal centre; '
                 'borders: left thin, right thin, top thin, bottom thin',
                 num_format_str='YYYY-MM-DD',
             ),
             'datetime_highlighted': easyxf(
-                'font: name Arial, height 280; '
-                'pattern: pattern solid, back_colour light_yellow; '
+                'font: name Arial, height 280, colour red; '
                 'align: wrap off, vertical centre, horizontal centre; '
                 'borders: left thin, right thin, top thin, bottom thin',
                 num_format_str='YYYY-MM-DD HH:MM:SS AM/PM',
             ),
         }
-        colstyles = {
-            'new':           'centred',
-            'paid':          'currency',
-            'name':          'normal',
-            'date_of_birth': 'date',
+        #    Paid    Parent/Guardian Contact Details    Mobile    Name
+        col1styles = {
             'parent':        'normal',
+            'date_of_birth': 'date',
+            'name':          'normal',
+        }
+        col2styles = {
             'email':         'normal',
             'phone':         'centred',
-            'address':       'normal',
-            'medical':       'normal',
-            'booked':        'datetime',
         }
         book = Workbook()
         sheet = book.add_sheet(config['label'])
         r = 0
-        for c, v in enumerate(orecs[0].keys()):
+        for c, v in enumerate(headings):
             sheet.write(r, c, ensure_str(v), styles['heading'])
         sheet.set_panes_frozen(True)
         sheet.set_horz_split_pos(1)
         sheet.set_remove_splits(True)
-        for outrec in orecs:
+        ndates = len(config['dates'])
+        pnum = 0
+        for outrec in sorted(orecs.values(), key=lambda d: d['name'].lower()):
+            pnum += 1
             r += 1
-            is_new = outrec['new'] == '*'
-            for c, (k, v) in enumerate(outrec.items()):
-                if k == 'address':
-                    v = v.replace('\n', ', ')
-                s = colstyles[k]
-                if is_new:
-                    s += '_highlighted'
-                sheet.write(r, c, v, styles[s])
+            if outrec['new'] == '*':
+                normal_style = styles['normal_highlighted']
+                centred_style = styles['centred_highlighted']
+                right_style = styles['right_highlighted']
+                ssuf = '_highlighted'
+            else:
+                normal_style = styles['normal']
+                centred_style = styles['centred']
+                right_style = styles['right']
+                ssuf = ''
+            sheet.write(r, 0, str(pnum), right_style)
+            sheet.write(r, 1, outrec['paid'], centred_style)
+            for c, (k, s) in enumerate(col1styles.items()):
+                v = outrec[k]
+                s = col1styles[k]
+                sheet.write(r, 2 + c, v, styles[s + ssuf])
+            i = 0
+            for v in outrec['prepaid']:
+                if v == 'old':
+                    ppstyle = styles['centred']
+                else:
+                    ppstyle = styles['centred_highlighted']
+                sheet.write(r, 2 + c + 1 + i, 'PP', ppstyle)
+                i += 1
+            while i < ndates - 1:
+                sheet.write(r, 2 + c + 2 + i, '  ', centred_style)
+                i += 1
+            r += 1
+            sheet.write(r, 0, '  ', normal_style)
+            sheet.write(r, 1, '  ', normal_style)
+            for c, (k, s) in enumerate(col2styles.items()):
+                v = outrec[k]
+                s = col2styles[k]
+                sheet.write(r, 2 + c, v, styles[s + ssuf])
+            c += 1
+            sheet.write(r, 2 + c, '  ', normal_style)
+            c += 1
+            for i in range(len(config['dates'])):
+                sheet.write(r, 2 + c + i, '  ', normal_style)
         book.save(sys.stdout.buffer)
+
+    if not args.notouch:
+        Path(reffile).touch()
 
     return 0
 

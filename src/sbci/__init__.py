@@ -1,15 +1,11 @@
 from collections import OrderedDict
 from csv import DictReader
 from datetime import datetime, date
-from dateutil.relativedelta import relativedelta
 from enum import unique, IntEnum
 from glob import glob
 from json import loads
 import os
 import re
-from requests.adapters import HTTPAdapter
-from requests.sessions import session
-from six import string_types, binary_type, text_type, ensure_text
 from sqlite3 import connect, Row
 from ssl import create_default_context, PROTOCOL_TLS
 import sys
@@ -18,6 +14,11 @@ from time import strftime
 import time
 from urllib.parse import urlencode
 from urllib.request import urlopen
+
+from dateutil.relativedelta import relativedelta
+from requests.adapters import HTTPAdapter
+from requests.sessions import session
+from six import string_types, binary_type, text_type, ensure_text
 from urllib3.poolmanager import PoolManager
 
 
