@@ -22,38 +22,32 @@ from six import string_types, binary_type, text_type, ensure_text
 from urllib3.poolmanager import PoolManager
 
 
-season = os.getenv('SEASON', '2022-summer')
 provider = os.getenv('PROVIDER', 'PlayHQ')
+association = os.getenv('ASSOCIATION', 'EDJBA')
+season = os.getenv('SEASON', '2022-winter')
+clinicterm = os.getenv('CLINICTERM', '2022-Term2')
+develterm = os.getenv('DEVELTERM', '2022-Term1-Friday')
+
 shootersdir = os.getenv(
     'SHOOTERSDIR',
     os.path.join(os.getenv('HOME', '.'), 'basketball', 'shooters')
 )
 seasondir = os.getenv(
     'SEASONDIR',
-    os.path.join(shootersdir, provider, season)
+    os.path.join(shootersdir, provider, association, season)
 )
-
-
 xerodir = os.getenv(
     'XERODIR',
     os.path.join(shootersdir, provider, 'Xero')
 )
-
-
 trybookingdir = os.getenv(
     'TRYBOOKINGDIR',
     os.path.join(shootersdir, 'Trybooking')
 )
-
-
-clinicterm = os.getenv('CLINICTERM', '2022-Term1')
 clinicdir = os.getenv(
     'CLINICDIR',
     os.path.join(shootersdir, provider, 'Clinic', clinicterm)
 )
-
-
-develterm = os.getenv('DEVELTERM', '2022-Term1-Friday')
 develdir = os.getenv(
     'DEVELDIR',
     os.path.join(shootersdir, provider, 'Devel', develterm)

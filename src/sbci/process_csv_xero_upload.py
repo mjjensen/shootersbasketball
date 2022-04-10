@@ -3,6 +3,7 @@ from csv import DictReader, DictWriter
 from datetime import datetime
 from json import dumps
 import os
+import re
 import sys
 
 from pupdb.core import PupDB
@@ -21,6 +22,8 @@ def main():
                         help='output csv file for xero pre-coded transactions')
     parser.add_argument('--pupdbfile', default=None, metavar='F',
                         help='json file for pupdb key-value store')
+    parser.add_argument('--dryrun', '-n', action='store_true',
+                        help='dont make any actual changes - just run through')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
     args = parser.parse_args()
@@ -90,27 +93,45 @@ def main():
         order_item_ids = {}
 
         for inrec in reader:
+            org = inrec['Organisation']
             role = inrec['Role']
-            rtype = inrec['Type of Registration']
-            label = inrec['Season Name']
-            sku = inrec['Merchandise SKU']
+            org_to = inrec['Organisation Registering To']
             pstatus = inrec['Payout Status']
 
             if (
+                org != 'Shooters Basketball Club' or
                 role != 'Player' or
-                rtype != 'Local Program' or
-                label != config['label'] or
-                sku not in ('SINGLE', 'FULLTERM') or
+                org_to != 'Shooters Basketball Club' or
                 pstatus != 'DISBURSED'
             ):
                 print(
-                    'skip (wrong type): role={}, rtype={}, label={}, '
-                    'sku={}, pstatus={}'.format(
-                        role, rtype, label, sku, pstatus
+                    'skip (bad rec): org={}, role={}, org_to={}, '
+                    'pstatus={}'.format(
+                        org, role, org_to, pstatus
                     ), file=sys.stderr
                 )
                 continue
 
+            rtype = inrec['Type of Registration']
+            rname = inrec['Registration']
+            ptype = inrec['Product Type']
+
+            for rdesc in config['types']:
+                if (
+                    rdesc['rtype'] == rtype and
+                    rdesc['rname'] == rname and
+                    rdesc['ptype'] == ptype
+                ):
+                    break
+            else:
+                print(
+                    'skip (bad type): rtype={}, rname={}, ptype={}'.format(
+                        rtype, rname, ptype
+                    ), file=sys.stderr
+                )
+                continue
+
+            sname = inrec['Season Name']
             xdate = to_date(inrec['Date'], '%d/%m/%Y')
             name = inrec['Name']
             onum = inrec['Order Number']
@@ -123,6 +144,58 @@ def main():
             netamount = int(float(inrec['Net Amount'][1:]) * 100)
             pdate = to_date(inrec['Payout Date'], '%Y-%m-%d')
             pid = inrec['Payout ID']
+
+            if rdesc['rid'] == 'clinic':
+                sku = inrec['Merchandise SKU']
+                if sku not in rdesc['skus']:
+                    print(
+                        'skip (bad sku): {} not in {}'.format(
+                            sku, rdesc['skus']
+                        ), file=sys.stderr
+                    )
+                    continue
+                # Term N, YYYY
+                m = re.match(r'^Term ([1-4]), (\d{4})$', sname)
+                if m is None:
+                    raise RuntimeError(
+                        'clinic record has bad season name ({})'.format(sname)
+                    )
+                tracking1 = rdesc['tracking1'].format(*m.groups())
+                tracking2 = rdesc['tracking2']
+            elif rdesc['rid'] == 'registration':
+                feename = inrec['Fee Name']
+                for fdesc in rdesc['fees']:
+                    if fdesc['name'] == feename:
+                        famount = int(float(fdesc['amount']) * 100)
+                        break
+                else:
+                    print(
+                        'skip (bad fee): rtype={}, rname={}, ptype={}'.format(
+                            rtype, rname, ptype
+                        ), file=sys.stderr
+                    )
+                    continue
+                if quantity != 1:
+                    raise RuntimeError('registration with quantity != 1!')
+                if famount != oprice:
+                    raise RuntimeError(
+                        'amount mismatch ({:.2f}!={:.2f})'.format(
+                            float(famount) / 100, float(oprice) / 100
+                        )
+                    )
+                # (Winter|Summer) YYYY
+                m = re.match(r'^(Winter|Summer) (\d{4})$', sname)
+                if m is None:
+                    raise RuntimeError(
+                        'rego record has bad season name ({})'.format(sname)
+                    )
+                wors, year = m.groups()
+                if wors == 'Summer':
+                    year = '{}/{:02d}'.format(year, int(year) - 2000 + 1)
+                tracking1 = rdesc['tracking1'].format(year, wors)
+                tracking2 = rdesc['tracking2']
+            else:
+                raise RuntimeError('bad rego id {}!'.format(rdesc['rid']))
 
             if oprice * quantity != subtotal:
                 raise RuntimeError(
@@ -158,18 +231,18 @@ def main():
                 'Amount': '{:.2f}'.format(float(netamount) / 100),
                 'Payee': name,
                 'Description': '{} - {} - Price {:.2f}, Quantity {:d}'.format(
-                    product, label, float(oprice) / 100, quantity
+                    product, sname, float(oprice) / 100, quantity
                 ),
                 'Reference': pid,
                 'Cheque Number': onum,
                 'Account code': config['account'],
                 'Tax Rate (Display Name)': config['taxrate'],
-                'Tracking1': config['tracking1'],
-                'Tracking2': config['tracking2'],
+                'Tracking1': tracking1,
+                'Tracking2': tracking2,
                 'Transaction Type': 'credit',
                 'Analysis code': oid,
                 'PlayHQ Fee': '{:.2f}'.format(float(phqfee) / 100),
-                'Payout Date:': pdate.strftime('%d/%m/%Y'),
+                'Payout Date': pdate.strftime('%d/%m/%Y'),
             }
 
             orecs.append(orec)
@@ -207,6 +280,9 @@ def main():
               file=sys.stderr)
         print('total netamount = ${:.2f}'.format(float(total_netamount) / 100),
               file=sys.stderr)
+
+    if args.dryrun:
+        return 0
 
     if os.path.exists(xerofile):
         raise RuntimeError('will not overwrite file {}'.format(xerofile))
