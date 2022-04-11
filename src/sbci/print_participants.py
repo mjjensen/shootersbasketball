@@ -79,15 +79,27 @@ def main():
             name = to_fullname(p['first name'], p['last name'])
             dob = to_date(p['date of birth'])
 
-            cag = int(find_age_group(config['age_groups'], dob)[1:])
+            ags = find_age_group(config['age_groups'], dob)
+            if ags is None:
+                print(
+                    '{} DoB {} not in any age group!'.format(name, dob),
+                    file=sys.stderr
+                )
+                continue
+            cag = int(ags[1:])
             cags[cag] = cags.setdefault(cag, 0) + 1
             if ctag is None or cag > ctag:
                 ctag = cag
 
             if args.rollover:
-                nag = int(
-                    find_age_group(config['age_groups_next_season'], dob)[1:]
-                )
+                ags = find_age_group(config['age_groups_next_season'], dob)
+                if ags is None:
+                    print(
+                        '{} DoB {} not in any age group!'.format(name, dob),
+                        file=sys.stderr
+                    )
+                    continue
+                nag = int(ags[1:])
                 nags[nag] = nags.setdefault(nag, 0) + 1
                 if ntag is None or nag > ntag:
                     ntag = nag
