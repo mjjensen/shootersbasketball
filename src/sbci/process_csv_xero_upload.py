@@ -2,7 +2,7 @@ from argparse import ArgumentParser
 from csv import DictReader, DictWriter
 from datetime import datetime
 from decimal import Decimal
-from json import dumps
+from json import dumps, loads
 import os
 import re
 import sys
@@ -101,7 +101,8 @@ def main():
 
         reader = DictReader(infile)
 
-        orecs = {}
+        output_records = {}
+        already_uploaded = {}
 
         order_numbers = []
         order_item_ids = []
@@ -154,8 +155,10 @@ def main():
                 )
                 continue
 
+            dfmt = '%d/%m/%Y'
+
             sname = inrec['Season Name']
-            xdate = to_date(inrec['Date'], '%d/%m/%Y')
+            xdate = to_date(inrec['Date'], dfmt)
             name = inrec['Name']
             onum = inrec['Order Number']
             oid = inrec['Order Item ID']
@@ -256,29 +259,33 @@ def main():
             order_item_ids.append(oid)
 
             if db.get(pid) is not None:
+                is_already_uploaded = True
+                if pid not in already_uploaded:
+                    already_uploaded[pid] = []
+
                 print(
                     'skip (already uploaded): name={}, pdate={}, pid={}'.format(
                         name, pdate, pid
                     ), file=sys.stderr
                 )
-                continue
+            else:
+                is_already_uploaded = False
+                if pid not in output_records:
+                    output_records[pid] = []
 
-            if pid not in orecs:
-                orecs[pid] = []
-
-            total_netamount += netamount
-            total_phqfee += phqfee
-            total_subtotal += subtotal
-            total_gvapplied += gvapplied
+                total_netamount += netamount
+                total_phqfee += phqfee
+                total_subtotal += subtotal
+                total_gvapplied += gvapplied
 
             desc = '{} - ${:.2f} x {:d}'.format(product, oprice, quantity)
 
             orec = {
-                'Date': xdate.strftime('%d/%m/%Y'),
+                'Date': xdate.strftime(dfmt),
                 'Amount': '{:.2f}'.format(subtotal),
                 'Payee': name,
                 'Description': '{}: subtotal'.format(desc),
-                'Reference': '{} on {}'.format(pid, pdate.strftime('%d/%m/%Y')),
+                'Reference': '{} on {}'.format(pid, pdate.strftime(dfmt)),
                 'Cheque Number': onum,
                 'Account code': config['sales_account'],
                 'Tax Rate (Display Name)': config['taxrate'],
@@ -287,15 +294,18 @@ def main():
                 'Transaction Type': 'credit',
                 'Analysis code': oid,
             }
-            orecs[pid].append(orec)
+            if is_already_uploaded:
+                already_uploaded[pid].append(orec)
+            else:
+                output_records[pid].append(orec)
 
             if phqfee != Decimal('0.00'):
                 orec = {
-                    'Date': xdate.strftime('%d/%m/%Y'),
+                    'Date': xdate.strftime(dfmt),
                     'Amount': '-{:.2f}'.format(phqfee),
                     'Payee': name,
                     'Description': '{}: playhq fees'.format(desc),
-                    'Reference': '{} on {}'.format(pid, pdate.strftime('%d/%m/%Y')),
+                    'Reference': '{} on {}'.format(pid, pdate.strftime(dfmt)),
                     'Cheque Number': onum,
                     'Account code': config['fees_account'],
                     'Tax Rate (Display Name)': config['taxrate'],
@@ -304,15 +314,18 @@ def main():
                     'Transaction Type': 'debit',
                     'Analysis code': oid,
                 }
-                orecs[pid].append(orec)
+                if is_already_uploaded:
+                    already_uploaded[pid].append(orec)
+                else:
+                    output_records[pid].append(orec)
 
             if gvapplied != Decimal('0.00'):
                 orec = {
-                    'Date': xdate.strftime('%d/%m/%Y'),
+                    'Date': xdate.strftime(dfmt),
                     'Amount': '{:.2f}'.format(gvapplied),
                     'Payee': 'Get Active Kids Voucher Program',
                     'Description': '{}: get active for {}'.format(desc, name),
-                    'Reference': '{} on {}'.format(pid, pdate.strftime('%d/%m/%Y')),
+                    'Reference': '{} on {}'.format(pid, pdate.strftime(dfmt)),
                     'Cheque Number': onum,
                     'Account code': config['other_revenue_account'],
                     'Tax Rate (Display Name)': config['taxrate'],
@@ -321,12 +334,40 @@ def main():
                     'Transaction Type': 'credit',
                     'Analysis code': oid,
                 }
-                orecs[pid].append(orec)
+                if is_already_uploaded:
+                    already_uploaded[pid].append(orec)
+                else:
+                    output_records[pid].append(orec)
+
+    for pid, oreclist1 in already_uploaded.items():
+        dbval = db.get(pid)
+        if dbval is None:
+            raise RuntimeError('db get of pid {} failed!'.format(pid))
+        oreclist2 = loads(dbval)
+        if not isinstance(oreclist2, list):
+            continue
+
+        total_amount1 = sum(Decimal(orec['Amount']) for orec in oreclist1)
+        total_amount2 = sum(Decimal(orec['Amount']) for orec in oreclist2)
+
+        if total_amount1 != total_amount2:
+            raise RuntimeError(
+                'pid {} total amount mismatch (${:.2f} != ${:.2f})!'.format(
+                    pid, total_amount1, total_amount2
+                )
+            )
+
+        if args.verbose:
+            print(
+                'checked already uploaded: pid={}, amount=${:.2f}'.format(
+                    pid, total_amount1
+                )
+            )
 
     if args.verbose and total_pending > 0:
         print('total pending = ${:.2f}'.format(total_pending), file=sys.stderr)
 
-    if len(orecs) == 0:
+    if len(output_records) == 0:
         print('No records were collected.', file=sys.stderr)
         return 0
 
@@ -338,7 +379,10 @@ def main():
         )
 
     if args.verbose:
-        print('{} payment ids were collected.'.format(len(orecs)), file=sys.stderr)
+        print(
+            '{} payment ids were collected.'.format(len(output_records)),
+            file=sys.stderr
+        )
         print('subtotal = ${:.2f}'.format(total_subtotal), file=sys.stderr)
         print('phqfee = ${:.2f}'.format(total_phqfee), file=sys.stderr)
         print('netamount = ${:.2f}'.format(total_netamount), file=sys.stderr)
@@ -353,11 +397,11 @@ def main():
     with open(xerofile, 'w', newline='') as outfile:
         writer = DictWriter(outfile, fieldnames=fieldnames)
         writer.writeheader()
-        for pid, oreclist in orecs.items():
+        for pid, oreclist in output_records.items():
             for outrec in oreclist:
                 writer.writerow(outrec)
 
-    for pid, oreclist in orecs.items():
+    for pid, oreclist in output_records.items():
         db.set(pid, dumps(oreclist))
 
     return 0
