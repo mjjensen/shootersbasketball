@@ -206,8 +206,8 @@ def main():
                     extra += ' {:d}xU{:02d}'.format(v, k)
 
         print(
-            '{:12} [{}] - {:2d} players{}'.format(
-                t.sname, t.edjba_code, len(t.players), extra
+            '{:12} [{} {}] - {:2d} players{}'.format(
+                t.sname, t.edjba_code, t.grade, len(t.players), extra
             )
         )
         for line in lines:

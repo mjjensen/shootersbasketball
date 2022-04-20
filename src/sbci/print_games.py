@@ -116,7 +116,7 @@ def main():
 
     results = []
     for t in teams.values():
-        e = [t.sname, t.edjba_code]
+        e = [t.sname, t.edjba_code, t.grade]
         rcnt = totfor = totag = totmarg = 0
         for (r, _), v in t.results.items():
             rcnt += 1
