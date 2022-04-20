@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from csv import DictReader, DictWriter
 from datetime import datetime
+from decimal import Decimal
 from json import dumps
 import os
 import re
@@ -81,22 +82,42 @@ def main():
 
     db = PupDB(pupdbfile)
 
+    fieldnames = [
+        'Date',
+        'Amount',
+        'Payee',
+        'Description',
+        'Reference',
+        'Cheque Number',
+        'Account code',
+        'Tax Rate (Display Name)',
+        'Tracking1',
+        'Tracking2',
+        'Transaction Type',
+        'Analysis code',
+    ]
+
     with open(xactfile, 'r', newline='') as infile:
 
         reader = DictReader(infile)
 
-        orecs = []
+        orecs = {}
 
-        total_netamount = total_phqfee = total_subtotal = 0.0
+        order_numbers = []
+        order_item_ids = []
 
-        order_numbers = {}
-        order_item_ids = {}
+        total_netamount = Decimal('0.00')
+        total_phqfee = Decimal('0.00')
+        total_subtotal = Decimal('0.00')
+        total_pending = Decimal('0.00')
+        total_gvapplied = Decimal('0.00')
 
         for inrec in reader:
             org = inrec['Organisation']
             role = inrec['Role']
             org_to = inrec['Organisation Registering To']
             pstatus = inrec['Payout Status']
+            netamount = Decimal(inrec['Net Amount'][1:])
 
             if (
                 org != 'Shooters Basketball Club' or
@@ -110,6 +131,8 @@ def main():
                         org, role, org_to, pstatus
                     ), file=sys.stderr
                 )
+                if pstatus == 'DISBURSEMENT_PENDING':
+                    total_pending += netamount
                 continue
 
             rtype = inrec['Type of Registration']
@@ -136,12 +159,26 @@ def main():
             name = inrec['Name']
             onum = inrec['Order Number']
             oid = inrec['Order Item ID']
-            oprice = int(float(inrec['Order Item Price'][1:]) * 100)
+            oprice = Decimal(inrec['Order Item Price'][1:])
+            gvname = inrec['Government Voucher Name']
+            if gvname != '':
+                if gvname != 'Get Active Kids':
+                    raise RuntimeError('bad gov voucher: {}'.format(gvname))
+                sgva = inrec['Government Voucher Amount']
+                gvamount = Decimal(sgva[1:])
+                if gvamount != Decimal('200.00'):
+                    raise RuntimeError(
+                        'GAK voucher not $200: {:.2f}'.format(gvamount)
+                    )
+                sgvaa = inrec['Government Voucher Amount Applied']
+                gvapplied = Decimal(sgvaa[1:])
+            else:
+                gvamount = Decimal('0.00')
+                gvapplied = Decimal('0.00')
             product = inrec['Product Name']
             quantity = int(inrec['Quantity'])
-            subtotal = int(float(inrec['Subtotal'][1:]) * 100)
-            phqfee = int(float(inrec['PlayHQ Fee'][1:]) * 100)
-            netamount = int(float(inrec['Net Amount'][1:]) * 100)
+            subtotal = Decimal(inrec['Subtotal'][1:])
+            phqfee = Decimal(inrec['PlayHQ Fee'][1:])
             pdate = to_date(inrec['Payout Date'], '%Y-%m-%d')
             pid = inrec['Payout ID']
 
@@ -166,7 +203,7 @@ def main():
                 feename = inrec['Fee Name']
                 for fdesc in rdesc['fees']:
                     if fdesc['name'] == feename:
-                        famount = int(float(fdesc['amount']) * 100)
+                        famount = Decimal(fdesc['amount'])
                         break
                 else:
                     print(
@@ -179,8 +216,8 @@ def main():
                     raise RuntimeError('registration with quantity != 1!')
                 if famount != oprice:
                     raise RuntimeError(
-                        'amount mismatch ({:.2f}!={:.2f})'.format(
-                            float(famount) / 100, float(oprice) / 100
+                        'fee amount mismatch ({:.2f}!={:.2f})'.format(
+                            famount, oprice
                         )
                     )
                 # (Winter|Summer) YYYY
@@ -197,22 +234,26 @@ def main():
             else:
                 raise RuntimeError('bad rego id {}!'.format(rdesc['rid']))
 
-            if oprice * quantity != subtotal:
+            if (oprice - gvapplied) * quantity != subtotal:
                 raise RuntimeError(
                     'oprice({:.2f})*quantity({})!=subtotal({:.2f})'.format(
-                        float(oprice) / 100,
-                        quantity,
-                        float(subtotal) / 100,
+                        oprice, quantity, subtotal,
                     )
                 )
             if subtotal != netamount + phqfee:
                 raise RuntimeError(
                     'subtotal({:.2f})!=netamount({:.2f})+phqfee({:.2f})'.format(
-                        float(subtotal) / 100,
-                        float(netamount) / 100,
-                        float(phqfee) / 100,
+                        subtotal, netamount, phqfee,
                     )
                 )
+
+            if onum in order_numbers:
+                raise RuntimeError('duplicate order number {}!'.format(onum))
+            order_numbers.append(onum)
+
+            if oid in order_item_ids:
+                raise RuntimeError('duplicate order item id {}!'.format(oid))
+            order_item_ids.append(oid)
 
             if db.get(pid) is not None:
                 print(
@@ -222,42 +263,68 @@ def main():
                 )
                 continue
 
+            if pid not in orecs:
+                orecs[pid] = []
+
             total_netamount += netamount
             total_phqfee += phqfee
             total_subtotal += subtotal
+            total_gvapplied += gvapplied
+
+            desc = '{} - ${:.2f} x {:d}'.format(product, oprice, quantity)
 
             orec = {
                 'Date': xdate.strftime('%d/%m/%Y'),
-                'Amount': '{:.2f}'.format(float(netamount) / 100),
+                'Amount': '{:.2f}'.format(subtotal),
                 'Payee': name,
-                'Description': '{} - {} - Price {:.2f}, Quantity {:d}'.format(
-                    product, sname, float(oprice) / 100, quantity
-                ),
-                'Reference': pid,
+                'Description': '{}: subtotal'.format(desc),
+                'Reference': '{} on {}'.format(pid, pdate.strftime('%d/%m/%Y')),
                 'Cheque Number': onum,
-                'Account code': config['account'],
+                'Account code': config['sales_account'],
                 'Tax Rate (Display Name)': config['taxrate'],
                 'Tracking1': tracking1,
                 'Tracking2': tracking2,
                 'Transaction Type': 'credit',
                 'Analysis code': oid,
-                'PlayHQ Fee': '{:.2f}'.format(float(phqfee) / 100),
-                'Payout Date': pdate.strftime('%d/%m/%Y'),
             }
+            orecs[pid].append(orec)
 
-            orecs.append(orec)
+            if phqfee != Decimal('0.00'):
+                orec = {
+                    'Date': xdate.strftime('%d/%m/%Y'),
+                    'Amount': '-{:.2f}'.format(phqfee),
+                    'Payee': name,
+                    'Description': '{}: playhq fees'.format(desc),
+                    'Reference': '{} on {}'.format(pid, pdate.strftime('%d/%m/%Y')),
+                    'Cheque Number': onum,
+                    'Account code': config['fees_account'],
+                    'Tax Rate (Display Name)': config['taxrate'],
+                    'Tracking1': tracking1,
+                    'Tracking2': tracking2,
+                    'Transaction Type': 'debit',
+                    'Analysis code': oid,
+                }
+                orecs[pid].append(orec)
 
-            if onum not in order_numbers:
-                order_numbers[onum] = []
-            elif args.verbose:
-                print('duplicate order number {}'.format(onum), file=sys.stderr)
-            order_numbers[onum].append(orec)
+            if gvapplied != Decimal('0.00'):
+                orec = {
+                    'Date': xdate.strftime('%d/%m/%Y'),
+                    'Amount': '{:.2f}'.format(gvapplied),
+                    'Payee': 'Get Active Kids Voucher Program',
+                    'Description': '{}: get active for {}'.format(desc, name),
+                    'Reference': '{} on {}'.format(pid, pdate.strftime('%d/%m/%Y')),
+                    'Cheque Number': onum,
+                    'Account code': config['other_revenue_account'],
+                    'Tax Rate (Display Name)': config['taxrate'],
+                    'Tracking1': tracking1,
+                    'Tracking2': tracking2,
+                    'Transaction Type': 'credit',
+                    'Analysis code': oid,
+                }
+                orecs[pid].append(orec)
 
-            if oid not in order_item_ids:
-                order_item_ids[oid] = []
-            elif args.verbose:
-                print('duplicate order item id {}'.format(oid), file=sys.stderr)
-            order_item_ids[oid].append(orec)
+    if args.verbose and total_pending > 0:
+        print('total pending = ${:.2f}'.format(total_pending), file=sys.stderr)
 
     if len(orecs) == 0:
         print('No records were collected.', file=sys.stderr)
@@ -266,20 +333,16 @@ def main():
     if total_subtotal - total_phqfee != total_netamount:
         raise RuntimeError(
             'total({:.2f})-fees({:.2f})!=net({:.2f})'.format(
-                float(total_subtotal) / 100,
-                float(total_phqfee) / 100,
-                float(total_netamount) / 100
+                total_subtotal, total_phqfee, total_netamount
             )
         )
 
     if args.verbose:
-        print('{} records were collected.'.format(len(orecs)), file=sys.stderr)
-        print('total subtotal = ${:.2f}'.format(float(total_subtotal) / 100),
-              file=sys.stderr)
-        print('total phqfee = ${:.2f}'.format(float(total_phqfee) / 100),
-              file=sys.stderr)
-        print('total netamount = ${:.2f}'.format(float(total_netamount) / 100),
-              file=sys.stderr)
+        print('{} payment ids were collected.'.format(len(orecs)), file=sys.stderr)
+        print('subtotal = ${:.2f}'.format(total_subtotal), file=sys.stderr)
+        print('phqfee = ${:.2f}'.format(total_phqfee), file=sys.stderr)
+        print('netamount = ${:.2f}'.format(total_netamount), file=sys.stderr)
+        print('gov vouchers = ${:.2f}'.format(total_gvapplied), file=sys.stderr)
 
     if args.dryrun:
         return 0
@@ -288,13 +351,14 @@ def main():
         raise RuntimeError('will not overwrite file {}'.format(xerofile))
 
     with open(xerofile, 'w', newline='') as outfile:
-        writer = DictWriter(outfile, fieldnames=orecs[0].keys())
+        writer = DictWriter(outfile, fieldnames=fieldnames)
         writer.writeheader()
-        for outrec in orecs:
-            writer.writerow(outrec)
+        for pid, oreclist in orecs.items():
+            for outrec in oreclist:
+                writer.writerow(outrec)
 
-    for outrec in orecs:
-        db.set(outrec['Reference'], dumps(outrec))
+    for pid, oreclist in orecs.items():
+        db.set(pid, dumps(oreclist))
 
     return 0
 
