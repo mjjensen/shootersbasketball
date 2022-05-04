@@ -177,7 +177,8 @@ def main():
             orderdt, name, quantity, sku = data
 
             if name not in orecs:
-                raise RuntimeError('unknown participant {}!'.format(name))
+                print('unknown participant {}!'.format(name), file=sys.stderr)
+                continue
 
             if sku == 'FULLTERM':
                 if quantity != 1:
