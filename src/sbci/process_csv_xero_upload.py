@@ -97,6 +97,8 @@ def main():
         'Analysis code',
     ]
 
+    voucher_desc = 'Get Active Kids Voucher Program'
+
     with open(xactfile, 'r', newline='') as infile:
 
         reader = DictReader(infile)
@@ -126,12 +128,13 @@ def main():
                 org_to != 'Shooters Basketball Club' or
                 pstatus != 'DISBURSED'
             ):
-                print(
-                    'skip (bad rec): org={}, role={}, org_to={}, '
-                    'pstatus={}'.format(
-                        org, role, org_to, pstatus
-                    ), file=sys.stderr
-                )
+                if args.verbose:
+                    print(
+                        'skip (bad rec): org={}, role={}, org_to={}, '
+                        'pstatus={}'.format(
+                            org, role, org_to, pstatus
+                        ), file=sys.stderr
+                    )
                 if pstatus == 'DISBURSEMENT_PENDING':
                     total_pending += netamount
                 continue
@@ -148,12 +151,11 @@ def main():
                 ):
                     break
             else:
-                print(
-                    'skip (bad type): rtype={}, rname={}, ptype={}'.format(
+                raise RuntimeError(
+                    'type not found: rtype={}, rname={}, ptype={}'.format(
                         rtype, rname, ptype
-                    ), file=sys.stderr
+                    )
                 )
-                continue
 
             dfmt = '%d/%m/%Y'
 
@@ -188,12 +190,11 @@ def main():
             if rdesc['rid'] == 'clinic':
                 sku = inrec['Merchandise SKU']
                 if sku not in rdesc['skus']:
-                    print(
-                        'skip (bad sku): {} not in {}'.format(
+                    raise RuntimeError(
+                        'sku not found: {} not in {}'.format(
                             sku, rdesc['skus']
-                        ), file=sys.stderr
+                        )
                     )
-                    continue
                 # Term N, YYYY
                 m = re.match(r'^Term ([1-4]), (\d{4})$', sname)
                 if m is None:
@@ -209,12 +210,11 @@ def main():
                         famount = Decimal(fdesc['amount'])
                         break
                 else:
-                    print(
-                        'skip (bad fee): rtype={}, rname={}, ptype={}'.format(
+                    raise RuntimeError(
+                        'fee not found: rtype={}, rname={}, ptype={}'.format(
                             rtype, rname, ptype
-                        ), file=sys.stderr
+                        )
                     )
-                    continue
                 if quantity != 1:
                     raise RuntimeError('registration with quantity != 1!')
                 if famount != oprice:
@@ -240,7 +240,7 @@ def main():
             if (oprice - gvapplied) * quantity != subtotal:
                 raise RuntimeError(
                     'oprice({:.2f})*quantity({})!=subtotal({:.2f})'.format(
-                        oprice, quantity, subtotal,
+                        oprice, quantity, subtotal
                     )
                 )
             if subtotal != netamount + phqfee:
@@ -263,11 +263,12 @@ def main():
                 if pid not in already_uploaded:
                     already_uploaded[pid] = []
 
-                print(
-                    'skip (already uploaded): name={}, pdate={}, pid={}'.format(
-                        name, pdate, pid
-                    ), file=sys.stderr
-                )
+                if args.verbose:
+                    print(
+                        'already uploaded: name={}, pdate={}, pid={}'.format(
+                            name, pdate, pid
+                        ), file=sys.stderr
+                    )
             else:
                 is_already_uploaded = False
                 if pid not in output_records:
@@ -323,7 +324,7 @@ def main():
                 orec = {
                     'Date': xdate.strftime(dfmt),
                     'Amount': '{:.2f}'.format(gvapplied),
-                    'Payee': 'Get Active Kids Voucher Program',
+                    'Payee': voucher_desc,
                     'Description': '{}: get active for {}'.format(desc, name),
                     'Reference': '{} on {}'.format(pid, pdate.strftime(dfmt)),
                     'Cheque Number': onum,
@@ -340,15 +341,25 @@ def main():
                     output_records[pid].append(orec)
 
     for pid, oreclist1 in already_uploaded.items():
+
+        total_amount1 = sum(Decimal(orec['Amount']) for orec in oreclist1
+                            if orec['Payee'] != voucher_desc)
+
         dbval = db.get(pid)
         if dbval is None:
             raise RuntimeError('db get of pid {} failed!'.format(pid))
         oreclist2 = loads(dbval)
         if not isinstance(oreclist2, list):
+            if args.verbose:
+                print(
+                    'cannot check old record: pid={}, amount=${:.2f}'.format(
+                        pid, total_amount1
+                    ), file=sys.stderr
+                )
             continue
 
-        total_amount1 = sum(Decimal(orec['Amount']) for orec in oreclist1)
-        total_amount2 = sum(Decimal(orec['Amount']) for orec in oreclist2)
+        total_amount2 = sum(Decimal(orec['Amount']) for orec in oreclist2
+                            if orec['Payee'] != voucher_desc)
 
         if total_amount1 != total_amount2:
             raise RuntimeError(
@@ -361,7 +372,8 @@ def main():
             print(
                 'checked already uploaded: pid={}, amount=${:.2f}'.format(
                     pid, total_amount1
-                )
+                ),
+                file=sys.stderr
             )
 
     if args.verbose and total_pending > 0:
@@ -387,6 +399,16 @@ def main():
         print('phqfee = ${:.2f}'.format(total_phqfee), file=sys.stderr)
         print('netamount = ${:.2f}'.format(total_netamount), file=sys.stderr)
         print('gov vouchers = ${:.2f}'.format(total_gvapplied), file=sys.stderr)
+
+        for pid, oreclist in output_records.items():
+            amount = Decimal(0.0)
+            for outrec in oreclist:
+                if outrec['Payee'] != voucher_desc:
+                    amount += Decimal(outrec['Amount'])
+            print(
+                '    Payment Id {} = ${:.2f}'.format(pid, amount),
+                file=sys.stderr
+            )
 
     if args.dryrun:
         return 0
