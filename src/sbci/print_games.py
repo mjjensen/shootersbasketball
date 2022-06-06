@@ -32,7 +32,7 @@ def main():
         t = find_team(teams, edjba_id=team_name)
         if t is None:
             print('team {} not found!'.format(team_name), file=sys.stderr)
-            sys.exit(1)
+            return
         if not hasattr(t, 'results'):
             t.results = OrderedDict()
         if score_for is None:
