@@ -281,6 +281,52 @@ def pn(participant):
     return participant['last name'] + ', ' + participant['first name']
 
 
+def first_not_empty(*values):
+    return next((v for v in values if v is not None and v.strip()), None)
+
+
+def fetch_program_participants(report_file=None, verbose=False, drop_dups=True):
+
+    if report_file is None:
+        report_file, _ = latest_report('program_participant')
+        if report_file is None:
+            raise RuntimeError('no program participant report found!')
+        if verbose:
+            print(
+                '[program participant report selected: {} (realpath={})]'.format(
+                    report_file, os.path.realpath(report_file)
+                )
+            )
+
+    with open(report_file, 'r', newline='') as csvfile:
+
+        roles = {
+            'Player': [],
+            'Coach': [],
+            'Volunteer': [],
+        }
+
+        reader = DictReader(csvfile)
+
+        for participant in reader:
+
+            if participant['status'] != 'Active':
+                if verbose:
+                    print('status not Active for {}!'.format(pn(participant)))
+                continue
+
+            role = participant['role']
+            role_list = roles[role]
+
+            if is_dup(role_list, participant) and drop_dups:
+                if verbose:
+                    print('dup? {}: {}'.format(role.lower(), pn(participant)))
+            else:
+                role_list.append(participant)
+
+    return roles
+
+
 def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True):
 
     if report_file is None:
