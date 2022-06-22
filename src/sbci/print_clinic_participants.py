@@ -2,7 +2,8 @@ from argparse import ArgumentParser
 from csv import DictWriter
 import sys
 
-from sbci import load_config, fetch_program_participants, first_not_empty
+from sbci import load_config, fetch_program_participants, first_not_empty, \
+    to_date, to_bool
 
 
 def main():
@@ -71,8 +72,11 @@ def main():
                 outrec['State'] = player['state/province/region']
                 outrec['Postal Code'] = player['postcode']
                 outrec['Reference ID'] = player['profile id']
-                outrec['Birthday'] = player['date of birth']
-                outrec['Email Subscription Status'] = player['opted-in to marketing']
+                outrec['Birthday'] = \
+                    to_date(player['date of birth']).strftime('%Y-%m-%d')
+                outrec['Email Subscription Status'] = \
+                    'subscribed' if to_bool(player['opted-in to marketing']) \
+                    else 'unsubscribed'
 
                 writer.writerow(outrec)
 
