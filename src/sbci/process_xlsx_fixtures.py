@@ -8,6 +8,16 @@ from html import escape
 import sys
 
 
+def same_game(g1, g2):
+    if g1[1:3] != g2[1:3]:
+        return False
+    if g1[5:8] != g2[5:8]:
+        return False
+    if g1[3:5] == g2[3:5] or g1[3:5] == g2[4:2:-1]:
+        return True
+    return False
+
+
 def main():
 
     parser = ArgumentParser()
@@ -43,26 +53,40 @@ def main():
             grade, rdate, rnd, home, away, venue, crt, gtime = map(
                 lambda c: c.value, r
             )
+            rnd = int(rnd)
 
-            clubmatches = [
+            clubmatches = (
                 home.startswith(args.club), away.startswith(args.club)
-            ]
+            )
 
             if any(clubmatches):
 
                 rounds.setdefault(str(rnd), []).append(
-                    [
+                    (
                         clubmatches,
                         grade,
                         xldate_as_datetime(rdate, book.datemode).date(),
-                        home,
+                        '' if home == 'Bye' else home,
                         '' if away == 'Bye' else away,
                         venue,
                         crt,
-                        bye if away == 'Bye'
+                        bye if away == 'Bye' or home == 'Bye'
                         else xldate_as_datetime(gtime, book.datemode).time(),
-                    ]
+                    )
                 )
+
+    # remove duplicate games
+    new_rounds = {}
+    for rnd, games in rounds.items():
+        new_games = []
+        for game in games:
+            for g in new_games:
+                if same_game(g, game):
+                    break
+            else:
+                new_games.append(game)
+        new_rounds[rnd] = new_games
+    rounds = new_rounds
 
     print('''<html>
      <head>
