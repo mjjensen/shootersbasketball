@@ -106,8 +106,8 @@ def main():
         output_records = {}
         already_uploaded = {}
 
-        order_numbers = []
-        order_item_ids = []
+        order_numbers = {}
+        order_item_ids = {}
 
         total_netamount = Decimal('0.00')
         total_phqfee = Decimal('0.00')
@@ -250,13 +250,18 @@ def main():
                     )
                 )
 
-            if onum in order_numbers:
-                raise RuntimeError('duplicate order number {}!'.format(onum))
-            order_numbers.append(onum)
+            if onum not in order_numbers:
+                order_numbers[onum] = []
+            else:
+                print(
+                    'multiple records for order number {}'.format(onum),
+                    file=sys.stderr
+                )
+            order_numbers[onum].append(inrec)
 
             if oid in order_item_ids:
                 raise RuntimeError('duplicate order item id {}!'.format(oid))
-            order_item_ids.append(oid)
+            order_item_ids[oid] = inrec
 
             if db.get(pid) is not None:
                 is_already_uploaded = True
