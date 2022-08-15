@@ -381,7 +381,7 @@ def main():
                 file=sys.stderr
             )
 
-    if args.verbose and total_pending > 0:
+    if total_pending > 0:
         print('total pending = ${:.2f}'.format(total_pending), file=sys.stderr)
 
     if len(output_records) == 0:
@@ -395,25 +395,24 @@ def main():
             )
         )
 
-    if args.verbose:
+    print(
+        '{} payment ids were collected.'.format(len(output_records)),
+        file=sys.stderr
+    )
+    print('subtotal = ${:.2f}'.format(total_subtotal), file=sys.stderr)
+    print('phqfee = ${:.2f}'.format(total_phqfee), file=sys.stderr)
+    print('netamount = ${:.2f}'.format(total_netamount), file=sys.stderr)
+    print('gov vouchers = ${:.2f}'.format(total_gvapplied), file=sys.stderr)
+
+    for pid, oreclist in output_records.items():
+        amount = Decimal(0.0)
+        for outrec in oreclist:
+            if outrec['Payee'] != voucher_desc:
+                amount += Decimal(outrec['Amount'])
         print(
-            '{} payment ids were collected.'.format(len(output_records)),
+            '    Payment Id {} = ${:.2f}'.format(pid, amount),
             file=sys.stderr
         )
-        print('subtotal = ${:.2f}'.format(total_subtotal), file=sys.stderr)
-        print('phqfee = ${:.2f}'.format(total_phqfee), file=sys.stderr)
-        print('netamount = ${:.2f}'.format(total_netamount), file=sys.stderr)
-        print('gov vouchers = ${:.2f}'.format(total_gvapplied), file=sys.stderr)
-
-        for pid, oreclist in output_records.items():
-            amount = Decimal(0.0)
-            for outrec in oreclist:
-                if outrec['Payee'] != voucher_desc:
-                    amount += Decimal(outrec['Amount'])
-            print(
-                '    Payment Id {} = ${:.2f}'.format(pid, amount),
-                file=sys.stderr
-            )
 
     if args.dryrun:
         return 0
