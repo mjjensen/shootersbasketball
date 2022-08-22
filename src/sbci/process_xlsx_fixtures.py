@@ -25,6 +25,8 @@ def main():
                         help='print verbose messages')
     parser.add_argument('--club', '-c', default='Fairfield-Shooters',
                         help='change club id')
+    parser.add_argument('--finals', '-f', action='store_true',
+                        help='print verbose messages')
     parser.add_argument('xlsxfiles', nargs='+',
                         help='xlsx file containing edjba fixtures')
     args = parser.parse_args()
@@ -50,10 +52,22 @@ def main():
 
         for r in rows:
 
-            grade, rdate, rnd, home, away, venue, crt, gtime = map(
-                lambda c: c.value, r
-            )
-            rnd = int(rnd)
+            if args.finals:
+                grade, _gtype, rdate, rnd, home, away, venue, crt, gtime = map(
+                    lambda c: c.value, r
+                )
+                frounds = ('SF', 'PF', 'GF')
+                if rnd not in frounds:
+                    raise RuntimeError(
+                        'round number ({}) not one of: {}'.format(
+                            rnd, ', '.join(frounds)
+                        )
+                    )
+            else:
+                grade, rdate, rnd, home, away, venue, crt, gtime = map(
+                    lambda c: c.value, r
+                )
+                rnd = int(rnd)
 
             clubmatches = (
                 home.startswith(args.club), away.startswith(args.club)
