@@ -34,6 +34,7 @@ def main():
     teams = fetch_teams()
 
     rounds = {}
+    rnums = ('1', '2', '3', '4', '5', '6', '7', '8', '9', 'SF', 'PF', 'GF')
 
     bye = datetime.strptime('00:00', '%H:%S').time()
 
@@ -56,18 +57,17 @@ def main():
                 grade, _gtype, rdate, rnd, home, away, venue, crt, gtime = map(
                     lambda c: c.value, r
                 )
-                frounds = ('SF', 'PF', 'GF')
-                if rnd not in frounds:
-                    raise RuntimeError(
-                        'round number ({}) not one of: {}'.format(
-                            rnd, ', '.join(frounds)
-                        )
-                    )
             else:
                 grade, rdate, rnd, home, away, venue, crt, gtime = map(
                     lambda c: c.value, r
                 )
-                rnd = int(rnd)
+
+            if rnd not in rnums:
+                raise RuntimeError(
+                    'round number ({}) not one of: {}'.format(
+                        rnd, ', '.join(rnums)
+                    )
+                )
 
             clubmatches = (
                 home.startswith(args.club), away.startswith(args.club)
@@ -75,7 +75,7 @@ def main():
 
             if any(clubmatches):
 
-                rounds.setdefault(str(rnd), []).append(
+                rounds.setdefault(rnd, []).append(
                     (
                         clubmatches,
                         grade,
