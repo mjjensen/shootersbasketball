@@ -26,6 +26,8 @@ def main():
                         help='flag players too young for age group')
     parser.add_argument('--diversity', '-D', action='store_true',
                         help='include diversity details')
+    parser.add_argument('--postcodes', '-P', action='store_true',
+                        help='include postcode summary')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
     args = parser.parse_args()
@@ -54,6 +56,16 @@ def main():
             unpaid_players = []
 
     nteams = nplayers = nbteams = ngteams = nboys = ngirls = 0
+
+    if args.postcodes:
+        postcodes = {}
+        councils = {}
+
+        cn2pc = {
+            'Darebin': (3070, 3071, 3072, 3073, 3078),
+            'Banyule': (3079, 3081, 3084, 3085, 3087, 3088, 3093, 3094),
+        }
+        pc2cn = {pc: cn for cn in cn2pc for pc in cn2pc[cn]}
 
     for t in teams.values():
 
@@ -144,27 +156,27 @@ def main():
                     extra3 += ' [YOUNGER]'
 
                 if args.diversity:
-                    # aboriginal/torres strait islander
-                    # parent/guardian born overseas? (NO/YES)
+                    # atsi
+                    # parent/guardian born overseas
                     # parent/guardian 1 country of birth
                     # parent/guardian 2 country of birth
-                    # disability? (NO/YES)
+                    # disability?
                     # disability type
                     # disability-other
                     # disability assistance
                     negatives = ('NO', 'Do not wish to disclose', 'NOT_SAYING')
 
-                    v = p['aboriginal/torres strait islander']
+                    v = p['atsi']  # aboriginal/torres strait islander
                     atsi = None if v in negatives else v
                     if atsi:
                         extra3 += ' [ATSI: "{}"]'.format(atsi)
 
-                    v = p['parent/guardian born overseas?']
+                    v = p['parent/guardian born overseas']
                     pos = False if v in negatives else to_bool(v)
                     p1c = p['parent/guardian 1 country of birth']
                     p2c = p['parent/guardian 2 country of birth']
                     if pos:
-                        extra3 += ' [POS: "{}","{}"]'.format(pos, p1c, p2c)
+                        extra3 += ' [POS: "{}","{}"]'.format(p1c, p2c)
 
                     v = p['disability?']
                     disability = False if v in negatives else to_bool(v)
@@ -175,6 +187,13 @@ def main():
                         extra3 += ' [DISABILITY: "{}","{}","{}"]'.format(
                             distype, disother, disass
                         )
+
+                if args.postcodes:
+                    pc = int(p['postcode'])
+                    postcodes[pc] = postcodes.get(pc, 0) + 1
+
+                    cn = pc2cn.get(pc, 'Other')
+                    councils[cn] = councils.get(cn, 0) + 1
 
                 lines.append(
                     '    {:30} - {}{}{}{}'.format(
@@ -273,6 +292,15 @@ def main():
                         )
                 if args.unpaidem:
                     print(','.join(emlist))
+
+    if args.postcodes:
+        print('Postcode Summary:')
+        for pc, n in sorted(postcodes.items()):
+            print('\t{}: {}'.format(pc, n))
+
+        print('Council Summary:')
+        for cn, n in sorted(councils.items()):
+            print('\t{}: {}'.format(cn, n))
 
     return 0
 
