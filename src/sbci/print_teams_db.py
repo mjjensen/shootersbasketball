@@ -87,7 +87,11 @@ def main():
             #     else t.tm_email
             print(
                 '{} {:12} {:20} {:40} {}'.format(
-                    t.edjba_code, t.sname, t.tm_name, t.tm_email, t.tm_mobile
+                    t.edjba_code or '?',
+                    t.sname or '?',
+                    t.tm_name or '?',
+                    t.tm_email or '?',
+                    t.tm_mobile or '?',
                 )
             )
         elif args.urls:

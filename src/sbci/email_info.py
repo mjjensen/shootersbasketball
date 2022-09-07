@@ -200,7 +200,7 @@ def main():
 
         if smtp_class is SMTP:
             smtp.starttls(
-                context=create_default_context(purpose=Purpose.CLIENT_AUTH)
+                context=create_default_context(purpose=Purpose.SERVER_AUTH)
             )
             if args.auth:
                 smtp.login(smtp_user, smtp_pass)
