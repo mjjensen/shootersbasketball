@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
-from csv import DictReader
+from csv import DictReader, DictWriter
 from datetime import datetime
+from io import TextIOWrapper
 import os
 from pathlib import Path
 import sys
@@ -33,9 +34,14 @@ def main():
                         help='output excel data')
     parser.add_argument('--email', action='store_true',
                         help='print a list of email addresses')
+    parser.add_argument('--ascsv', action='store_true',
+                        help='output csv data')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
     args = parser.parse_args()
+
+    if args.ascsv and args.asxls:
+        raise RuntimeError('can\'t specify both --ascsv and --asxls!')
 
     reportdir = args.reportdir
     if not os.path.isdir(reportdir):
@@ -131,6 +137,7 @@ def main():
 
             name = inrec['first name'] + ' ' + inrec['last name']
             date_of_birth = to_date(inrec['date of birth'], '%d/%m/%Y')
+            gender = inrec['gender'][0]
             email = inrec['email']
             if not email:
                 email = inrec['parent/guardian1 email']
@@ -155,6 +162,7 @@ def main():
                 phone=make_phone(phone),
                 prepaid=[],
                 paid=' ',
+                gender=gender,
             )
 
     if len(orecs) == 0:
@@ -204,6 +212,30 @@ def main():
             emails.add(outrec['email'].strip().lower())
         for email in sorted(emails):
             print(email, file=sys.stderr)
+
+    if args.ascsv:
+        fieldnames = [
+            'Modified', 'Paid', 'Parent/Guardian', 'Email',
+            'Mobile', 'DOB', 'Gender', 'Child\'s Name',
+        ]
+        with TextIOWrapper(sys.stdout.buffer, newline='') as outfile:
+            writer = DictWriter(outfile, fieldnames=fieldnames)
+            writer.writeheader()
+            sorecs = sorted(orecs.values(), key=lambda d: d['name'].lower())
+            for outrec in sorecs:
+                noutrec = {
+                    'Modified': outrec['new'],
+                    'Paid': len(outrec['prepaid']),
+                    'Parent/Guardian': outrec['parent'],
+                    'Email': outrec['email'],
+                    'Mobile': outrec['phone'],
+                    'DOB': outrec['date_of_birth'],
+                    'Gender': outrec['gender'],
+                    'Child\'s Name': outrec['name'],
+                }
+                if 'new' in outrec['prepaid']:
+                    noutrec['Modified'] = '*'
+                writer.writerow(noutrec)
 
     if args.asxls:
         from xlwt import Workbook
