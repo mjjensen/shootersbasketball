@@ -19,7 +19,7 @@ def main():
     parser.add_argument('--html', '-H', action='store_true',
                         help='print html instead of csv')
     parser.add_argument('--nrounds', '-n', type=int, default=0, metavar='N',
-                        help='specify report file to use')
+                        help='specify number of rounds to output')
     parser.add_argument('--report', '-r', default=None, metavar='F',
                         help='specify report file to use')
     parser.add_argument('--verbose', '-v', action='store_true',
@@ -139,6 +139,10 @@ def main():
                     totfor += f
                     totag += a
                     totmarg += f - a
+        if args.nrounds > 0:
+            while rcnt < args.nrounds:
+                e.append('')
+                rcnt += 1
         e.append('{:.2f}'.format(float(totfor * 100) / float(totag)))
         e.append('{:.2f}'.format(float(totmarg) / float(rcnt)))
         results.append(e)
