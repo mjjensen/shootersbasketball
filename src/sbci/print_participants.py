@@ -1,7 +1,12 @@
 from argparse import ArgumentParser
+from csv import DictReader
+from datetime import datetime
+from decimal import Decimal
+from operator import itemgetter
+import os
 import sys
 
-from sbci import fetch_teams, fetch_participants, load_config, \
+from sbci import fetch_teams, fetch_participants, load_config, latest_report, \
     fetch_trybooking, find_in_tb, to_fullname, to_date, find_age_group, to_bool
 
 
@@ -14,14 +19,18 @@ def main():
                         help='specify participant report file to use')
     parser.add_argument('--tbreport', default=None, metavar='F',
                         help='specify trybooking report file to use')
+    parser.add_argument('--xactreport', default=None, metavar='F',
+                        help='specify PlayHQ transaction report file to use')
     parser.add_argument('--trybooking', '-t', action='store_true',
                         help='check trybooking payment')
-    parser.add_argument('--rollover', '-r', action='store_true',
-                        help='print team agegroups for next season')
     parser.add_argument('--unpaid', '-u', action='store_true',
                         help='print a list of unpaid players')
     parser.add_argument('--unpaidem', '-U', action='store_true',
                         help='print an email list for unpaid players')
+    parser.add_argument('--rollover', '-r', action='store_true',
+                        help='print team agegroups for next season')
+    parser.add_argument('--playhq', '-p', action='store_true',
+                        help='check PlayHQ payment')
     parser.add_argument('--younger', '-y', action='store_true',
                         help='flag players too young for age group')
     parser.add_argument('--diversity', '-D', action='store_true',
@@ -31,6 +40,9 @@ def main():
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
     args = parser.parse_args()
+
+    if args.trybooking and args.playhq:
+        raise RuntimeError('can\'t specify both --trybooking and --playhq!')
 
     config = load_config(verbose=args.verbose)
 
@@ -49,6 +61,95 @@ def main():
 
         if len(tb) == 0:
             raise RuntimeError('no trybooking data in {}'.format(args.tbreport))
+
+    if args.playhq:
+
+        def currency(s):
+            if s is None or len(s) == 0:
+                return Decimal()
+            if not s.startswith('$'):
+                raise RuntimeError('illegal currency value: {}'.format(s))
+            return Decimal(s[1:])
+
+        xactfile = args.xactreport
+        if xactfile is None:
+            xactfile, _ = latest_report(
+                'transactions',
+                nre=r'^transactions_(\d{8}).csv$',
+                n2dt=lambda m: datetime.strptime(m.group(1), '%Y%m%d'),
+                verbose=args.verbose,
+            )
+            if xactfile is None:
+                raise RuntimeError('no transactions report found!')
+            if args.verbose:
+                print(
+                    '[transactions report selected: {} (realpath={})]'.format(
+                        xactfile, os.path.realpath(xactfile)
+                    )
+                )
+
+        price = Decimal(config['pricing']['early'])
+        xacts = {}
+
+        with open(xactfile, 'r', newline='') as csvfile:
+
+            reader = DictReader(csvfile)
+
+            for xact in reader:
+
+                name, role, rtype, rinfo, rseason, ptype, fee, \
+                soip, sqty, svamt, ssubt, sphqfee, snetamt, pstatus = \
+                    itemgetter(
+                        'Name', 'Role', 'Type of Registration', 'Registration',
+                        'Season Name', 'Product Type', 'Fee Name',
+                        'Order Item Price', 'Quantity',
+                        'Government Voucher Amount Applied', 'Subtotal',
+                        'PlayHQ Fee', 'Net Amount', 'Payout Status',
+                    )(xact)
+
+                if (
+                    role != 'Player'
+                or
+                    rtype != 'Competition'
+                or
+                    rinfo != 'EDJBA'
+                or
+                    rseason != config['edjba_season']
+                or
+                    ptype != 'REGISTRATION'
+                ):
+                    if args.verbose:
+                        print('ignore xact record: {}'.format(xact))
+                    continue
+
+                if int(sqty) != 1:
+                    raise RuntimeError('Quantity not 1!')
+
+                oip, vamt, subt, phqfee, netamt = [
+                    currency(s) for s in (soip, svamt, ssubt, sphqfee, snetamt)
+                ]
+
+                if oip != vamt + subt:
+                    raise RuntimeError(
+                        'oip[{}]!=vamt[{}]+subt[{}]!'.format(oip, vamt, subt)
+                    )
+                if subt - phqfee != netamt:
+                    raise RuntimeError(
+                        'subt[{}]-phqfee[{}]!=netamt[{}]!'.format(
+                            subt, phqfee, netamt
+                        )
+                    )
+
+                if name in xacts:
+                    raise RuntimeError(
+                        'duplicate transaction for {}!'.format(name, xact)
+                    )
+                xacts[name] = (oip, vamt, subt, phqfee, netamt, fee)
+
+        if len(xacts) == 0:
+            raise RuntimeError('no transactions in {}!'.format(xactfile))
+
+    if args.trybooking or args.playhq:
 
         npaid = nunpaid = 0
 
@@ -123,8 +224,12 @@ def main():
                 if args.rollover:
                     extra1 += ' [U{:02d} => U{:02d}]'.format(cag, nag)
 
-                if args.trybooking:
-                    e = find_in_tb(tb, name)
+                if args.trybooking or args.playhq:
+                    if args.trybooking:
+                        e = find_in_tb(tb, name)
+                    else:
+                        k = p['first name'] + ' ' + p['last name']
+                        e = xacts.pop(k, None)
                     if e is None:
                         extra2 += ' [unpaid]'
                         nunpaid += 1
@@ -144,7 +249,13 @@ def main():
                             unpaid_players.append((name, email_addrs))
                     else:
                         npaid += 1
-                        extra2 += ' [{}]'.format(e['Ticket Number'])
+                        if args.trybooking:
+                            extra2 += ' [{}]'.format(e['Ticket Number'])
+                        if args.playhq:
+                            fee = e[-1]
+                            std = 'Standard Player Registration for full season'
+                            if fee != std:
+                                extra2 += ' [{}]'.format(fee)
 
                 ag_start, ag_end = map(
                     to_date,
@@ -243,12 +354,13 @@ def main():
                 nplayers, nboys, ngirls
             )
         )
-        if args.trybooking:
+        if args.trybooking or args.playhq:
             print(
                 'Total of {} have paid, {} have not paid'.format(
                     npaid, nunpaid
                 )
             )
+        if args.trybooking:
             if tb['by-name']:
                 print(
                     '{} trybooking tickets unmatched'.format(
@@ -274,6 +386,7 @@ def main():
                         entry['Ticket Data: Player Family Name'],
                     )
                     print('\t{} [{}]'.format(name, tnum))
+        if args.trybooking or args.playhq:
             if args.unpaid and len(unpaid_players) > 0:
                 if args.unpaidem:
                     emlist = []
