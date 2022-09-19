@@ -20,6 +20,8 @@ def main():
                         help='print info as csv instead of multi-line text')
     parser.add_argument('--terse', action='store_true',
                         help='print one terse line instead of multi-line text')
+    parser.add_argument('--coaches', action='store_true',
+                        help='print coaches instead of team managers in terse')
     parser.add_argument('--verbose', action='store_true',
                         help='be verbose about actions')
     parser.add_argument('--details', action='store_true',
@@ -85,15 +87,26 @@ def main():
             # tmn = t.tm_name[:15] + '...' if len(t.tm_name) > 18 else t.tm_name
             # tme = t.tm_email[:22] + '...' if len(t.tm_email) > 25 \
             #     else t.tm_email
-            print(
-                '{} {:12} {:20} {:40} {}'.format(
-                    t.edjba_code or '?',
-                    t.sname or '?',
-                    t.tm_name or '?',
-                    t.tm_email or '?',
-                    t.tm_mobile or '?',
+            if args.coaches:
+                print(
+                    '{} {:12} {:20} {:40} {}'.format(
+                        t.edjba_code or '?',
+                        t.sname or '?',
+                        t.co_name or '?',
+                        t.co_email or '?',
+                        t.co_mobile or '?',
+                    )
                 )
-            )
+            else:
+                print(
+                    '{} {:12} {:20} {:40} {}'.format(
+                        t.edjba_code or '?',
+                        t.sname or '?',
+                        t.tm_name or '?',
+                        t.tm_email or '?',
+                        t.tm_mobile or '?',
+                    )
+                )
         elif args.urls:
             print('{},{},{}'.format(t.sname, t.edjba_id, t.regurl))
         else:
