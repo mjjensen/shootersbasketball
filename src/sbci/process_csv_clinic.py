@@ -1,6 +1,6 @@
 from argparse import ArgumentParser
 from csv import DictReader, DictWriter
-from datetime import datetime
+from datetime import datetime, date
 from io import TextIOWrapper
 import os
 from pathlib import Path
@@ -32,16 +32,17 @@ def main():
                         help='basename of output file (- = stdout)')
     parser.add_argument('--asxls', action='store_true',
                         help='output excel data')
+    parser.add_argument('--xlsfile', default=None, metavar='F',
+                        help='file to to use for xls output')
     parser.add_argument('--email', action='store_true',
                         help='print a list of email addresses')
     parser.add_argument('--ascsv', action='store_true',
                         help='output csv data')
+    parser.add_argument('--csvfile', default=None, metavar='F',
+                        help='file to to use for csv output')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
     args = parser.parse_args()
-
-    if args.ascsv and args.asxls:
-        raise RuntimeError('can\'t specify both --ascsv and --asxls!')
 
     reportdir = args.reportdir
     if not os.path.isdir(reportdir):
@@ -219,12 +220,19 @@ def main():
         for email in sorted(emails):
             print(email, file=sys.stderr)
 
+    curdate = date.today().strftime('%Y%m%d')
+
     if args.ascsv:
+        csvfile = args.csvfile
+        if csvfile is None:
+            csvfile = '{}-registrations.csv'.format(curdate)
+        if os.path.exists(csvfile):
+            raise RuntimeError('will not overwrite: {}'.format(csvfile))
         fieldnames = [
             'Modified', 'Paid', 'Parent/Guardian', 'Email',
             'Mobile', 'DOB', 'Gender', 'Child\'s Name',
         ]
-        with TextIOWrapper(sys.stdout.buffer, newline='') as outfile:
+        with open(csvfile, 'w', newline='') as outfile:
             writer = DictWriter(outfile, fieldnames=fieldnames)
             writer.writeheader()
             sorecs = sorted(orecs.values(), key=lambda d: d['name'].lower())
@@ -244,6 +252,11 @@ def main():
                 writer.writerow(noutrec)
 
     if args.asxls:
+        xlsfile = args.xlsfile
+        if xlsfile is None:
+            xlsfile = '{}-registrations.xls'.format(curdate)
+        if os.path.exists(xlsfile):
+            raise RuntimeError('will not overwrite: {}'.format(xlsfile))
         from xlwt import Workbook
         from xlwt.Style import easyxf
         headings = [
@@ -396,7 +409,7 @@ def main():
             c += 1
             for i in range(len(config['dates'])):
                 sheet.write(r, 2 + c + i, '  ', normal_style)
-        book.save(sys.stdout.buffer)
+        book.save(xlsfile)
 
     if not args.notouch:
         Path(reffile).touch()
