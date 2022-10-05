@@ -24,8 +24,8 @@ from urllib3.poolmanager import PoolManager
 
 provider = os.getenv('PROVIDER', 'PlayHQ')
 association = os.getenv('ASSOCIATION', 'EDJBA')
-season = os.getenv('SEASON', '2022-winter')
-clinicterm = os.getenv('CLINICTERM', '2022-Term3')
+season = os.getenv('SEASON', '2023-summer')
+clinicterm = os.getenv('CLINICTERM', '2022-Term4')
 develterm = os.getenv('DEVELTERM', '2022-Term1-Friday')
 
 shootersdir = os.getenv(
