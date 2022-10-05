@@ -188,12 +188,18 @@ def main():
                 print('unknown participant {}!'.format(name), file=sys.stderr)
                 continue
 
-            if sku == 'FULLTERM':
+            if sku.startswith('FULLTERM'):
                 if quantity != 1:
                     raise RuntimeError(
                         'quantity for FULLTERM is not 1 ({:d})'.format(quantity)
                     )
                 quantity = len(config['dates'])
+                if len(sku) > 8 and quantity != int(sku[8:]):
+                    raise RuntimeError(
+                        '# of dates ({}) does not match sku ({})'.format(
+                            quantity, sku
+                        )
+                    )
                 orecs[name]['paid'] = 'Full'
             elif sku != 'SINGLE':
                 raise RuntimeError('Unknown SKU {}!'.format(sku))
