@@ -21,8 +21,7 @@ def main():
         csvinput, _ = latest_report(
             None, rdir=develdir,
             nre=r'^(\d{8}).csv$',
-            n2dt=lambda m: datetime.strptime(m.group(1), '%d%m%Y'),
-            verbose=args.verbose
+            n2dt=lambda m: datetime.strptime(m.group(1), '%d%m%Y')
         )
         if csvinput is None:
             raise RuntimeError('no trybooking report found!')

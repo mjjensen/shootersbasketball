@@ -76,8 +76,7 @@ def main():
             xactfile, _ = latest_report(
                 'transactions',
                 nre=r'^transactions_(\d{8}).csv$',
-                n2dt=lambda m: datetime.strptime(m.group(1), '%Y%m%d'),
-                verbose=args.verbose,
+                n2dt=lambda m: datetime.strptime(m.group(1), '%Y%m%d')
             )
             if xactfile is None:
                 raise RuntimeError('no transactions report found!')

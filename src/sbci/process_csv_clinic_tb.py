@@ -69,7 +69,7 @@ def main():
                 dt += datetime.timedelta(seconds=int(suff[1:]))
             return dt
         rlist = sorted(
-            get_reports(None, clinicdir, r'^(\d{8})(-\d)?.csv$', args.verbose),
+            get_reports(None, clinicdir, r'^(\d{8})(-\d)?.csv$'),
             key=repkey,
         )
         try:

@@ -212,7 +212,7 @@ def load_config(filename='config.json', prefix=seasondir, verbose=False):
     return config
 
 
-def get_reports(rtype, rdir='reports', nre=None, verbose=False):
+def get_reports(rtype, rdir='reports', nre=None):
 
     if nre is None:
         nre = r'^' + rtype + r'_(\d{8})(\d+)\.csv$'
@@ -232,11 +232,6 @@ def get_reports(rtype, rdir='reports', nre=None, verbose=False):
 
         m = p.match(name)
         if m is None:
-            if verbose:
-                print(
-                    're mismatch for file name: {}'.format(name),
-                    file=sys.stderr
-                )
             continue
 
         matches.append((name, m))
@@ -244,7 +239,7 @@ def get_reports(rtype, rdir='reports', nre=None, verbose=False):
     return matches
 
 
-def latest_report(rtype, rdir='reports', nre=None, n2dt=None, verbose=False):
+def latest_report(rtype, rdir='reports', nre=None, n2dt=None):
     '''find the latest report file of a certain type'''
 
     if n2dt is None:
@@ -255,7 +250,7 @@ def latest_report(rtype, rdir='reports', nre=None, n2dt=None, verbose=False):
 
     latest = None, None
 
-    for name, m in get_reports(rtype, rdir, nre, verbose):
+    for name, m in get_reports(rtype, rdir, nre):
 
         dt = n2dt(m)
 

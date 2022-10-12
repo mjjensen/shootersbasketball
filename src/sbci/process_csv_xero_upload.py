@@ -44,8 +44,9 @@ def main():
     xactfile = args.xactfile
     if xactfile is None:
         xactfile, _ = latest_report(
-            'transactions', reportdir, r'^transactions_(\d{8})\.csv$',
-            lambda m: datetime.strptime(m.group(1), '%Y%m%d'), args.verbose
+            'transactions', reportdir,
+            r'^transactions_(\d{8})\.csv$',
+            lambda m: datetime.strptime(m.group(1), '%Y%m%d')
         )
         if xactfile is None:
             raise RuntimeError('cannot locate transaction file!')
@@ -223,15 +224,29 @@ def main():
                             famount, oprice
                         )
                     )
-                # (Winter|Summer) YYYY
-                m = re.match(r'^(Winter|Summer) (\d{4})$', sname)
+                m = re.match(r'^(Winter|Summer) (\d{4})(/(\d{2}))?$', sname)
                 if m is None:
                     raise RuntimeError(
                         'rego record has bad season name ({})'.format(sname)
                     )
-                wors, year = m.groups()
+                wors, year, _, year2 = m.groups()
                 if wors == 'Summer':
-                    year = '{}/{:02d}'.format(year, int(year) - 2000 + 1)
+                    if int(year2) != int(year) - 2000 + 1:
+                        raise RuntimeError(
+                            'bad Summer season: {} - year={}, year2={}'.format(
+                                sname, year, year2
+                            )
+                        )
+                    year = '{}/{}'.format(year, year2)
+                elif wors == 'Winter':
+                    if year2 != None:
+                        raise RuntimeError(
+                            'bad Winter season: {} - year={}, year2={}'.format(
+                                sname, year, year2
+                            )
+                        )
+                else:
+                    raise RuntimeError('bad season name: {}'.format(sname))
                 tracking1 = rdesc['tracking1'].format(year, wors)
                 tracking2 = rdesc['tracking2']
             else:

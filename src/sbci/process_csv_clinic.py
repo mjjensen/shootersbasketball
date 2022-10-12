@@ -58,9 +58,7 @@ def main():
 
     partfile = args.partfile
     if partfile is None:
-        partfile, _ = latest_report(
-            'program_participant', reportdir, verbose=args.verbose
-        )
+        partfile, _ = latest_report('program_participant', reportdir)
         if partfile is None:
             raise RuntimeError('cannot locate program participant file!')
     if args.verbose:
@@ -73,8 +71,9 @@ def main():
     merchfile = args.merchfile
     if merchfile is None:
         merchfile, _ = latest_report(
-            'merchandiseorders', reportdir, r'^merchandiseorders_(\d{8})\.csv$',
-            lambda m: datetime.strptime(m.group(1), '%Y%m%d'), args.verbose
+            'merchandiseorders', reportdir,
+            r'^merchandiseorders_(\d{8})\.csv$',
+            lambda m: datetime.strptime(m.group(1), '%Y%m%d')
         )
         if merchfile is None:
             raise RuntimeError('cannot locate merchandise order file!')
