@@ -7,7 +7,7 @@ from json import loads
 import os
 import re
 from sqlite3 import connect, Row
-from ssl import create_default_context, PROTOCOL_TLS
+from ssl import create_default_context, PROTOCOL_TLSv1_2
 import sys
 from threading import Lock
 from time import strftime
@@ -685,10 +685,16 @@ _wwc_url = 'https://online.justice.vic.gov.au/wwccu/checkstatus.doj'
 
 _wwc_post_data = {
     'viewSequence': 1,
+    'language': 'en',
     'cardnumber': None,
     'lastname': None,
     'pageAction': 'Submit',
     'Submit': 'submit',
+}
+
+_wwc_post_headers = {
+    'Cache-Control': 'no-cache, no-store, max-age=0',
+    'Expires': '0',
 }
 
 _wwc_number_pattern = re.compile(r'^(\d{7}(\d|A))(-\d{1,2})?$', re.I)
@@ -764,7 +770,7 @@ class _TLSAdapter(HTTPAdapter):
             num_pools=connections,
             maxsize=maxsize,
             block=block,
-            ssl_version=PROTOCOL_TLS,
+            ssl_version=PROTOCOL_TLSv1_2,
             ssl_context=ctx
         )
 
@@ -847,8 +853,10 @@ def wwc_check(person, verbose=False, nocache=False):
             _wwc_check_session = session()
             _wwc_check_session.mount('https://', _TLSAdapter())
         try:
-            res = _wwc_check_session.post(_wwc_url, postdata)
-        except BaseException as e:
+            res = _wwc_check_session.post(
+                _wwc_url, postdata, headers=_wwc_post_headers
+            )
+        except Exception as e:
             _wwc_check_cache[ident] = WWCCheckResult(
                 WWCCheckStatus.FAILED,
                 'Exception during Web Transaction: {}'.format(e),
