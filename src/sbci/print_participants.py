@@ -140,9 +140,13 @@ def main():
                     )
 
                 if name in xacts:
-                    raise RuntimeError(
-                        'duplicate transaction for {}!'.format(name, xact)
+                    print(
+                        'duplicate transaction for {}! [xact={}]'.format(
+                            name, xact
+                        ),
+                        file=sys.stderr
                     )
+                    continue
                 xacts[name] = (oip, vamt, subt, phqfee, netamt, fee)
 
         if len(xacts) == 0:
