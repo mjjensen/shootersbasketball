@@ -26,7 +26,9 @@ def main():
     parser.add_argument('--club', '-c', default='Fairfield-Shooters',
                         help='change club id')
     parser.add_argument('--finals', '-f', action='store_true',
-                        help='print verbose messages')
+                        help='columns are rearranged for finals')
+    parser.add_argument('--extra', '-e', action='store_true',
+                        help='extra column added on the right')
     parser.add_argument('xlsxfiles', nargs='+',
                         help='xlsx file containing edjba fixtures')
     args = parser.parse_args()
@@ -34,9 +36,13 @@ def main():
     teams = fetch_teams()
 
     rounds = {}
-    rnums = ('1', '2', '3', '4', '5', '6', '7', '8', '9', 'SF', 'PF', 'GF')
+    rnums = (
+        '', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13',
+        '14', '15', '16', '17', '18', 'SF', 'PF', 'GF'
+    )
 
     bye = datetime.strptime('00:00', '%H:%S').time()
+    bye_strs = ('Bye', 'NO GAME')
 
     for xlsxfile in args.xlsxfiles:
 
@@ -57,10 +63,19 @@ def main():
                 grade, _gtype, rdate, rnd, home, away, venue, crt, gtime = map(
                     lambda c: c.value, r
                 )
+            elif args.extra:
+                grade, rdate, rnd, home, away, venue, crt, gtime, _gtype = map(
+                    lambda c: c.value, r
+                )
             else:
                 grade, rdate, rnd, home, away, venue, crt, gtime = map(
                     lambda c: c.value, r
                 )
+
+            if isinstance(rnd, float):
+                rnd = '{}'.format(int(rnd))
+            elif isinstance(rnd, int):
+                rnd = '{}'.format(rnd)
 
             if rnd not in rnums:
                 raise RuntimeError(
@@ -80,12 +95,12 @@ def main():
                         clubmatches,
                         grade,
                         xldate_as_datetime(rdate, book.datemode).date(),
-                        '' if home == 'Bye' else home,
-                        '' if away == 'Bye' else away,
+                        '' if home in bye_strs else home,
+                        '' if away in bye_strs else away,
                         venue,
                         crt,
-                        bye if away == 'Bye' or home == 'Bye'
-                        else xldate_as_datetime(gtime, book.datemode).time(),
+                        bye if away in bye_strs or home in bye_strs else
+                            xldate_as_datetime(gtime, book.datemode).time(),
                     )
                 )
 

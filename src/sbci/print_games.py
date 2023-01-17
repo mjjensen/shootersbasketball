@@ -62,19 +62,25 @@ def main():
         reader = DictReader(csvfile)
 
         for r in reader:
-
+            # game date,grade,round,game status,venue,playing surface,game time,
+            # home team,home team score,home team result,
+            # home team players in lineup,home team player points used,
+            # away team,away team score,away team result,
+            # away team players in lineup,away team player points used,bye,
+            # host organisation,competition,competition type,season,game alias,
+            # game code,game id,result source,result timestamp (last updated)
             _gdate = date(*strptime(r['game date'], '%d/%m/%Y')[:3])
             grade = r['grade']
             roundno = r['round']
             status = r['game status']
             bye = r['bye']
-            team_a_name = r['team a']
-            team_b_name = r['team b']
+            team_a_name = r['home team']
+            team_b_name = r['away team']
             _venue = r['venue']
-            if not r['time']:
+            if not r['game time']:
                 _gtime = time()
             else:
-                _gtime = time(*strptime(r['time'], '%H:%M:%S')[3:5])
+                _gtime = time(*strptime(r['game time'], '%H:%M')[3:5])
 
             if status == 'UPCOMING':
                 if args.upcoming:
@@ -100,10 +106,10 @@ def main():
             if bye:
                 result(roundno, grade, bye)
             else:
-                team_a_score = r['team a score']
-                _team_a_result = r['team a result']
-                team_b_score = r['team b score']
-                _team_b_result = r['team b result']
+                team_a_score = r['home team score']
+                _team_a_result = r['home team result']
+                team_b_score = r['away team score']
+                _team_b_result = r['away team result']
 
                 if team_a_name.startswith(args.club):
                     result(
