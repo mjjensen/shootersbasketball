@@ -158,7 +158,7 @@ def main():
    </tr>
 {}{}{}\
    <tr>
-     <td>Rego Link:</td><td>&nbsp;</td><td><a href="{}"><tt>{}</tt></a></td>
+     <td>Rego Link:</td><td>&nbsp;</td><td><a href="{}" target="_blank"><tt>{}</tt></a></td>
    </tr>
   </table>
 {}{}\

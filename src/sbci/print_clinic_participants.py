@@ -3,7 +3,7 @@ from csv import DictWriter
 import sys
 
 from sbci import load_config, fetch_program_participants, first_not_empty, \
-    to_date, to_bool
+    to_date, to_bool, pn
 
 
 def main():
@@ -15,6 +15,8 @@ def main():
                         help='specify participant report file to use')
     parser.add_argument('--square', default=None, metavar='F',
                         help='write csv upload file of Square customers')
+    parser.add_argument('--email', '-e', action='store_true',
+                        help='print email list')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
     args = parser.parse_args()
@@ -22,6 +24,39 @@ def main():
     config = load_config(verbose=args.verbose)
 
     roles = fetch_program_participants(args.report, args.verbose)
+
+    if args.email:
+        email_list = []
+
+        def extract_emails(p):
+            email_keys = (
+                'email',
+                'parent/guardian1 email',
+                'parent/guardian2 email',
+            )
+            for k in email_keys:
+                v = p[k]
+                if v is None or len(v) == 0:
+                    continue
+                e = v.lower()
+                if e not in email_list:
+                    email_list.append(e)
+
+    for player in roles['Player']:
+
+        if player['season'] != config['label']:
+            if args.verbose:
+                print('ignore out-of-season player: {}'.format(player))
+            continue
+
+        if args.email:
+            extract_emails(player)
+        else:
+            print('{:20}'.format(pn(player), ))
+
+    if args.email:
+        for e in sorted(email_list):
+            print(e)
 
     if args.square is not None:
 
