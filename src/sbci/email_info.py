@@ -95,6 +95,8 @@ def main():
                         metavar='H[:P]', help='specify relay host and port')
     parser.add_argument('--fqdn', '-F', default=None, metavar='H',
                         help='specify the fqdn for the EHLO request')
+    parser.add_argument('teams', nargs='*',
+                        help='if present, limit teams that are sent info')
     args = parser.parse_args()
 
     config = load_config()
@@ -120,7 +122,6 @@ def main():
         smtp_class = SMTP_dummy
     else:
         smtp_class = SMTP
-
 
     admin_email = 'admin@shootersbasketball.org.au'
     testing_email = 'murrayjens@gmail.com'
@@ -158,7 +159,9 @@ def main():
    </tr>
 {}{}{}\
    <tr>
-     <td>Rego Link:</td><td>&nbsp;</td><td><a href="{}" target="_blank"><tt>{}</tt></a></td>
+    <td>Rego Link:</td>
+    <td>&nbsp;</td>
+    <td><a href="{}" target="_blank"><tt>{}</tt></a></td>
    </tr>
   </table>
 {}{}\
@@ -166,6 +169,17 @@ def main():
 </html>'''
 
     teams = fetch_teams()
+
+    if len(args.teams) > 0:
+        teamnames = args.teams[:]
+        newteams = {}
+        for sname, t in teams.items():
+            if sname in teamnames:
+                newteams[sname] = t
+                teamnames.remove(sname)
+        if len(teamnames) > 0:
+            raise RuntimeError('Unknown team names: {}'.format(teamnames))
+        teams = newteams
 
     if args.details:
 
