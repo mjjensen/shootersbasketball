@@ -27,6 +27,10 @@ def main():
                         help='change club id')
     parser.add_argument('--finals', '-f', action='store_true',
                         help='columns are rearranged for finals')
+    parser.add_argument('--finals2', '-F', action='store_true',
+                        help='columns are rearranged for finals (2)')
+    parser.add_argument('--rnum', '-r', default=None,
+                        help='override round number (only with --finals2)')
     parser.add_argument('--extra', '-e', action='store_true',
                         help='extra column added on the right')
     parser.add_argument('xlsxfiles', nargs='+',
@@ -63,6 +67,13 @@ def main():
                 grade, _gtype, rdate, rnd, home, away, venue, crt, gtime = map(
                     lambda c: c.value, r
                 )
+            elif args.finals2:
+                _g1, _g2, rdate, rnd, home, away, venue, crt, gtime = map(
+                    lambda c: c.value, r
+                )
+                grade = _g1 + " " + _g2
+                if args.rnum:
+                    rnd = args.rnum
             elif args.extra:
                 grade, rdate, rnd, home, away, venue, crt, gtime, _gtype = map(
                     lambda c: c.value, r
@@ -77,7 +88,7 @@ def main():
             elif isinstance(rnd, int):
                 rnd = '{}'.format(rnd)
 
-            if rnd not in rnums:
+            if rnd not in rnums and not args.finals2:
                 raise RuntimeError(
                     'round number ({}) not one of: {}'.format(
                         rnd, ', '.join(rnums)
@@ -100,7 +111,7 @@ def main():
                         venue,
                         crt,
                         bye if away in bye_strs or home in bye_strs else
-                            xldate_as_datetime(gtime, book.datemode).time(),
+                        xldate_as_datetime(gtime, book.datemode).time(),
                     )
                 )
 
