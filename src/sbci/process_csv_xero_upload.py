@@ -197,7 +197,7 @@ def main():
                         )
                     )
                 # Term N, YYYY
-                m = re.match(r'^Term ([1-4]), (\d{4})$', sname)
+                m = re.match(r'^Term ([1-4]),? (\d{4})$', sname)
                 if m is None:
                     raise RuntimeError(
                         'clinic record has bad season name ({})'.format(sname)
@@ -212,8 +212,8 @@ def main():
                         break
                 else:
                     raise RuntimeError(
-                        'fee not found: rtype={}, rname={}, ptype={}'.format(
-                            rtype, rname, ptype
+                        'fee {} not found: rtype={}, rname={}, ptype={}'.format(
+                            feename, rtype, rname, ptype
                         )
                     )
                 if quantity != 1:
@@ -239,7 +239,7 @@ def main():
                         )
                     year = '{}/{}'.format(year, year2)
                 elif wors == 'Winter':
-                    if year2 != None:
+                    if year2 is not None:
                         raise RuntimeError(
                             'bad Winter season: {} - year={}, year2={}'.format(
                                 sname, year, year2
