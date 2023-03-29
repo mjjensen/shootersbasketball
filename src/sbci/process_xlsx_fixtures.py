@@ -29,6 +29,8 @@ def main():
                         help='columns are rearranged for finals')
     parser.add_argument('--finals2', '-F', action='store_true',
                         help='columns are rearranged for finals (2)')
+    parser.add_argument('--finals3', action='store_true',
+                        help='columns are rearranged for finals (3)')
     parser.add_argument('--rnum', '-r', default=None,
                         help='override round number (only with --finals2)')
     parser.add_argument('--extra', '-e', action='store_true',
@@ -72,8 +74,10 @@ def main():
                     lambda c: c.value, r
                 )
                 grade = _g1 + " " + _g2
-                if args.rnum:
-                    rnd = args.rnum
+            elif args.finals3:
+                grade, rnd, rdate, home, away, venue, crt, gtime = map(
+                    lambda c: c.value, r
+                )
             elif args.extra:
                 grade, rdate, rnd, home, away, venue, crt, gtime, _gtype = map(
                     lambda c: c.value, r
@@ -82,6 +86,9 @@ def main():
                 grade, rdate, rnd, home, away, venue, crt, gtime = map(
                     lambda c: c.value, r
                 )
+
+            if args.rnum:
+                rnd = args.rnum
 
             if isinstance(rnd, float):
                 rnd = '{}'.format(int(rnd))
