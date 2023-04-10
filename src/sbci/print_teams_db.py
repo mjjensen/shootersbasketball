@@ -1,6 +1,6 @@
 from __future__ import print_function
 from argparse import ArgumentParser
-from sbci import fetch_teams, verbose_info
+from sbci import fetch_teams
 from re import sub
 import sys
 
@@ -22,6 +22,8 @@ def main():
                         help='print one terse line instead of multi-line text')
     parser.add_argument('--coaches', action='store_true',
                         help='print coaches instead of team managers in terse')
+    parser.add_argument('--altsort', action='store_true',
+                        help='use alternate sorting (age/gender/number)')
     parser.add_argument('--verbose', action='store_true',
                         help='be verbose about actions')
     parser.add_argument('--details', action='store_true',
@@ -30,7 +32,13 @@ def main():
                         help='print list of teams and urls')
     args = parser.parse_args()
 
-    teams = fetch_teams(verbose=args.verbose)
+    if args.altsort:
+        teams = fetch_teams(
+            order_by='age_group, gender, team_number, team_name',
+            verbose=args.verbose
+        )
+    else:
+        teams = fetch_teams(verbose=args.verbose)
 
     # info to print for a person
     p_fmt = '{} <{}>, {} [WWC: #{}, exp: {}]'
@@ -72,29 +80,19 @@ def main():
         if args.noresponse and t.responded == 1:
             continue
 
-        if args.csv:
-            print(
-                '{},{},{},{:02d},{},{:02d},{},{},{},{}'.format(
-                    t.sname, t.edjba_id, t.edjba_code, t.age_group, t.gender,
-                    t.number, t.grade if t.grade else '',
-                    t.tm_name, t.tm_email, t.tm_mobile
-                )
-            )
-            continue
-
         if args.terse:
             # snm = t.sname[:9] + '...' if len(t.sname) > 12 else t.sname
             # tmn = t.tm_name[:15] + '...' if len(t.tm_name) > 18 else t.tm_name
             # tme = t.tm_email[:22] + '...' if len(t.tm_email) > 25 \
             #     else t.tm_email
-            if args.coaches:
+            if args.csv:
                 print(
-                    '{} {:12} {:20} {:40} {}'.format(
+                    '{},{},{},{},{}'.format(
                         t.edjba_code or '?',
                         t.sname or '?',
-                        t.co_name or '?',
-                        t.co_email or '?',
-                        t.co_mobile or '?',
+                        (t.co_name if args.coaches else t.tm_name) or '?',
+                        (t.co_email if args.coaches else t.tm_email) or '?',
+                        (t.co_mobile if args.coaches else t.tm_mobile) or '?',
                     )
                 )
             else:
@@ -102,11 +100,19 @@ def main():
                     '{} {:12} {:20} {:40} {}'.format(
                         t.edjba_code or '?',
                         t.sname or '?',
-                        t.tm_name or '?',
-                        t.tm_email or '?',
-                        t.tm_mobile or '?',
+                        (t.co_name if args.coaches else t.tm_name) or '?',
+                        (t.co_email if args.coaches else t.tm_email) or '?',
+                        (t.co_mobile if args.coaches else t.tm_mobile) or '?',
                     )
                 )
+        elif args.csv:
+            print(
+                '{},{},{},{:02d},{},{:02d},{},{},{},{}'.format(
+                    t.sname, t.edjba_id, t.edjba_code, t.age_group, t.gender,
+                    t.number, t.grade if t.grade else '',
+                    t.tm_name, t.tm_email, t.tm_mobile
+                )
+            )
         elif args.urls:
             print('{},{},{}'.format(t.sname, t.edjba_id, t.regurl))
         else:

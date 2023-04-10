@@ -114,7 +114,7 @@ sql_query = '''
     LEFT JOIN people AS co ON teams.coach_id = co.id
     LEFT JOIN people AS ac ON teams.asst_coach_id = ac.id
     WHERE teams.active = 'true'
-    ORDER BY gender, age_group, team_number, team_name
+    ORDER BY
 '''.format(', '.join(map(lambda elem: elem[0], sql_attr_map)))
 
 
@@ -127,8 +127,14 @@ def verbose_info(dest=sys.stderr):
     )
 
 
-def fetch_teams(teamsfile='teams.sqlite3', verbose=False):
+def fetch_teams(teamsfile='teams.sqlite3', order_by=None, verbose=None):
     '''TODO - document this'''
+
+    if order_by is None:
+        order_by = 'gender, age_group, team_number, team_name'
+
+    if verbose is None:
+        verbose = True
 
     if not os.path.exists(teamsfile):
         teamsfile = os.path.join(seasondir, teamsfile)
@@ -149,7 +155,7 @@ def fetch_teams(teamsfile='teams.sqlite3', verbose=False):
     try:
         cursor = conn.cursor()
 
-        rows = cursor.execute(sql_query)
+        rows = cursor.execute(sql_query + ' ' + order_by)
 
         teams = OrderedDict()
 
@@ -288,7 +294,8 @@ def fetch_program_participants(report_file=None, verbose=False, drop_dups=True):
             raise RuntimeError('no program participant report found!')
         if verbose:
             print(
-                '[program participant report selected: {} (realpath={})]'.format(
+                '[program participant report selected: '
+                '{} (realpath={})]'.format(
                     report_file, os.path.realpath(report_file)
                 )
             )
