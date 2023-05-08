@@ -22,6 +22,8 @@ def main():
                         help='print one terse line instead of multi-line text')
     parser.add_argument('--coaches', action='store_true',
                         help='print coaches instead of team managers in terse')
+    parser.add_argument('--both', action='store_true',
+                        help='print both coaches and team managers in terse')
     parser.add_argument('--altsort', action='store_true',
                         help='use alternate sorting (age/gender/number)')
     parser.add_argument('--verbose', action='store_true',
@@ -50,10 +52,22 @@ def main():
             return sub(r' [0:\.]+$', '', s)
 
     if args.csv:
-        print(
-            'Name,Id,Code,Age Group,Gender,Number,Grade,'
-            'Team Manager,Email,Mobile'
-        )
+        if args.terse:
+            if args.both:
+                print(
+                    'Code,Name,Team Manager,Email,Mobile,Coach,Email,Mobile'
+                )
+            else:
+                print(
+                    'Code,Name,{},Email,Mobile'.format(
+                        'Coach' if args.coaches else 'Team Manager'
+                    )
+                )
+        else:
+            print(
+                'Name,Id,Code,Age Group,Gender,Number,Grade,'
+                'Team Manager,Email,Mobile'
+            )
 
     first = True
 
@@ -85,7 +99,34 @@ def main():
             # tmn = t.tm_name[:15] + '...' if len(t.tm_name) > 18 else t.tm_name
             # tme = t.tm_email[:22] + '...' if len(t.tm_email) > 25 \
             #     else t.tm_email
-            if args.csv:
+            if args.both:
+                if args.csv:
+                    print(
+                        '{},{},{},{},{},{},{},{}'.format(
+                            t.edjba_code or '?',
+                            t.sname or '?',
+                            t.tm_name or '?',
+                            t.tm_email or '?',
+                            t.tm_mobile or '?',
+                            t.co_name or '?',
+                            t.co_email or '?',
+                            t.co_mobile or '?',
+                        )
+                    )
+                else:
+                    print(
+                        '{} {:12} {:20} {:40} {:10} {:20} {:40} {:10}'.format(
+                            t.edjba_code or '?',
+                            t.sname or '?',
+                            t.tm_name or '?',
+                            t.tm_email or '?',
+                            t.tm_mobile or '?',
+                            t.co_name or '?',
+                            t.co_email or '?',
+                            t.co_mobile or '?',
+                        )
+                    )
+            elif args.csv:
                 print(
                     '{},{},{},{},{}'.format(
                         t.edjba_code or '?',
