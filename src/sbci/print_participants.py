@@ -8,6 +8,7 @@ import sys
 
 from sbci import fetch_teams, fetch_participants, load_config, latest_report, \
     fetch_trybooking, find_in_tb, to_fullname, to_date, find_age_group, to_bool
+from email.utils import getaddresses
 
 
 def main():
@@ -37,6 +38,8 @@ def main():
                         help='include diversity details')
     parser.add_argument('--postcodes', '-P', action='store_true',
                         help='include postcode summary')
+    parser.add_argument('--allemail', '-A', action='store_true',
+                        help='dump a list of all email addresses')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
     args = parser.parse_args()
@@ -87,7 +90,7 @@ def main():
                     )
                 )
 
-        price = Decimal(config['pricing']['early'])
+        # price = Decimal(config['pricing']['early'])
         xacts = {}
 
         with open(xactfile, 'r', newline='') as csvfile:
@@ -97,7 +100,7 @@ def main():
             for xact in reader:
 
                 name, role, rtype, rinfo, rseason, ptype, fee, \
-                soip, sqty, svamt, ssubt, sphqfee, snetamt, pstatus = \
+                    soip, sqty, svamt, ssubt, sphqfee, snetamt, _ = \
                     itemgetter(
                         'Name', 'Role', 'Type of Registration', 'Registration',
                         'Season Name', 'Product Type', 'Fee Name',
@@ -107,14 +110,10 @@ def main():
                     )(xact)
 
                 if (
-                    role != 'Player'
-                or
-                    rtype != 'Competition'
-                or
-                    rinfo != 'EDJBA'
-                or
-                    rseason != config['edjba_season']
-                or
+                    role != 'Player' or
+                    rtype != 'Competition' or
+                    rinfo != 'EDJBA' or
+                    rseason != config['edjba_season'] or
                     ptype != 'REGISTRATION'
                 ):
                     if args.verbose:
@@ -171,6 +170,9 @@ def main():
         }
         pc2cn = {pc: cn for cn in cn2pc for pc in cn2pc[cn]}
 
+    if args.allemail:
+        all_email_addrs = []
+
     for t in teams.values():
 
         nteams += 1
@@ -207,6 +209,24 @@ def main():
             if ctag is None or cag > ctag:
                 ctag = cag
 
+            email_addrs = []
+            for k in (
+                'email',
+                'parent/guardian1 email',
+                'parent/guardian2 email',
+                # not really an emergency ...
+                # 'emergency contact email',
+            ):
+                email_addr = p.get(k, '').strip().lower()
+                if email_addr and email_addr not in email_addrs:
+                    if not email_addr.endswith('@icoud.com'):
+                        email_addrs.append(email_addr)
+
+            if args.allemail:
+                for addr in getaddresses(email_addrs):
+                    if addr not in all_email_addrs:
+                        all_email_addrs.append(addr)
+
             if args.rollover:
                 ags = find_age_group(config['age_groups_next_season'], dob)
                 if ags is None:
@@ -237,18 +257,6 @@ def main():
                         extra2 += ' [unpaid]'
                         nunpaid += 1
                         if args.unpaid:
-                            email_addrs = []
-                            for k in (
-                                'email',
-                                'parent/guardian1 email',
-                                'parent/guardian2 email',
-                                # not really an emergency ...
-                                # 'emergency contact email',
-                            ):
-                                email_addr = p.get(k, '').strip().lower()
-                                if email_addr and email_addr not in email_addrs:
-                                    if not email_addr.endswith('@icoud.com'):
-                                        email_addrs.append(email_addr)
                             unpaid_players.append((name, email_addrs))
                     else:
                         npaid += 1
@@ -318,6 +326,9 @@ def main():
                     )
                 )
 
+        if args.allemail:
+            continue
+
         extra = ''
         if not args.rollover:
             extra += ' ['
@@ -345,6 +356,11 @@ def main():
         )
         for line in lines:
             print(line)
+
+    if args.allemail:
+        for _, addr in sorted(all_email_addrs):
+            print(addr)
+        return 0
 
     if args.details:
         print(
