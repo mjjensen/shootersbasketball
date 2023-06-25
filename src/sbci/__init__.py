@@ -607,6 +607,20 @@ def find_age_group(age_groups, dob):
     return result
 
 
+_POPATTR_NO_DEFAULT = object()  # so that None could be used as a default value
+
+
+def popattr(obj, name, default=_POPATTR_NO_DEFAULT):
+    '''"pop" attribute from obj - see: https://stackoverflow.com/a/19550942'''
+    try:
+        return obj.__dict__.pop(name)
+    except KeyError:
+        if default is not _POPATTR_NO_DEFAULT:
+            return default
+        raise AttributeError('no attribute "%s"'.format(name))
+        # or getattr(obj, name) to generate a real AttributeError
+
+
 postcode2name = {
     3000: 'Melbourne',
     3039: 'Moonee Ponds',

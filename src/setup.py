@@ -46,6 +46,7 @@ Copyright (C) 2018-21 Murray Jensen - All Rights Reserved.
             'check_team_entries = sbci.check_team_entries:main',
             'check_trybooking = sbci.check_trybooking:main',
             'email_info = sbci.email_info:main',
+            'sbci_flask_app = sbci.flask_app:main',
             'print_games = sbci.print_games:main',
             'print_participants = sbci.print_participants:main',
             'print_clinic_participants = sbci.print_clinic_participants:main',
