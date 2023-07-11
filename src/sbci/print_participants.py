@@ -9,6 +9,7 @@ import sys
 from sbci import fetch_teams, fetch_participants, load_config, latest_report, \
     fetch_trybooking, find_in_tb, to_fullname, to_date, find_age_group, to_bool
 from email.utils import getaddresses
+from collections import namedtuple
 
 
 def main():
@@ -92,6 +93,9 @@ def main():
                     )
                 )
 
+        # must match assignment below ...
+        Xact = namedtuple('Xact', 'oip gvamt subt phqfee netamt vnam vamt')
+
         # price = Decimal(config['pricing']['early'])
         xacts = {}
 
@@ -101,15 +105,14 @@ def main():
 
             for xact in reader:
 
-                name, role, rtype, rinfo, rseason, ptype, fee, \
-                    soip, sqty, sgvamt, ssubt, sphqfee, snetamt, svamt, _ = \
+                name, role, rtype, rinfo, rseason, ptype, vnam, \
+                    soip, sqty, sgvamt, ssubt, sphqfee, snetamt, svamt = \
                     itemgetter(
                         'Name', 'Role', 'Type of Registration', 'Registration',
-                        'Season Name', 'Product Type', 'Fee Name',
+                        'Season Name', 'Product Type', 'Voucher Name',
                         'Order Item Price', 'Quantity',
                         'Government Voucher Amount Applied', 'Subtotal',
                         'PlayHQ Fee', 'Net Amount', 'Voucher Amount Applied',
-                        'Payout Status',
                     )(xact)
 
                 if (
@@ -154,7 +157,8 @@ def main():
                     )
                     continue
 
-                xacts[name] = (oip, gvamt, subt, phqfee, netamt, fee, vamt)
+                # must match namedtuple definition above ...
+                xacts[name] = Xact(oip, gvamt, subt, phqfee, netamt, vnam, vamt)
 
         if len(xacts) == 0:
             raise RuntimeError('no transactions in {}!'.format(xactfile))
@@ -275,10 +279,14 @@ def main():
                         if args.trybooking:
                             extra2 += ' [{}]'.format(e['Ticket Number'])
                         if args.playhq:
-                            fee = e[-1]
-                            std = 'Standard Player Registration for full season'
-                            if fee != std and fee != 0:
-                                extra2 += ' [{}]'.format(fee)
+                            if e.vamt != 0:
+                                extra2 += ' [Claimed: {} = {}]'.format(
+                                    e.vnam, e.vamt
+                                )
+                            if e.gvamt != 0:
+                                extra2 += ' [Claimed: Gov Voucher = {}]'.format(
+                                    e.gvamt
+                                )
 
                 ag_start, ag_end = map(
                     to_date,
