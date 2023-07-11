@@ -1,15 +1,16 @@
 from argparse import ArgumentParser
+from collections import namedtuple
 from csv import DictReader
 from datetime import datetime
 from decimal import Decimal
+from email.utils import getaddresses
 from operator import itemgetter
 import os
+import re
 import sys
 
 from sbci import fetch_teams, fetch_participants, load_config, latest_report, \
     fetch_trybooking, find_in_tb, to_fullname, to_date, find_age_group, to_bool
-from email.utils import getaddresses
-from collections import namedtuple
 
 
 def main():
@@ -281,7 +282,8 @@ def main():
                         if args.playhq:
                             if e.vamt != 0:
                                 extra2 += ' [Claimed: {} = {}]'.format(
-                                    e.vnam, e.vamt
+                                    re.sub(r'\s*\([^\)]+\)\s*', '', e.vnam),
+                                    e.vamt
                                 )
                             if e.gvamt != 0:
                                 extra2 += ' [Claimed: Gov Voucher = {}]'.format(
