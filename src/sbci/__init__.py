@@ -267,19 +267,155 @@ def latest_report(rtype, rdir='reports', nre=None, n2dt=None):
     return latest
 
 
+def maybe_strip(s):
+    if s is None:
+        return None
+    else:
+        return s.strip()
+
+
+def trykeys(d, *args, default=None):
+    for k in args:
+        try:
+            return d[k]
+        except KeyError:
+            pass
+    return default
+
+
+class Participant(object):
+
+    def __init__(self, p, *args, **kwds):
+        super(Participant, self).__init__(*args, **kwds)
+        self.p = p
+
+    def first_name(self):
+        return maybe_strip(trykeys(self.p, 'first name', 'First Name'))
+
+    def last_name(self):
+        return maybe_strip(trykeys(self.p, 'last name', 'Last Name'))
+
+    def date_of_birth(self):
+        return maybe_strip(trykeys(self.p, 'date of birth', 'Date of Birth'))
+
+    def address(self):
+        return maybe_strip(trykeys(self.p, 'address', 'Participant Address'))
+
+    def suburb(self):
+        return maybe_strip(trykeys(self.p,
+                                   'suburb/town',
+                                   'Participant Suburb/Town'))
+
+    def state(self):
+        return maybe_strip(trykeys(self.p,
+                                   'state/province/region',
+                                   'Participant State/Province/Region'))
+
+    def postcode(self):
+        return maybe_strip(trykeys(self.p, 'postcode', 'Participant Postcode'))
+
+    def email(self):
+        return maybe_strip(trykeys(self.p, 'email', 'Account Holder Email'))
+
+    def parent1_email(self):
+        return maybe_strip(trykeys(self.p,
+                                   'parent/guardian1 email',
+                                   'Parent/Guardian1 Email'))
+
+    def parent2_email(self):
+        return maybe_strip(trykeys(self.p,
+                                   'parent/guardian2 email',
+                                   'Parent/Guardian2 Email'))
+
+    def mobile(self):
+        return maybe_strip(trykeys(self.p,
+                                   'mobile number',
+                                   'Account Holder Mobile'))
+
+    def parent1_mobile(self):
+        return maybe_strip(trykeys(self.p,
+                                   'parent/guardian1 mobile number',
+                                   'Parent/Guardian1 Mobile Number'))
+
+    def parent2_mobile(self):
+        return maybe_strip(trykeys(self.p,
+                                   'parent/guardian2 mobile number',
+                                   'Parent/Guardian2 Mobile Number'))
+
+    def profile_id(self):
+        return maybe_strip(trykeys(self.p, 'profile id', 'Profile ID'))
+
+    def opted_in(self):
+        return maybe_strip(trykeys(self.p,
+                                   'opted-in to marketing',
+                                   'Opted In To Marketing'))
+
+    def role(self):
+        return maybe_strip(trykeys(self.p, 'role', 'Role'))
+
+    def status(self):
+        return maybe_strip(trykeys(self.p, 'status', 'Status'))
+
+    def season(self):
+        return maybe_strip(trykeys(self.p, 'season', 'Season'))
+
+    def team_name(self):
+        return maybe_strip(trykeys(self.p, 'team name', 'Team'))
+
+    def atsi(self):
+        return maybe_strip(trykeys(self.p,
+                                   'atsi',
+                                   'Aboriginal/Torres Strait Islander'))
+
+    def parent_born_overseas(self):
+        return maybe_strip(trykeys(self.p,
+                                   'parent/guardian born overseas',
+                                   'Parent/Guardian Born Overseas?'))
+
+    def parent1_country_of_birth(self):
+        return maybe_strip(trykeys(self.p,
+                                   'parent/guardian 1 country of birth',
+                                   'Parent/Guardian1 Country Of Birth'))
+
+    def parent2_country_of_birth(self):
+        return maybe_strip(trykeys(self.p,
+                                   'parent/guardian 2 country of birth',
+                                   'Parent/Guardian2 Country Of Birth'))
+
+    def disability(self):
+        return maybe_strip(trykeys(self.p, 'disability?', 'Disability'))
+
+    def disability_type(self):
+        return maybe_strip(trykeys(self.p,
+                                   'disability type',
+                                   'Disability Type'))
+
+    def disability_other(self):
+        return maybe_strip(trykeys(self.p,
+                                   'disability-other',
+                                   'Disability Other'))
+
+    def disability_assistance(self):
+        return maybe_strip(trykeys(self.p,
+                                   'disability assistance',
+                                   'Disability Assistance'))
+
+    def full_name(self):
+        return self.last_name() + ', ' + self.first_name()
+
+    def __str__(self):
+        return self.full_name()
+
+
 def is_dup(curlist, new):
-    nfn = new['first name'].strip().lower()
-    nln = new['last name'].strip().lower()
+    nfn = new.first_name().lower()
+    nln = new.last_name().lower()
     for old in curlist:
-        ofn = old['first name'].strip().lower()
-        oln = old['last name'].strip().lower()
+        ofn = old.first_name().lower()
+        oln = old.last_name().lower()
         if ofn == nfn and oln == nln:
             return True
     return False
-
-
-def pn(participant):
-    return participant['last name'] + ', ' + participant['first name']
 
 
 def first_not_empty(*values):
@@ -310,31 +446,45 @@ def fetch_program_participants(report_file=None, verbose=False, drop_dups=True):
 
         reader = DictReader(csvfile)
 
-        for participant in reader:
+        for record in reader:
 
-            if participant['status'] != 'Active':
+            p = Participant(record)
+            p.program = True
+
+            if p.status() != 'Active':
                 if verbose:
-                    print('status not Active for {}!'.format(pn(participant)))
+                    print('status not Active for {}!'.format(p))
                 continue
 
-            role = participant['role']
+            role = p.role()
             role_list = roles[role]
 
-            if is_dup(role_list, participant) and drop_dups:
+            if is_dup(role_list, p) and drop_dups:
                 if verbose:
-                    print('dup? {}: {}'.format(role.lower(), pn(participant)))
+                    print('dup? {}: {}'.format(role, p))
             else:
-                role_list.append(participant)
+                role_list.append(p)
 
     return roles
 
 
-def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True):
+def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True,
+                       player_moves={}):
 
     if report_file is None:
-        report_file, _ = latest_report('participant')
-        if report_file is None:
+        report_file1, dt1 = latest_report('participant')
+        report_file2, dt2 = latest_report('participants')
+        if report_file1 is None and report_file2 is None:
             raise RuntimeError('no participant report found!')
+        if report_file1 is None:
+            report_file = report_file2
+        elif report_file2 is None:
+            report_file = report_file1
+        else:
+            if dt1 > dt2:
+                report_file = report_file1
+            else:
+                report_file = report_file2
         if verbose:
             print(
                 '[participant report selected: {} (realpath={})]'.format(
@@ -346,17 +496,28 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True):
 
         reader = DictReader(csvfile)
 
-        for participant in reader:
+        for record in reader:
 
-            if participant['status'] != 'Active':
+            p = Participant(record)
+            p.program = False
+
+            if p.status() != 'Active':
                 if verbose:
-                    print('status not Active for {}!'.format(pn(participant)))
+                    print('status not Active for {}!'.format(p))
                 continue
 
-            team_name = participant['team name']
+            team_name = p.team_name()
+            move_into = player_moves.get(p.full_name(), None)
+            if move_into:
+                print(
+                    'moving {} from {} into {}'.format(
+                        p.full_name(), team_name, move_into
+                    )
+                )
+                team_name = move_into
             if not team_name:
                 if verbose:
-                    print('no team name for {}!'.format(pn(participant)))
+                    print('no team name for {}!'.format(p))
                 continue
 
             t = find_team(teams, edjba_id=team_name)
@@ -365,37 +526,25 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True):
                     print('team name not found for {}!'.format(team_name))
                 continue
 
-            role = participant['role']
+            role = p.role()
             if role == 'Player':
-                if is_dup(t.players, participant) and drop_dups:
+                if is_dup(t.players, p) and drop_dups:
                     if verbose:
-                        print(
-                            'dup? player in {}: {}'.format(
-                                t.sname, pn(participant)
-                            )
-                        )
+                        print('dup? player in {}: {}'.format(t.sname, p))
                 else:
-                    t.players.append(participant)
+                    t.players.append(p)
             elif role == 'Coach':
-                if is_dup(t.coaches, participant) and drop_dups:
+                if is_dup(t.coaches, p) and drop_dups:
                     if verbose:
-                        print(
-                            'dup? coach in {}: {}'.format(
-                                t.sname, pn(participant)
-                            )
-                        )
+                        print('dup? coach in {}: {}'.format(t.sname, p))
                 else:
-                    t.coaches.append(participant)
+                    t.coaches.append(p)
             elif role == 'Team Manager':
-                if is_dup(t.managers, participant) and drop_dups:
+                if is_dup(t.managers, p) and drop_dups:
                     if verbose:
-                        print(
-                            'dup t/m? in {}: {}'.format(
-                                t.sname, pn(participant)
-                            )
-                        )
+                        print('dup t/m? in {}: {}'.format(t.sname, p))
                 else:
-                    t.managers.append(participant)
+                    t.managers.append(p)
             else:
                 raise RuntimeError('Unknown role: {}'.format(role))
 

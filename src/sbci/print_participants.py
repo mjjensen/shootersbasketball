@@ -51,14 +51,13 @@ def main():
 
     teams = fetch_teams(verbose=args.verbose)
 
-    fetch_participants(teams, args.partreport, args.verbose)
+    fetch_participants(teams, args.partreport, args.verbose,
+                       player_moves=config.get('player_moves', {}))
 
     if args.trybooking:
 
         if not args.details:
-            raise RuntimeError(
-                'trybooking payment check requires --details arg'
-            )
+            raise RuntimeError('trybooking check requires --details arg')
 
         tb = fetch_trybooking(config['tbmap'], args.tbreport, args.verbose)
 
@@ -66,6 +65,9 @@ def main():
             raise RuntimeError('no trybooking data in {}'.format(args.tbreport))
 
     if args.playhq:
+
+        if not args.details:
+            raise RuntimeError('playhq check requires --details arg')
 
         def currency(s):
             if s is None or len(s) == 0:
@@ -100,13 +102,14 @@ def main():
             for xact in reader:
 
                 name, role, rtype, rinfo, rseason, ptype, fee, \
-                    soip, sqty, svamt, ssubt, sphqfee, snetamt, _ = \
+                    soip, sqty, sgvamt, ssubt, sphqfee, snetamt, svamt, _ = \
                     itemgetter(
                         'Name', 'Role', 'Type of Registration', 'Registration',
                         'Season Name', 'Product Type', 'Fee Name',
                         'Order Item Price', 'Quantity',
                         'Government Voucher Amount Applied', 'Subtotal',
-                        'PlayHQ Fee', 'Net Amount', 'Payout Status',
+                        'PlayHQ Fee', 'Net Amount', 'Voucher Amount Applied',
+                        'Payout Status',
                     )(xact)
 
                 if (
@@ -123,14 +126,18 @@ def main():
                 if int(sqty) != 1:
                     raise RuntimeError('Quantity not 1!')
 
-                oip, vamt, subt, phqfee, netamt = [
-                    currency(s) for s in (soip, svamt, ssubt, sphqfee, snetamt)
+                oip, gvamt, subt, phqfee, netamt, vamt = [
+                    currency(s)
+                    for s in (soip, sgvamt, ssubt, sphqfee, snetamt, svamt)
                 ]
 
-                if oip != vamt + subt:
+                if oip != gvamt + vamt + subt:
                     raise RuntimeError(
-                        'oip[{}]!=vamt[{}]+subt[{}]!'.format(oip, vamt, subt)
+                        'oip[{}]!=gvamt[{}]+vamt[{}]+subt[{}]! {}'.format(
+                            oip, gvamt, vamt, subt, xact
+                        )
                     )
+
                 if subt - phqfee != netamt:
                     raise RuntimeError(
                         'subt[{}]-phqfee[{}]!=netamt[{}]!'.format(
@@ -146,7 +153,8 @@ def main():
                         file=sys.stderr
                     )
                     continue
-                xacts[name] = (oip, vamt, subt, phqfee, netamt, fee)
+
+                xacts[name] = (oip, gvamt, subt, phqfee, netamt, fee, vamt)
 
         if len(xacts) == 0:
             raise RuntimeError('no transactions in {}!'.format(xactfile))
@@ -194,8 +202,8 @@ def main():
 
         for p in t.players:
 
-            name = to_fullname(p['first name'], p['last name'])
-            dob = to_date(p['date of birth'])
+            name = to_fullname(p.first_name(), p.last_name())
+            dob = to_date(p.date_of_birth())
 
             ags = find_age_group(config['age_groups'], dob)
             if ags is None:
@@ -210,14 +218,11 @@ def main():
                 ctag = cag
 
             email_addrs = []
-            for k in (
-                'email',
-                'parent/guardian1 email',
-                'parent/guardian2 email',
-                # not really an emergency ...
-                # 'emergency contact email',
-            ):
-                email_addr = p.get(k, '').strip().lower()
+            for a in 'email', 'parent1_email', 'parent2_email':
+                email_addr = getattr(p, a)()
+                if email_addr is None:
+                    continue
+                email_addr = email_addr.lower()
                 if email_addr and email_addr not in email_addrs:
                     if not email_addr.endswith('@icoud.com'):
                         email_addrs.append(email_addr)
@@ -240,6 +245,13 @@ def main():
                 if ntag is None or nag > ntag:
                     ntag = nag
 
+            if args.postcodes:
+                pc = int(p.postcode())
+                postcodes[pc] = postcodes.get(pc, 0) + 1
+
+                cn = pc2cn.get(pc, 'Other')
+                councils[cn] = councils.get(cn, 0) + 1
+
             if args.details:
 
                 extra1 = extra2 = extra3 = ''
@@ -251,7 +263,7 @@ def main():
                     if args.trybooking:
                         e = find_in_tb(tb, name)
                     else:
-                        k = p['first name'] + ' ' + p['last name']
+                        k = p.first_name() + ' ' + p.last_name()
                         e = xacts.pop(k, None)
                     if e is None:
                         extra2 += ' [unpaid]'
@@ -265,7 +277,7 @@ def main():
                         if args.playhq:
                             fee = e[-1]
                             std = 'Standard Player Registration for full season'
-                            if fee != std:
+                            if fee != std and fee != 0:
                                 extra2 += ' [{}]'.format(fee)
 
                 ag_start, ag_end = map(
@@ -288,34 +300,27 @@ def main():
                     # disability assistance
                     negatives = ('NO', 'Do not wish to disclose', 'NOT_SAYING')
 
-                    v = p['atsi']  # aboriginal/torres strait islander
+                    v = p.atsi()  # aboriginal/torres strait islander
                     atsi = None if v in negatives else v
                     if atsi:
                         extra3 += ' [ATSI: "{}"]'.format(atsi)
 
-                    v = p['parent/guardian born overseas']
+                    v = p.parent_born_overseas()
                     pos = False if v in negatives else to_bool(v)
-                    p1c = p['parent/guardian 1 country of birth']
-                    p2c = p['parent/guardian 2 country of birth']
+                    p1c = p.parent1_country_of_birth()
+                    p2c = p.parent2_country_of_birth()
                     if pos:
                         extra3 += ' [POS: "{}","{}"]'.format(p1c, p2c)
 
-                    v = p['disability?']
+                    v = p.disability()
                     disability = False if v in negatives else to_bool(v)
-                    distype = p['disability type']
-                    disother = p['disability-other']
-                    disass = p['disability assistance']
+                    distype = p.disability_type()
+                    disother = p.disability_other()
+                    disass = p.disability_assistance()
                     if disability:
                         extra3 += ' [DISABILITY: "{}","{}","{}"]'.format(
                             distype, disother, disass
                         )
-
-                if args.postcodes:
-                    pc = int(p['postcode'])
-                    postcodes[pc] = postcodes.get(pc, 0) + 1
-
-                    cn = pc2cn.get(pc, 'Other')
-                    councils[cn] = councils.get(cn, 0) + 1
 
                 lines.append(
                     '    {:30} - {}{}{}{}'.format(
@@ -325,9 +330,6 @@ def main():
                         extra3,
                     )
                 )
-
-        if args.allemail:
-            continue
 
         extra = ''
         if not args.rollover:
@@ -360,7 +362,15 @@ def main():
     if args.allemail:
         for _, addr in sorted(all_email_addrs):
             print(addr)
-        return 0
+
+    if args.postcodes:
+        print('Postcode Summary:')
+        for pc, n in sorted(postcodes.items()):
+            print('\t{}: {}'.format(pc, n))
+
+        print('Council Summary:')
+        for cn, n in sorted(councils.items()):
+            print('\t{}: {}'.format(cn, n))
 
     if args.details:
         print(
@@ -424,15 +434,6 @@ def main():
                         )
                 if args.unpaidem:
                     print(','.join(emlist))
-
-    if args.postcodes:
-        print('Postcode Summary:')
-        for pc, n in sorted(postcodes.items()):
-            print('\t{}: {}'.format(pc, n))
-
-        print('Council Summary:')
-        for cn, n in sorted(councils.items()):
-            print('\t{}: {}'.format(cn, n))
 
     return 0
 
