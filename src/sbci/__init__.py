@@ -7,7 +7,7 @@ from json import loads
 import os
 import re
 from sqlite3 import connect, Row
-from ssl import create_default_context, PROTOCOL_TLSv1_2
+from ssl import create_default_context, PROTOCOL_TLS
 import sys
 from threading import Lock
 from time import strftime
@@ -16,10 +16,11 @@ from urllib.parse import urlencode
 from urllib.request import urlopen
 
 from dateutil.relativedelta import relativedelta
+from requests import Session
 from requests.adapters import HTTPAdapter
-from requests.sessions import session
 from six import string_types, binary_type, text_type, ensure_text
-from urllib3.poolmanager import PoolManager
+from urllib3 import PoolManager
+from urllib3.util.ssl_ import create_urllib3_context
 
 
 provider = os.getenv('PROVIDER', 'PlayHQ')
@@ -931,17 +932,16 @@ class WWCCheckResult(object):
 
 class _TLSAdapter(HTTPAdapter):
     '''see: https://stackoverflow.com/a/61643770/2130789'''
+    '''also: https://stackoverflow.com/a/76217135'''
 
     def init_poolmanager(self, connections, maxsize, block=False):
         '''Create and initialize the urllib3 PoolManager.'''
-        ctx = create_default_context()
-        ctx.set_ciphers('DEFAULT@SECLEVEL=1')
+        ctx = create_urllib3_context(ciphers='ALL:@SECLEVEL=0')
         self.poolmanager = PoolManager(
             num_pools=connections,
             maxsize=maxsize,
             block=block,
-            ssl_version=PROTOCOL_TLSv1_2,
-            ssl_context=ctx
+            ssl_context=ctx,
         )
 
 
@@ -1020,8 +1020,8 @@ def wwc_check(person, verbose=False, nocache=False):
         # based on: https://stackoverflow.com/a/61643770/2130789
         global _wwc_check_session
         if _wwc_check_session is None:
-            _wwc_check_session = session()
-            _wwc_check_session.mount('https://', _TLSAdapter())
+            _wwc_check_session = Session()
+            _wwc_check_session.mount(_wwc_url, _TLSAdapter())
         try:
             res = _wwc_check_session.post(
                 _wwc_url, postdata, headers=_wwc_post_headers

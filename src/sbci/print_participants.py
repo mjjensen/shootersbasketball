@@ -281,12 +281,12 @@ def main():
                             extra2 += ' [{}]'.format(e['Ticket Number'])
                         if args.playhq:
                             if e.vamt != 0:
-                                extra2 += ' [Claimed: {} = {}]'.format(
+                                extra2 += ' [{} = ${}]'.format(
                                     re.sub(r'\s*\([^\)]+\)\s*', '', e.vnam),
                                     e.vamt
                                 )
                             if e.gvamt != 0:
-                                extra2 += ' [Claimed: Gov Voucher = {}]'.format(
+                                extra2 += ' [Govt Voucher = ${}]'.format(
                                     e.gvamt
                                 )
 
