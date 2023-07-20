@@ -61,6 +61,7 @@ Copyright (C) 2018-21 Murray Jensen - All Rights Reserved.
             'process_xlsx_fixtures = sbci.process_xlsx_fixtures:main',
             'process_xlsx_gradings = sbci.process_xlsx_gradings:main',
             'wwc_report = sbci.wwc_report:main',
+            'denominations = sbci.denominations:main',
         ],
     },
 )
