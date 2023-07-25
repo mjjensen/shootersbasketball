@@ -28,7 +28,7 @@ def main():
 
     teams = fetch_teams()
 
-    def result(roundno, grade, team_name, score_for=None, score_against=None):
+    def result(roundno, team_name, score_for, score_against):
         t = find_team(teams, edjba_id=team_name)
         if t is None:
             print('team {} not found!'.format(team_name), file=sys.stderr)
@@ -39,9 +39,9 @@ def main():
             value = None
         else:
             value = score_for, score_against
-        if (roundno, grade) in t.results:
-            raise RuntimeError('duplicate game: {}, {}'.format(roundno, grade))
-        t.results[roundno, grade] = value
+        if roundno in t.results:
+            raise RuntimeError('duplicate game: {}, {}'.format(roundno))
+        t.results[roundno] = value
 
     report_file = args.report
     if report_file is None:
@@ -55,7 +55,7 @@ def main():
             )
 
     if args.upcoming:
-        print('grade,team1,team2')
+        print('team1,team2')
 
     with open(report_file, 'r', newline='') as csvfile:
 
@@ -69,10 +69,12 @@ def main():
             # away team players in lineup,away team player points used,bye,
             # host organisation,competition,competition type,season,game alias,
             # game code,game id,result source,result timestamp (last updated)
-            _gdate = date(*strptime(r['game date'], '%d/%m/%Y')[:3])
-            grade = r['grade']
-            roundno = r['round']
             status = r['game status']
+            if status == 'Upcoming' and not args.upcoming:
+                continue
+            _gdate = date(*strptime(r['game date'], '%d/%m/%Y')[:3])
+            _grade = r['grade']
+            roundno = r['round']
             bye = r['bye']
             team_a_name = r['home team']
             team_b_name = r['away team']
@@ -82,49 +84,27 @@ def main():
             else:
                 _gtime = time(*strptime(r['game time'], '%H:%M')[3:5])
 
-            if status == 'UPCOMING':
-                if args.upcoming:
-                    if team_a_name.startswith('Fairfield'):
-                        t = find_team(teams, edjba_id=team_a_name)
-                        xa = ' [' + t.name[9:] + ']'
-                    else:
-                        xa = ''
-                    if team_b_name.startswith('Fairfield'):
-                        t = find_team(teams, edjba_id=team_b_name)
-                        xb = ' [' + t.name[9:] + ']'
-                    else:
-                        xb = ''
-                    print(
-                        '{},{}{},{}{}'.format(
-                            grade,
-                            team_a_name, xa,
-                            team_b_name, xb,
-                        )
-                    )
-                continue
-
             if bye:
-                result(roundno, grade, bye)
+                result(roundno, bye, None, None)
             else:
-                team_a_score = r['home team score']
-                _team_a_result = r['home team result']
-                team_b_score = r['away team score']
-                _team_b_result = r['away team result']
+                if status == 'Upcoming':
+                    team_a_score = team_b_score = None
+                else:
+                    team_a_score = r['home team score']
+                    _team_a_result = r['home team result']
+                    team_b_score = r['away team score']
+                    _team_b_result = r['away team result']
 
                 if team_a_name.startswith(args.club):
-                    result(
-                        roundno, grade, team_a_name, team_a_score, team_b_score
-                    )
+                    result(roundno, team_a_name, team_a_score, team_b_score)
                 if team_b_name.startswith(args.club):
-                    result(
-                        roundno, grade, team_b_name, team_b_score, team_a_score
-                    )
+                    result(roundno, team_b_name, team_b_score, team_a_score)
 
     results = []
     for t in teams.values():
-        e = [t.sname, t.edjba_code, t.grade]
+        e = [t.sname, t.edjba_code]
         rcnt = totfor = totag = totmarg = 0
-        for (r, _), v in t.results.items():
+        for r, v in t.results.items():
             rcnt += 1
             if args.nrounds > 0 and rcnt > args.nrounds:
                 break
@@ -155,13 +135,94 @@ def main():
 
     if args.summary:
         if args.html:
-            print('<html><body><table>')
+            print('''\
+<html>
+ <head>
+  <style>
+   h1 {
+    text-align: center;
+   }
+   table {
+    margin-left: auto;
+    margin-right: auto;
+   }
+   table, th, td {
+    border: 1px solid black;
+    border-collapse: collapse;
+    padding: 5px;
+   }
+   td.center {
+    text-align: center;
+   }
+   td.right {
+    text-align: right;
+   }
+   td.red {
+    color: red;
+   }
+   td.green {
+    color: green;
+   }
+   td.blue {
+    color: blue;
+   }
+   td.orange {
+    color: orange;
+   }
+  </style>
+ </head>
+ <body>
+  <h1>Summary</h1>
+  <table>
+   <thead>
+    <tr>
+     <th>Name</th>
+     <th>Code</th>
+     <th></th>''')
+            for r, _ in enumerate(results[0][2:-2], 1):
+                print('     <th>R{}</th>'.format(r))
+            print('''\
+     <th></th>
+     <th>Pct</th>
+     <th>AvMrg</th>
+    </tr>
+   </thead>
+   <tbody>''')
+            colors = {'W': 'green', 'L': 'red', 'D': 'blue', 'B': 'orange'}
             for r in results:
-                print('\t<tr>')
-                print('\t\t<td>' + '</td><td>'.join(r) + '</td>')
-                print('\t</tr>')
-            print('</table></body></html>')
+                print('    <tr>')
+                print('     <td>{}</td>'.format(r[0]))
+                print('     <td class="center">{}</td>'.format(r[1]))
+                print('     <td></td>')
+                for cv in r[2:-2]:
+                    cl = 'center'
+                    if len(cv) > 0:
+                        cl += ' ' + colors[cv[0]]
+                    print('     <td class="{}">{}</td>'.format(cl, cv))
+                print('     <td></td>')
+                cv = r[-2]
+                cf = float(cv)
+                cl = 'right'
+                if cf < 50.0 or cf > 150.0:
+                    cl += ' red'
+                print('     <td class="{}">{}</td>'.format(cl, cv))
+                cv = r[-1]
+                cf = float(cv)
+                cl = 'right'
+                if cf < -10.0 or cf > 10.0:
+                    cl += ' red'
+                print('     <td class="{}">{}</td>'.format(cl, cv))
+                print('    </tr>')
+            print('''\
+   </tbody>
+  </table>
+ </body>
+</html>''')
         else:
+            print('name,code', end='')
+            for r, _ in enumerate(results[0][2:-2], 1):
+                print(',r{}'.format(r), end='')
+            print(',pct,avmrg')
             for r in results:
                 print(','.join(r))
 
