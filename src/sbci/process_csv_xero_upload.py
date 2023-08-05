@@ -98,7 +98,7 @@ def main():
         'Analysis code',
     ]
 
-    voucher_desc = 'Get Active Kids Voucher Program'
+    gov_voucher_desc = 'Get Active Kids Voucher Program'
 
     with open(xactfile, 'r', newline='') as infile:
 
@@ -115,6 +115,7 @@ def main():
         total_subtotal = Decimal('0.00')
         total_pending = Decimal('0.00')
         total_gvapplied = Decimal('0.00')
+        total_vapplied = Decimal('0.00')
 
         for inrec in reader:
             org = inrec['Organisation']
@@ -188,6 +189,39 @@ def main():
             pdate = to_date(inrec['Payout Date'], '%Y-%m-%d')
             pid = inrec['Payout ID']
 
+            vname = inrec['Voucher Name']
+            if vname:
+                vcode = inrec['Voucher Code']
+                vamount = Decimal(inrec['Voucher Amount'].lstrip('$'))
+                vapplied = Decimal(inrec['Voucher Amount Applied'].lstrip('$'))
+                if vamount != vapplied:
+                    raise RuntimeError('complete voucher NOT applied!')
+
+                for vdesc in rdesc['vouchers']:
+                    if vdesc['code'] == vcode:
+                        break
+                else:
+                    raise RuntimeError('unknown voucher code: {}'.format(vcode))
+
+                if vname != vdesc['name']:
+                    raise RuntimeError(
+                        'voucher name mismatch: {}!={}'.format(
+                            vname, vdesc['name']
+                        )
+                    )
+
+                vdapplied = Decimal(vdesc['amount'])
+                if vapplied != vdapplied:
+                    raise RuntimeError(
+                        'unexpected voucher amount applied: {}!={}'.format(
+                            vapplied, vdapplied
+                        )
+                    )
+
+                product += ' [{}]'.format(vname)
+            else:
+                vapplied = Decimal(0.00)
+
             if rdesc['rid'] == 'clinic':
                 sku = inrec['Merchandise SKU']
                 if sku not in rdesc['skus']:
@@ -252,7 +286,7 @@ def main():
             else:
                 raise RuntimeError('bad rego id {}!'.format(rdesc['rid']))
 
-            if (oprice - gvapplied) * quantity != subtotal:
+            if (oprice - gvapplied - vapplied) * quantity != subtotal:
                 raise RuntimeError(
                     'oprice({:.2f})*quantity({})!=subtotal({:.2f})'.format(
                         oprice, quantity, subtotal
@@ -264,6 +298,9 @@ def main():
                         subtotal, netamount, phqfee,
                     )
                 )
+
+            if subtotal == Decimal(0.00):
+                raise RuntimeError('zero value transaction!')
 
             if onum not in order_numbers:
                 order_numbers[onum] = []
@@ -298,6 +335,7 @@ def main():
                 total_phqfee += phqfee
                 total_subtotal += subtotal
                 total_gvapplied += gvapplied
+                total_vapplied += vapplied
 
             desc = '{} - ${:.2f} x {:d}'.format(product, oprice, quantity)
 
@@ -344,7 +382,7 @@ def main():
                 orec = {
                     'Date': xdate.strftime(dfmt),
                     'Amount': '{:.2f}'.format(gvapplied),
-                    'Payee': voucher_desc,
+                    'Payee': gov_voucher_desc,
                     'Description': '{}: get active for {}'.format(desc, name),
                     'Reference': '{} on {}'.format(pid, pdate.strftime(dfmt)),
                     'Cheque Number': onum,
@@ -363,7 +401,7 @@ def main():
     for pid, oreclist1 in already_uploaded.items():
 
         total_amount1 = sum(Decimal(orec['Amount']) for orec in oreclist1
-                            if orec['Payee'] != voucher_desc)
+                            if orec['Payee'] != gov_voucher_desc)
 
         dbval = db.get(pid)
         if dbval is None:
@@ -379,7 +417,7 @@ def main():
             continue
 
         total_amount2 = sum(Decimal(orec['Amount']) for orec in oreclist2
-                            if orec['Payee'] != voucher_desc)
+                            if orec['Payee'] != gov_voucher_desc)
 
         if total_amount1 != total_amount2:
             raise RuntimeError(
@@ -418,11 +456,12 @@ def main():
     print('phqfee = ${:.2f}'.format(total_phqfee), file=sys.stderr)
     print('netamount = ${:.2f}'.format(total_netamount), file=sys.stderr)
     print('gov vouchers = ${:.2f}'.format(total_gvapplied), file=sys.stderr)
+    print('disc vouchers = ${:.2f}'.format(total_vapplied), file=sys.stderr)
 
     for pid, oreclist in output_records.items():
         amount = Decimal(0.0)
         for outrec in oreclist:
-            if outrec['Payee'] != voucher_desc:
+            if outrec['Payee'] != gov_voucher_desc:
                 amount += Decimal(outrec['Amount'])
         print(
             '    Payment Id {} = ${:.2f}'.format(pid, amount),
