@@ -874,7 +874,7 @@ _wwc_result_pattern = re.compile(
     r'^('
     '(Working.*expires on (\d{2}) ([A-Z][a-z]{2}) (\d{4})\.)'
     '|'
-    '(Working.*no longer current.*)'
+    '(Working.*no longer current(.*has a new card that is current)?.*)'
     '|'
     '(This family.*do not match.*)'
     ')$'
@@ -890,7 +890,7 @@ WWCCheckStatus = IntEnum(
     ' '.join(
         [
             'NONE', 'UNKNOWN', 'EMPTY', 'UNDER18', 'TEACHER', 'BADNUMBER',
-            'FAILED', 'SUCCESS', 'EXPIRED', 'INVALID', 'BADRESPONSE'
+            'FAILED', 'SUCCESS', 'CHANGED', 'EXPIRED', 'INVALID', 'BADRESPONSE'
         ]
     )
 )
@@ -1049,16 +1049,23 @@ def wwc_check(person, verbose=False, nocache=False):
         if not m:
             continue
 
-        success, expired, notvalid = m.group(2, 6, 7)
+        success, notcurrent, changed, notvalid = m.group(2, 6, 7, 8)
 
-        if expired:
+        if notcurrent:
             if verbose:
-                print('expired response = {}'.format(expired))
-            _wwc_check_cache[ident] = WWCCheckResult(
-                WWCCheckStatus.EXPIRED,
-                'WWC Number ({}) has Expired'.format(wwcn),
-                None
-            )
+                print('notcurrent response = {}'.format(notcurrent))
+            if changed:
+                _wwc_check_cache[ident] = WWCCheckResult(
+                    WWCCheckStatus.CHANGED,
+                    'WWC Number ({}) has Changed'.format(wwcn),
+                    None
+                )
+            else:
+                _wwc_check_cache[ident] = WWCCheckResult(
+                    WWCCheckStatus.EXPIRED,
+                    'WWC Number ({}) has Expired'.format(wwcn),
+                    None
+                )
             return _wwc_check_cache[ident]
 
         if notvalid:

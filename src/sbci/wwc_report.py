@@ -47,15 +47,15 @@ def main():
             )
             # result is a WWCCheckStatus (IntEnum) and can be one of:
             #     NONE, UNKNOWN, EMPTY, UNDER18, TEACHER, BADNUMBER,
-            #     FAILED, SUCCESS, EXPIRED, INVALID, BADRESPONSE
+            #     FAILED, SUCCESS, CHANGED, EXPIRED, INVALID, BADRESPONSE
             if args.verbose:
                 print('\t{}: {}\t\t- {}'.format(label, name, res))
             if res.status not in (
-                WWCCheckStatus.NONE,
-                WWCCheckStatus.UNKNOWN,
-                WWCCheckStatus.SUCCESS,
-                WWCCheckStatus.UNDER18,
-                WWCCheckStatus.TEACHER,
+                WWCCheckStatus.NONE,  # @UndefinedVariable
+                WWCCheckStatus.UNKNOWN,  # @UndefinedVariable
+                WWCCheckStatus.SUCCESS,  # @UndefinedVariable
+                WWCCheckStatus.UNDER18,  # @UndefinedVariable
+                WWCCheckStatus.TEACHER,  # @UndefinedVariable
             ):
                 print(
                     '{} [{}]: {} ({}): {}'.format(
