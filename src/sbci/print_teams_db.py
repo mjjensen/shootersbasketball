@@ -86,9 +86,19 @@ def main():
 
         if args.caddrs:
             if t.co_address:
-                print('{}, {}'.format(t.co_name, t.co_address))
+                print(
+                    '{:<31} {}, {}'.format(
+                        'Shooters {} (Coach):'.format(t.sname),
+                        t.co_name, t.co_address
+                    )
+                )
             if t.ac_address:
-                print('{}, {}'.format(t.ac_name, t.ac_address))
+                print(
+                    '{:<31} {}, {}'.format(
+                        'Shooters {} (Assistant):'.format(t.sname),
+                        t.ac_name, t.ac_address
+                    )
+                )
             continue
 
         if args.noresponse and t.responded == 1:
