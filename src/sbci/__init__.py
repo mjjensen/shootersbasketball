@@ -401,6 +401,12 @@ class Participant(object):
                                    'disability assistance',
                                    'Disability Assistance'))
 
+    def wwcc_number(self):
+        return maybe_strip(trykeys(self.p, 'wwc number', 'WWC Number'))
+
+    def wwcc_expiry(self):
+        return maybe_strip(trykeys(self.p, 'wwc expiry', 'WWC Expiry Date'))
+
     def full_name(self):
         return self.last_name() + ', ' + self.first_name()
 
@@ -936,7 +942,8 @@ class _TLSAdapter(HTTPAdapter):
 
     def init_poolmanager(self, connections, maxsize, block=False):
         '''Create and initialize the urllib3 PoolManager.'''
-        ctx = create_urllib3_context(ciphers='ALL:@SECLEVEL=0')
+        # ctx = create_urllib3_context(ciphers='ALL:@SECLEVEL=0')
+        ctx = create_urllib3_context()
         self.poolmanager = PoolManager(
             num_pools=connections,
             maxsize=maxsize,

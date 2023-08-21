@@ -9,8 +9,6 @@ from sbci import load_config, fetch_program_participants, first_not_empty, \
 def main():
 
     parser = ArgumentParser()
-    parser.add_argument('--details', '-d', action='store_true',
-                        help='print player details')
     parser.add_argument('--report', default=None, metavar='F',
                         help='specify participant report file to use')
     parser.add_argument('--square', default=None, metavar='F',
