@@ -125,7 +125,7 @@ def main():
                     )
                 else:
                     print(
-                        '{} {:12} {:20} {:40} {:10} {:20} {:40} {:10}'.format(
+                        '{:7} {:12} {:25} {:40} {:10} {:25} {:40} {:10}'.format(
                             t.edjba_code or '?',
                             t.sname or '?',
                             t.tm_name or '?',
@@ -148,7 +148,7 @@ def main():
                 )
             else:
                 print(
-                    '{} {:12} {:20} {:40} {}'.format(
+                    '{:7} {:12} {:25} {:40} {:10}'.format(
                         t.edjba_code or '?',
                         t.sname or '?',
                         (t.co_name if args.coaches else t.tm_name) or '?',
