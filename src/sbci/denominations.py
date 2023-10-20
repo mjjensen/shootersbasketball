@@ -35,14 +35,22 @@ def main():
 
         record_amount(int(re_match.group(1)))
 
+    total = 0
+
     for denom, count in denominations.items():
 
         if count != 0:
+            amount = denom * count
+
             print(
                 '{:>4}: {:2} = {:>4}'.format(
-                    '$' + str(denom), count, '$' + str(denom * count)
+                    '$' + str(denom), count, '$' + str(amount)
                 )
             )
+
+            total += amount
+
+    print('\nTotal: ${}.00'.format(total))
 
     return 0
 
