@@ -106,8 +106,16 @@ def main():
         rcnt = totfor = totag = totmarg = 0
         for r, v in t.results.items():
             rcnt += 1
-            if args.nrounds > 0 and rcnt > args.nrounds:
-                break
+            if args.nrounds > 0:
+                if rcnt > args.nrounds:
+                    break
+                if r.startswith('Round '):
+                    r = r[6:]
+                if r.isdigit():
+                    rnum = int(r)
+                    while rcnt < rnum:
+                        e.append('BYE')
+                        rcnt += 1
             if v is None:
                 e.append('BYE')
             else:
