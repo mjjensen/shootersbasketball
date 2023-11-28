@@ -1,18 +1,23 @@
 PREFIX = $(HOME)/basketball/shooters
 
-all:
+distfile = dist/sbci-0.1-py3-none-any.whl
 
 # _PYTHON_SYSCONFIGDATA_NAME=_sysconfigdata__linux_x86_64-linux-gnu
-install:
+
+all: $(distfile)
+
+$(distfile): sbci/*.py
 	#python3 setup.py install --prefix "$(PREFIX)" \
 	#	--single-version-externally-managed --root=/
-	rm -f dist/sbci-0.1-py3-none-any.whl
+	rm -f $(distfile)
 	python3.8 -m build --wheel
-	python3.8 -m pip install --force-reinstall --prefix "$(PREFIX)" \
-		dist/sbci-0.1-py3-none-any.whl
+
+install: all
+	python3.8 -m pip install --prefix "$(PREFIX)" $(distfile)
 
 uninstall:
-	rm -rf "$(PREFIX)/bin" "$(PREFIX)/lib"
+	#rm -rf "$(PREFIX)/bin" "$(PREFIX)/lib"
+	python3.8 -m pip -v uninstall -y sbci
 
 clean:
 	find . -name '*.pyc' -exec rm -f '{}' ';'
