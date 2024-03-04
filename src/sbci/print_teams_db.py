@@ -32,6 +32,8 @@ def main():
                         help='print more detail in multi-line text')
     parser.add_argument('--urls', action='store_true',
                         help='print list of teams and urls')
+    parser.add_argument('teams', nargs='*',
+                        help='limit output to the list of teams specified')
     args = parser.parse_args()
 
     if args.altsort:
@@ -71,7 +73,14 @@ def main():
 
     first = True
 
-    for t in teams.values():
+    team_list = []
+    if args.teams:
+        for team in args.teams:
+            team_list.append(teams[team])
+    else:
+        team_list.extend(teams.values())
+
+    for t in team_list:
 
         if args.tmemail:
             print(t.tm_email)

@@ -80,11 +80,7 @@ def main():
 
         xactfile = args.xactreport
         if xactfile is None:
-            xactfile, _ = latest_report(
-                'transactions',
-                nre=r'^transactions_(\d{8}).csv$',
-                n2dt=lambda m: datetime.strptime(m.group(1), '%Y%m%d')
-            )
+            xactfile, _ = latest_report('transactions')
             if xactfile is None:
                 raise RuntimeError('no transactions report found!')
             if args.verbose:
@@ -95,7 +91,7 @@ def main():
                 )
 
         # must match assignment below ...
-        Xact = namedtuple('Xact', 'oip gvamt subt phqfee netamt vnam vamt')
+        Xact = namedtuple('Xact', 'oip gvamt subt phqfee netamt vnam vcod vamt')
 
         # price = Decimal(config['pricing']['early'])
         xacts = {}
@@ -106,12 +102,16 @@ def main():
 
             for xact in reader:
 
-                name, role, rtype, rinfo, rseason, ptype, vnam, \
+                if 'Name' in xact:
+                    name = xact['Name']
+                else:
+                    name = xact['First Name'] + ' ' + xact['Last Name']
+                role, rtype, rinfo, rseason, ptype, vnam, vcod, \
                     soip, sqty, sgvamt, ssubt, sphqfee, snetamt, svamt = \
                     itemgetter(
-                        'Name', 'Role', 'Type of Registration', 'Registration',
+                        'Role', 'Type of Registration', 'Registration',
                         'Season Name', 'Product Type', 'Voucher Name',
-                        'Order Item Price', 'Quantity',
+                        'Voucher Code', 'Order Item Price', 'Quantity',
                         'Government Voucher Amount Applied', 'Subtotal',
                         'PlayHQ Fee', 'Net Amount', 'Voucher Amount Applied',
                     )(xact)
@@ -159,7 +159,9 @@ def main():
                     continue
 
                 # must match namedtuple definition above ...
-                xacts[name] = Xact(oip, gvamt, subt, phqfee, netamt, vnam, vamt)
+                xacts[name] = Xact(
+                    oip, gvamt, subt, phqfee, netamt, vnam, vcod, vamt
+                )
 
         if len(xacts) == 0:
             raise RuntimeError('no transactions in {}!'.format(xactfile))
@@ -281,9 +283,8 @@ def main():
                             extra2 += ' [{}]'.format(e['Ticket Number'])
                         if args.playhq:
                             if e.vamt != 0:
-                                extra2 += ' [{} = ${}]'.format(
-                                    re.sub(r'\s*\([^\)]+\)\s*', '', e.vnam),
-                                    e.vamt
+                                extra2 += ' [{} <{}> = ${}]'.format(
+                                    e.vnam, e.vcod, e.vamt
                                 )
                             if e.gvamt != 0:
                                 extra2 += ' [Govt Voucher = ${}]'.format(

@@ -138,7 +138,6 @@ def main():
   </style>
  </head>
  <body>
-  <p><i>[automated email - send queries to: {}]</i></p>
 {}\
   <table>
    <tr>
@@ -165,6 +164,7 @@ def main():
    </tr>
   </table>
 {}{}\
+  <p><i>[automated email - send queries to: {}]</i></p>
  <body>
 </html>'''
 
@@ -290,7 +290,6 @@ def main():
             msg = MIMEText(
                 body_fmt.format(
                     '{', '}',
-                    nesc(admin_email),
                     ''.join(prepend_html),
                     nesc(t.name),
                     nesc(t.edjba_id),
@@ -308,6 +307,7 @@ def main():
                     nesc(t.regurl),
                     ''.join(pt),
                     ''.join(append_html),
+                    nesc(admin_email),
                 ),
                 'html',
             )
