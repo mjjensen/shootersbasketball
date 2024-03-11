@@ -1,0 +1,3 @@
+[submodule ".externalToolBuilders/expandkw_filter"]
+	path = .externalToolBuilders/expandkw_filter
+	url = git@github.com:futatuki/expandkw_filter.git
