@@ -42,8 +42,12 @@ def main():
                         help='include postcode summary')
     parser.add_argument('--allemail', '-A', action='store_true',
                         help='dump a list of all email addresses')
+    parser.add_argument('--csv', '-C', action='store_true',
+                        help='output in CSV format')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
+    parser.add_argument('teams', nargs='*',
+                        help='limit output to the list of teams specified')
     args = parser.parse_args()
 
     if args.trybooking and args.playhq:
@@ -55,6 +59,13 @@ def main():
 
     fetch_participants(teams, args.partreport, args.verbose,
                        player_moves=config.get('player_moves', {}))
+
+    team_list = []
+    if args.teams:
+        for team in args.teams:
+            team_list.append(teams[team])
+    else:
+        team_list.extend(teams.values())
 
     if args.trybooking:
 
@@ -188,7 +199,7 @@ def main():
     if args.allemail:
         all_email_addrs = []
 
-    for t in teams.values():
+    for t in team_list:
 
         nteams += 1
         nplayers += len(t.players)
@@ -209,7 +220,7 @@ def main():
 
         for p in t.players:
 
-            name = to_fullname(p.first_name(), p.last_name())
+            name = to_fullname(p.first_name(), p.last_name(), args.csv)
             dob = to_date(p.date_of_birth())
 
             ags = find_age_group(config['age_groups'], dob)
@@ -333,14 +344,15 @@ def main():
                             distype, disother, disass
                         )
 
-                lines.append(
-                    '    {:30} - {}{}{}{}'.format(
-                        name,
-                        dob.strftime('%d/%m/%Y'), extra1,
-                        extra2,
-                        extra3,
+                dobs = dob.strftime('%d/%m/%Y')
+                if args.csv:
+                    lines.append('{},{}'.format(name, dobs))
+                else:
+                    lines.append(
+                        '    {:30} - {}{}{}{}'.format(
+                            name, dobs, extra1, extra2, extra3,
+                        )
                     )
-                )
 
         extra = ''
         if not args.rollover:
@@ -362,11 +374,14 @@ def main():
                 for k, v in sorted(nags.items(), key=lambda i: i[0]):
                     extra += ' {:d}xU{:02d}'.format(v, k)
 
-        print(
-            '{:12} [{} {}] - {:2d} players{}'.format(
-                t.sname, t.edjba_code, t.grade, len(t.players), extra
+        if args.csv:
+            print('{}'.format(t.sname))
+        else:
+            print(
+                '{:12} [{} {}] - {:2d} players{}'.format(
+                    t.sname, t.edjba_code, t.grade, len(t.players), extra
+                )
             )
-        )
         for line in lines:
             print(line)
 
@@ -383,7 +398,7 @@ def main():
         for cn, n in sorted(councils.items()):
             print('\t{}: {}'.format(cn, n))
 
-    if args.details:
+    if args.details and not args.csv:
         print(
             'Total of {:2d} teams ({} boys, {} girls)'.format(
                 nteams, nbteams, ngteams

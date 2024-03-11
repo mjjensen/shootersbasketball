@@ -516,11 +516,12 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True,
             team_name = p.team_name()
             move_into = player_moves.get(p.full_name(), None)
             if move_into:
-                print(
-                    'moving {} from {} into {}'.format(
-                        p.full_name(), team_name, move_into
+                if verbose:
+                    print(
+                        'moving {} from {} into {}'.format(
+                            p.full_name(), team_name, move_into
+                        )
                     )
-                )
                 team_name = move_into
             if not team_name:
                 if verbose:
@@ -673,13 +674,16 @@ def fetch_trybooking(tbmap=None, report_file=None, verbose=False):
     return tb
 
 
-def to_fullname(fn, ln):
+def to_fullname(fn, ln, csv=False):
     '''make a standard full name from a first name and last name'''
     if fn is None:
         fn = 'None'
     if ln is None:
         ln = 'None'
-    return ln + ',' + fn
+    if csv:
+        return fn + ' ' + ln
+    else:
+        return ln + ',' + fn
 
 
 def to_datetime(s, fmt='%d/%m/%Y'):
