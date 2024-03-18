@@ -43,11 +43,12 @@ def main():
 
     xactfile = args.xactfile
     if xactfile is None:
-        xactfile, _ = latest_report(
-            'transactions', reportdir,
-            r'^transactions_(\d{8})\.csv$',
-            lambda m: datetime.strptime(m.group(1), '%Y%m%d')
-        )
+        # xactfile, _ = latest_report(
+        #     'transactions', reportdir,
+        #     r'^transactions_(\d{8})\.csv$',
+        #     lambda m: datetime.strptime(m.group(1), '%Y%m%d')
+        # )
+        xactfile, _ = latest_report('transactions')
         if xactfile is None:
             raise RuntimeError('cannot locate transaction file!')
     if args.verbose:
@@ -120,7 +121,7 @@ def main():
         for inrec in reader:
             org = inrec['Organisation']
             role = inrec['Role']
-            org_to = inrec['Organisation Registering To']
+            org_to = inrec['Organisation Registering To Name']
             pstatus = inrec['Payout Status']
             netamount = Decimal(inrec['Net Amount'][1:])
 
@@ -163,7 +164,7 @@ def main():
 
             sname = inrec['Season Name']
             xdate = to_date(inrec['Date'], dfmt)
-            name = inrec['Name']
+            name = inrec['First Name'] + ' ' + inrec['Last Name']
             onum = inrec['Order Number']
             oid = inrec['Order Item ID']
             oprice = Decimal(inrec['Order Item Price'][1:])
