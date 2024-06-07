@@ -142,7 +142,8 @@ def main():
                     total_pending += netamount
                 continue
 
-            rtype = inrec['Type of Registration']
+            rtype = inrec.get('Type of Registration',
+                              inrec['Type of Transaction'])
             rname = inrec['Registration']
             ptype = inrec['Product Type']
 

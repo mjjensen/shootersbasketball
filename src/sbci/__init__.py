@@ -28,8 +28,8 @@ from urllib3.util.ssl_ import create_urllib3_context
 
 provider = os.getenv('PROVIDER', 'PlayHQ')
 association = os.getenv('ASSOCIATION', 'EDJBA')
-season = os.getenv('SEASON', '2024-summer')
-clinicterm = os.getenv('CLINICTERM', '2023-Term4')
+season = os.getenv('SEASON', '2024-winter')
+clinicterm = os.getenv('CLINICTERM', '2024-Term2')
 develterm = os.getenv('DEVELTERM', '2023-Term2-Friday')
 
 shootersdir = os.getenv(

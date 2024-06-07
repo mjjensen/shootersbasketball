@@ -70,12 +70,23 @@ def main():
 
     merchfile = args.merchfile
     if merchfile is None:
-        merchfile, _ = latest_report(
+        newmerchfile, newdate = latest_report('merchandise_orders', reportdir)
+        oldmerchfile, olddate = latest_report(
             'merchandiseorders', reportdir,
             r'^merchandiseorders_(\d{8})\.csv$',
             lambda m: datetime.strptime(m.group(1), '%Y%m%d')
         )
-        if merchfile is None:
+        if newmerchfile:
+            if oldmerchfile:
+                if olddate < newdate:
+                    merchfile = oldmerchfile
+                else:
+                    merchfile = newmerchfile
+            else:
+                merchfile = newmerchfile
+        elif oldmerchfile:
+            merchfile = oldmerchfile
+        else:
             raise RuntimeError('cannot locate merchandise order file!')
     if args.verbose:
         print(
