@@ -13,6 +13,7 @@ $(distfile): sbci/*.py
 	python3.8 -m build --wheel
 
 install: all
+	python3.8 -m pip uninstall --yes sbci
 	python3.8 -m pip install --prefix "$(PREFIX)" $(distfile)
 
 uninstall:
