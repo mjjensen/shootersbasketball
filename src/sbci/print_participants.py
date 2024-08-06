@@ -113,14 +113,14 @@ def main():
 
             for xact in reader:
 
-                if 'Name' in xact:
-                    name = xact['Name']
-                else:
-                    name = xact['First Name'] + ' ' + xact['Last Name']
-                role, rtype, rinfo, rseason, ptype, vnam, vcod, \
+                name = xact.get('Name',
+                                xact['First Name'] + ' ' + xact['Last Name'])
+                rtype = xact.get('Type of Registration',
+                                 xact['Type of Transaction'])
+                role, rinfo, rseason, ptype, vnam, vcod, \
                     soip, sqty, sgvamt, ssubt, sphqfee, snetamt, svamt = \
                     itemgetter(
-                        'Role', 'Type of Registration', 'Registration',
+                        'Role', 'Registration',
                         'Season Name', 'Product Type', 'Voucher Name',
                         'Voucher Code', 'Order Item Price', 'Quantity',
                         'Government Voucher Amount Applied', 'Subtotal',
