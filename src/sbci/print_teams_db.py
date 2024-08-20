@@ -66,10 +66,18 @@ def main():
                     )
                 )
         else:
-            print(
-                'Name,Id,Code,Age Group,Gender,Number,Grade,'
-                'Team Manager,Email,Mobile'
-            )
+            if args.both:
+                print(
+                    'Name,EDJBA Id,Code,'
+                    'Team Manager,Email,Mobile,'
+                    'Coach,Email,Mobile,'
+                    'URL'
+                )
+            else:
+                print(
+                    'Name,Id,Code,Age Group,Gender,Number,Grade,'
+                    'Team Manager,Email,Mobile'
+                )
 
     first = True
 
@@ -166,13 +174,23 @@ def main():
                     )
                 )
         elif args.csv:
-            print(
-                '{},{},{},{:02d},{},{:02d},{},{},{},{}'.format(
-                    t.sname, t.edjba_id, t.edjba_code, t.age_group, t.gender,
-                    t.number, t.grade if t.grade else '',
-                    t.tm_name, t.tm_email, t.tm_mobile
+            if args.both:
+                print(
+                    '{},{},{},{},{},{},{},{},{},{}'.format(
+                        t.sname, t.edjba_id, t.edjba_code,
+                        t.tm_name or '?', t.tm_email or '?', t.tm_mobile or '?',
+                        t.co_name or '?', t.co_email or '?', t.co_mobile or '?',
+                        t.regurl or '?',
+                    )
                 )
-            )
+            else:
+                print(
+                    '{},{},{},{:02d},{},{:02d},{},{},{},{}'.format(
+                        t.sname, t.edjba_id, t.edjba_code, t.age_group, t.gender,
+                        t.number, t.grade if t.grade else '',
+                        t.tm_name, t.tm_email, t.tm_mobile
+                    )
+                )
         elif args.urls:
             print('{},{},{}'.format(t.sname, t.edjba_id, t.regurl))
         else:
