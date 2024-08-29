@@ -42,9 +42,11 @@ Copyright (C) 2018-21 Murray Jensen - All Rights Reserved.
 
     entry_points={
         'console_scripts': [
+            'age_group_calc = sbci.age_group_calc:main',
             'check_participants = sbci.check_participants:main',
             'check_team_entries = sbci.check_team_entries:main',
             'check_trybooking = sbci.check_trybooking:main',
+            'denominations = sbci.denominations:main',
             'email_info = sbci.email_info:main',
             'sbci_flask_app = sbci.flask_app:main',
             'print_games = sbci.print_games:main',
@@ -61,7 +63,6 @@ Copyright (C) 2018-21 Murray Jensen - All Rights Reserved.
             'process_xlsx_fixtures = sbci.process_xlsx_fixtures:main',
             'process_xlsx_gradings = sbci.process_xlsx_gradings:main',
             'wwc_report = sbci.wwc_report:main',
-            'denominations = sbci.denominations:main',
         ],
     },
 )
