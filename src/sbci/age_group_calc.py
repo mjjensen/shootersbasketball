@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 from datetime import date, datetime
 from enum import IntEnum
 import sys
-from typing import Tuple, NoReturn, Union
+from typing import Tuple, Optional, Generator
 from xlsxwriter.workbook import Workbook
 
 
@@ -67,20 +67,13 @@ winter_age_groups = [
     AgeGroup(value, SeasonType.Winter) for value in (9, 11, 13, 15, 17, 19, 21)
 ]
 
-def age_group_generator():
+def age_group_generator() -> Generator[AgeGroup, None, None]:
     sag = list(summer_age_groups)
     wag = list(winter_age_groups)
-    seen = set()
     while True:
         try:
-            ag = sag.pop(0)
-            if ag not in seen:
-                seen.add(ag)
-                yield ag
-            ag = wag.pop(0)
-            if ag not in seen:
-                seen.add(ag)
-                yield ag
+            yield sag.pop(0)  # summer first
+            yield wag.pop(0)
         except IndexError:
             break
 
@@ -105,7 +98,7 @@ class Season:
         else:
             return '{:04d} {}'.format(self.year, self.stype.name)
 
-    def age_group_of(self, d: date) -> Union[AgeGroup, NoReturn]:
+    def age_group_of(self, d: date) -> Optional[AgeGroup]:
         if self.stype is SeasonType.Summer:
             age_groups = summer_age_groups
         else:
@@ -113,18 +106,18 @@ class Season:
         for ag in age_groups:
             if ag.date_is_in(self.year, d):
                 return ag
-        raise ValueError('no age group for date {}'.format(d.isoformat()))
+        return None
 
 
 summer_seasons = [Season(year, SeasonType.Summer) for year in range(2024, 2032)]
 winter_seasons = [Season(year, SeasonType.Winter) for year in range(2023, 2031)]
 
-def season_generator():
+def season_generator() -> Generator[Season, None, None]:
     ss = list(summer_seasons)
     ws = list(winter_seasons)
     while True:
         try:
-            yield ws.pop(0)
+            yield ws.pop(0)  # winter first
             yield ss.pop(0)
         except IndexError:
             break
@@ -154,7 +147,7 @@ def main() -> int:
         reader = csv.reader(open(args.input, 'r', newline=''))
 
     if args.skipheader:
-        _ = next(reader)
+        _ = next(reader)  # discard header from file
 
     header = ['Name']
     for season in all_seasons:
@@ -171,7 +164,10 @@ def main() -> int:
         row = [name]
         for season in all_seasons:
             ag = season.age_group_of(dob)
-            row.append(str(ag))
+            if ag is None:
+                row.append('??')
+            else:
+                row.append(str(ag))
 
         rows.append(row)
 
@@ -180,42 +176,36 @@ def main() -> int:
             raise RuntimeError('cannot output xlsx to sys.stdout')
         workbook = Workbook(args.output)
         worksheet = workbook.add_worksheet()
-        bold = workbook.add_format(
-            {
-                'bold': True,
-                'font_name': 'Calibri',
-                'font_size': 11,
-            }
-        )
-        hfmt = workbook.add_format(
-            {
-                'bold': True,
-                'align': 'center',
-                'font_name': 'Calibri',
-                'font_size': 11,
-            }
-        )
+        font = {
+            'font_name': 'Calibri',
+            'font_size': 11,
+        }
+        norm = workbook.add_format(font)
+        bold = workbook.add_format(dict(font, bold=True))
+        hfmt = workbook.add_format(dict(font, bold=True, align='center'))
         colours = [
             workbook.add_format(
-                {
-                    'pattern': 2,
-                    'fg_color': cname,
-                    'bg_color': 'white',
-                    'align': 'center',
-                    'font_name': 'Calibri',
-                    'font_size': 11,
-                }
+                dict(
+                    font,
+                    align='center',
+                    pattern=2,
+                    fg_color=cname,
+                    bg_color='white',
+                )
             ) for cname in [
                 'blue', 'brown', 'cyan', 'gray', 'green', 'lime', 'magenta',
                 'navy', 'orange', 'pink', 'purple', 'red', 'silver', 'yellow',
             ]
         ]
         seen = set()
-        agcmap = {}
+        agcmap = {'??': norm}
+        cind = 0
+        clen = len(colours)
         for ag in all_age_groups:
             if ag.limit not in seen:
                 seen.add(ag.limit)
-                agcmap[str(ag)] = colours.pop(0)
+                agcmap[str(ag)] = colours[cind]
+                cind = (cind + 1) % clen
         ri = ci = cc = 0
         for hcell in header:
             worksheet.write_string(ri, ci, hcell, hfmt)
