@@ -130,7 +130,10 @@ def main():
 
         for inrec in reader:
 
-            if inrec['role'] != 'Player' or inrec['status'] != 'Active':
+            role = inrec.get('role', inrec['Role'])
+            status = inrec.get('status', inrec['Status'])
+
+            if role != 'Player' or status != 'Active':
                 if args.verbose:
                     print(
                         'ignore Non-Player or Inactive rec: {}'.format(inrec),
@@ -138,7 +141,7 @@ def main():
                     )
                 continue
 
-            school_term = inrec['season']
+            school_term = inrec.get('season', inrec['Season'])
             if school_term != config['label']:
                 raise RuntimeError(
                     'School Term mismatch! ({}!={})'.format(
@@ -146,19 +149,37 @@ def main():
                     )
                 )
 
-            name = inrec['first name'] + ' ' + inrec['last name']
-            date_of_birth = to_date(inrec['date of birth'], '%d/%m/%Y')
-            gender = inrec['gender'][0]
-            email = inrec['email']
-            if not email:
-                email = inrec['parent/guardian1 email']
-            phone = inrec['mobile number']
+            first_name = inrec.get('first name', inrec['First Name'])
+            last_name = inrec.get('last name', inrec['Last Name'])
+            name = first_name + ' ' + last_name
+            dob_str = inrec.get('date of birth', inrec['Date of Birth'])
+            date_of_birth = to_date(dob_str, '%d/%m/%Y')
+            gender = inrec.get('gender', inrec['Gender'])[0]
+            all_email = [email for email in map(
+                lambda key: inrec.get(key, '').strip().lower(),
+                (
+                    'email',
+                    'Account Holder Email',
+                    'parent/guardian1 email',
+                    'Parent/Guardian1 Email',
+                    'Parent/Guardian2 Email',
+                    'Emergency Contact Email',
+                )
+            ) if email]
+            email = all_email[0]
+            phone = inrec.get('mobile number', inrec['Account Holder Mobile'])
             if not phone:
-                phone = inrec['parent/guardian1 mobile number']
-            parent = inrec['parent/guardian1 first name'] + ' ' + \
-                inrec['parent/guardian1 last name']
+                phone = inrec.get('parent/guardian1 mobile number',
+                                  inrec['Parent/Guardian1 Mobile Number'])
+            parent_first_name = inrec.get('parent/guardian1 first name',
+                                          inrec['Parent/Guardian1 First Name'])
+            parent_last_name = inrec.get('parent/guardian1 last name',
+                                          inrec['Parent/Guardian1 Last Name'])
+            parent = parent_first_name + ' ' + parent_last_name
 
-            regodt = to_datetime(inrec['registration date'], '%d/%m/%Y')
+            regodt_str = inrec.get('registration date',
+                                   inrec['Registration Timestamp'].split()[0])
+            regodt = to_datetime(regodt_str, '%d/%m/%Y')
             if refdt is not None and refdt < regodt:
                 new = '*'
             else:
@@ -174,6 +195,7 @@ def main():
                 prepaid=[],
                 paid=' ',
                 gender=gender,
+                all_email=all_email,
             )
 
     if len(orecs) == 0:
@@ -226,7 +248,7 @@ def main():
     if args.email:
         emails = set()  # using a set() will remove duplicates
         for outrec in orecs.values():
-            emails.add(outrec['email'].strip().lower())
+            emails.update(set(outrec['all_email']))
         for email in sorted(emails):
             print(email, file=sys.stderr)
 
