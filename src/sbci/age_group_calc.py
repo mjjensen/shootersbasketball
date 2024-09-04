@@ -177,8 +177,8 @@ def main() -> int:
         workbook = Workbook(args.output)
         worksheet = workbook.add_worksheet()
         font = {
-            'font_name': 'Calibri',
-            'font_size': 11,
+            'font_name': 'Arial',
+            'font_size': 14,
         }
         norm = workbook.add_format(font)
         bold = workbook.add_format(dict(font, bold=True))
