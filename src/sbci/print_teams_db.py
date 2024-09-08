@@ -32,9 +32,16 @@ def main():
                         help='print more detail in multi-line text')
     parser.add_argument('--urls', action='store_true',
                         help='print list of teams and urls')
+    parser.add_argument('--google', action='store_true',
+                        help='print csv suitable for transfer to google sheets')
     parser.add_argument('teams', nargs='*',
                         help='limit output to the list of teams specified')
     args = parser.parse_args()
+
+    if args.google:
+        args.csv = True
+        args.terse = False
+        args.both = True
 
     if args.altsort:
         teams = fetch_teams(
@@ -68,7 +75,7 @@ def main():
         else:
             if args.both:
                 print(
-                    'Name,EDJBA Id,Code,'
+                    '#,Name,Grade,EDJBA Id,EDJBA Code,'
                     'Team Manager,Email,Mobile,'
                     'Coach,Email,Mobile,'
                     'URL'
@@ -79,8 +86,6 @@ def main():
                     'Team Manager,Email,Mobile'
                 )
 
-    first = True
-
     team_list = []
     if args.teams:
         for team in args.teams:
@@ -88,7 +93,9 @@ def main():
     else:
         team_list.extend(teams.values())
 
-    for t in team_list:
+    first = True
+
+    for c, t in enumerate(team_list, start=1):
 
         if args.tmemail:
             print(t.tm_email)
@@ -176,8 +183,8 @@ def main():
         elif args.csv:
             if args.both:
                 print(
-                    '{},{},{},{},{},{},{},{},{},{}'.format(
-                        t.sname, t.edjba_id, t.edjba_code,
+                    '{},{},{},{},{},{},{},{},{},{},{}'.format(
+                        c, t.sname, t.grade, t.edjba_id, t.edjba_code,
                         t.tm_name or '?', t.tm_email or '?', t.tm_mobile or '?',
                         t.co_name or '?', t.co_email or '?', t.co_mobile or '?',
                         t.regurl or '?',
