@@ -42,6 +42,7 @@ def main():
         args.csv = True
         args.terse = False
         args.both = True
+        args.altsort = True
 
     if args.altsort:
         teams = fetch_teams(
@@ -183,8 +184,8 @@ def main():
         elif args.csv:
             if args.both:
                 print(
-                    '{},{},{},{},{},{},{},{},{},{},{}'.format(
-                        c, t.sname, t.grade, t.edjba_id, t.edjba_code,
+                    '{},{},{},{},{},{},{},{},{},{},{},{}'.format(
+                        c, t.sname, t.grade or '?', t.edjba_id, t.edjba_code,
                         t.tm_name or '?', t.tm_email or '?', t.tm_mobile or '?',
                         t.co_name or '?', t.co_email or '?', t.co_mobile or '?',
                         t.regurl or '?',
