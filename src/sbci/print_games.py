@@ -24,9 +24,17 @@ def main():
                         help='specify report file to use')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
+    parser.add_argument('--altsort', action='store_true',
+                        help='use alternate sorting (age/gender/number)')
     args = parser.parse_args()
 
-    teams = fetch_teams()
+    if args.altsort:
+        teams = fetch_teams(
+            order_by='age_group, gender, team_number, team_name',
+            verbose=args.verbose
+        )
+    else:
+        teams = fetch_teams(verbose=args.verbose)
 
     def result(roundno, team_name, score_for, score_against):
         t = find_team(teams, edjba_id=team_name)
