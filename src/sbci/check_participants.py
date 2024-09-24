@@ -23,7 +23,7 @@ def main():
 
     def pcmp(what, sname, code, p, name, email, mobile, wwcnum, wwcexp):
 
-        pname = p.first_name() + ' ' + p.last_name()
+        pname = p.first_name + ' ' + p.last_name
         if name is None:
             print(
                 '***** {:12} [{}] : {} name is None! ({})'.format(
@@ -40,24 +40,24 @@ def main():
         if email is None:
             print(
                 '***** {:12} [{}] : [{}] : {} email is None! ({})'.format(
-                    sname, code, pname, what, p.email()
+                    sname, code, pname, what, p.email
                 )
             )
-        elif email.lower() != p.email().lower():
+        elif email.lower() != p.email.lower():
             print(
                 '***** {:12} [{}] : [{}] : {} email mismatch! ({}!={})'.format(
-                    sname, code, pname, what, email, p.email()
+                    sname, code, pname, what, email, p.email
                 )
             )
 
         if mobile is None:
             print(
                 '***** {:12} [{}] : [{}] : {} mobile is None! ({})'.format(
-                    sname, code, pname, what, p.mobile()
+                    sname, code, pname, what, p.mobile
                 )
             )
         else:
-            pmobile = p.mobile().lower()
+            pmobile = p.mobile.lower()
             if pmobile.startswith('+61'):
                 pmobile = pmobile.replace('+61', '0', 1)
             elif not pmobile.startswith('0'):
@@ -73,13 +73,13 @@ def main():
         if wwcnum is None:
             print(
                 '***** {:12} [{}] : [{}] : {} wwcnum is None! ({})'.format(
-                    sname, code, pname, what, p.wwcc_number()
+                    sname, code, pname, what, p.wwcc_number
                 )
             )
         else:
             if wwcnum.strip().lower() == '109234a--03':
                 wwcnum = '1092343a-03'
-            pwwcnum = p.wwcc_number().lower()
+            pwwcnum = p.wwcc_number.lower()
             if pwwcnum.startswith('vit '):
                 if len(pwwcnum) == 11 and pwwcnum[8] == '-':
                     pwwcnum = pwwcnum[:8] + pwwcnum[9:]
@@ -104,11 +104,11 @@ def main():
         if wwcexp is None:
             print(
                 '***** {:12} [{}] : [{}] : {} wwcexp is None! ({})'.format(
-                    sname, code, pname, what, p.wwcc_expiry()
+                    sname, code, pname, what, p.wwcc_expiry
                 )
             )
         else:
-            pwwcexp = p.wwcc_expiry().lower()
+            pwwcexp = p.wwcc_expiry.lower()
             if not pwwcexp.endswith(' 00:00:00.000'):
                 pwwcexp += ' 00:00:00.000'
             if wwcexp.lower() != pwwcexp:
@@ -128,14 +128,14 @@ def main():
 
         for p in t.players:
 
-            dob = to_date(p.date_of_birth())
+            dob = p.date_of_birth
 
             if dob < ag_start or (args.younger and ag_end and dob > ag_end):
                 print(
                     '***** {:12} [{}] : {} - {}'.format(
                         t.sname, t.edjba_code,
-                        to_fullname(p.first_name(), p.last_name()),
-                        p.date_of_birth(),
+                        to_fullname(p.first_name, p.last_name),
+                        p.date_of_birth,
                     )
                 )
                 # print('S={},E={},D={}'.format(ag_start, ag_end, dob))

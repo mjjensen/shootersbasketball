@@ -100,6 +100,8 @@ def main():
 
         if args.tmemail:
             print(t.tm_email)
+            if t.tm2_email:
+                print(t.tm2_email)
             continue
 
         if args.cemail:

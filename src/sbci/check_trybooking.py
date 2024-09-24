@@ -36,7 +36,7 @@ def main():
 
         for p in t.players:
 
-            e = find_in_tb(tb, to_fullname(p['first name'], p['last name']))
+            e = find_in_tb(tb, to_fullname(p.first_name, p.last_name))
 
             if e is None:
                 unpaid.append(p)
@@ -46,15 +46,15 @@ def main():
     if paid:
         print('Paid: ({})'.format(len(paid)))
         for p in sorted(
-            paid, key=lambda p: to_fullname(p['first name'], p['last name'])
+            paid, key=lambda p: to_fullname(p.first_name, p.last_name)
         ):
-            print('    {}'.format(to_fullname(p['first name'], p['last name'])))
+            print('    {}'.format(to_fullname(p.first_name, p.last_name)))
     if unpaid:
         print('Unpaid: ({})'.format(len(unpaid)))
         for p in sorted(
-            unpaid, key=lambda p: to_fullname(p['first name'], p['last name'])
+            unpaid, key=lambda p: to_fullname(p.first_name, p.last_name)
         ):
-            print('    {}'.format(to_fullname(p['first name'], p['last name'])))
+            print('    {}'.format(to_fullname(p.first_name, p.last_name)))
     if tb['by-name']:
         print('Unknown: ({})'.format(len(tb['by-name'])))
         for fn, e in sorted(tb['by-name'].items(), key=lambda e: e[0]):

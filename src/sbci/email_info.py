@@ -21,7 +21,7 @@ def nesc(s):
     if s is None:
         return ''
     else:
-        return escape(s, True)
+        return escape(str(s), True)
 
 
 def person_tr(label, name, email, mobile):
@@ -65,6 +65,8 @@ def main():
     parser = ArgumentParser(formatter_class=ArgumentDefaultsHelpFormatter)
     parser.add_argument('--auth', '-a', action='store_true',
                         help='authenticate to the email server')
+    parser.add_argument('--both', '-b', action='store_true',
+                        help='send to both team managers and coaches')
     parser.add_argument('--coaches', '-c', action='store_true',
                         help='send to coaches instead of team managers')
     parser.add_argument('--details', '-d', action='store_true',
@@ -156,7 +158,7 @@ def main():
    <tr>
     <td>EDJBA Code:</td><td>&nbsp;</td><td><tt>{}</tt></td>
    </tr>
-{}{}{}\
+{}{}{}{}\
    <tr>
     <td>Rego Link:</td>
     <td>&nbsp;</td>
@@ -184,13 +186,13 @@ def main():
     if args.details:
 
         player_keys = [
-            ('last name', 'surname'),
-            ('first name', 'firstname'),
-            ('date of birth', 'd.o.b'),
-            ('parent/guardian1 first name', 'parent firstname'),
-            ('parent/guardian1 last name', 'parent surname'),
-            ('parent/guardian1 mobile number', 'parent mobile'),
-            ('parent/guardian1 email', 'parent email'),
+            ('last_name', 'surname'),
+            ('first_name', 'firstname'),
+            ('date_of_birth', 'd.o.b'),
+            ('parent1_first_name', 'parent firstname'),
+            ('parent1_last_name', 'parent surname'),
+            ('parent1_mobile', 'parent mobile'),
+            ('parent1_email', 'parent email'),
         ]
 
         fetch_participants(teams, args.partreport, args.verbose)
@@ -221,21 +223,28 @@ def main():
 
         for t in teams.values():
 
-            print('{} [{}, {}]:'.format(t.name, t.edjba_id, t.edjba_code),
-                  file=sys.stderr)
+            if args.verbose:
+                print('{} [{}, {}]:'.format(t.name, t.edjba_id, t.edjba_code),
+                      file=sys.stderr)
 
             recips = []
-            if args.coaches:
+            if args.coaches or args.both:
                 if t.co_email:
                     recips.append(t.co_email)
                 if t.ac_email:
                     recips.append(t.ac_email)
-            else:
+            if not args.coaches or args.both:
                 recips.append(t.tm_email)
+                if t.tm2_email:
+                    recips.append(t.tm2_email)
 
             if not recips:
-                print('\tSKIPPING (no recipients).', file=sys.stderr)
+                if args.verbose:
+                    print('\tSKIPPING (no recipients).', file=sys.stderr)
                 continue
+
+            if args.verbose:
+                print('\tRecipients: {}'.format(recips), file=sys.stderr)
 
             prepend_html = []
             if args.prepend:
@@ -265,11 +274,13 @@ def main():
                     pt.append('     <td class="pt">{}</td>\n'.format(n + 1))
                     for k, _ in player_keys:
                         pt.append(
-                            '     <td class="pt">{}</td>\n'.format(nesc(p[k]))
+                            '     <td class="pt">{}</td>\n'.format(
+                                nesc(getattr(p, k))
+                            )
                         )
                     if args.trybooking:
                         e = find_in_tb(
-                            tb, to_fullname(p['first name'], p['last name'])
+                            tb, to_fullname(p.first_name, p.last_name)
                         )
                         pt.append(
                             '     <td class="pt">{}</td>\n'.format(
@@ -303,6 +314,10 @@ def main():
                     person_tr(
                         'Asst Coach', t.ac_name, t.ac_email, t.ac_mobile
                     ) if args.details and not args.nocoach else '',
+                    person_tr(
+                        'Alt Team Manager',
+                        t.tm2_name, t.tm2_email, t.tm2_mobile
+                    ) if args.details else '',
                     nesc(t.regurl),
                     nesc(t.regurl),
                     ''.join(pt),
@@ -318,31 +333,37 @@ def main():
             msg['Subject'] = subject_fmt.format(t.name)
             msg['Return-Path'] = admin_email
 
-            print('\tsending to {}...'.format(recips), end='', file=sys.stderr)
+            if args.verbose:
+                print('\tsending to {}...'.format(recips), end='',
+                      file=sys.stderr)
             if args.testing:
                 recips = [testing_email]
             else:
                 recips.append(admin_email)
             try:
                 if args.dryrun:
-                    print(
-                        '\n*****|{}|{}|\n{}'.format(
-                            admin_email, recips, msg.as_string()
-                        ),
-                        file=sys.stderr
-                    )
+                    if args.verbose:
+                        print(
+                            '\n*****|{}|{}|\n{}'.format(
+                                admin_email, recips, msg.as_string()
+                            ),
+                            file=sys.stderr
+                        )
                 else:
                     smtp.sendmail(admin_email, recips, msg.as_string())
-                print('done.', file=sys.stderr)
+                if args.verbose:
+                    print('done.', file=sys.stderr)
             except KeyboardInterrupt:
-                print('\nInterrupted!', file=sys.stderr)
+                if args.verbose:
+                    print('\nInterrupted!', file=sys.stderr)
                 sys.exit(0)
             except SMTPException as e:
                 if hasattr(e, 'smtp_error'):
                     m = e.smtp_error
                 else:
                     m = repr(e)
-                print('exception - {}'.format(m), file=sys.stderr)
+                if args.verbose:
+                    print('exception - {}'.format(m), file=sys.stderr)
 
             if args.testing:
                 break
@@ -353,26 +374,29 @@ def main():
 
         if tb['by-name']:
 
-            print(
-                '{} trybooking tickets unmatched'.format(
-                    len(tb['by-name'])
-                ),
-                file=sys.stderr
-            )
-
-            for name, elist in tb['by-name'].items():
-
+            if args.verbose:
                 print(
-                    '\t{} [{}]'.format(
-                        name, ','.join(e['Ticket Number'] for e in elist)
+                    '{} trybooking tickets unmatched'.format(
+                        len(tb['by-name'])
                     ),
                     file=sys.stderr
                 )
 
+            for name, elist in tb['by-name'].items():
+
+                if args.verbose:
+                    print(
+                        '\t{} [{}]'.format(
+                            name, ','.join(e['Ticket Number'] for e in elist)
+                        ),
+                        file=sys.stderr
+                    )
+
         if tb['by-tnum']:
 
-            print('{} trybooking tickets unused'.format(len(tb['by-tnum'])),
-                  file=sys.stderr)
+            if args.verbose:
+                print('{} trybooking tickets unused'.format(len(tb['by-tnum'])),
+                      file=sys.stderr)
 
             for tnum, elist in tb['by-tnum'].items():
 
@@ -388,7 +412,8 @@ def main():
                     entry['Ticket Data: Player Family Name'],
                 )
 
-                print('\t{} [{}]'.format(name, tnum), file=sys.stderr)
+                if args.verbose:
+                    print('\t{} [{}]'.format(name, tnum), file=sys.stderr)
 
     return 0
 

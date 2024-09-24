@@ -1,7 +1,7 @@
 from collections import OrderedDict
 from csv import DictReader
 from datetime import datetime, date
-from enum import unique, IntEnum
+from enum import IntEnum
 from glob import glob
 from json import loads
 import os
@@ -21,6 +21,8 @@ from requests.adapters import HTTPAdapter
 from six import string_types, binary_type, text_type, ensure_text
 from urllib3 import PoolManager
 from urllib3.util.ssl_ import create_urllib3_context
+from typing import Dict, List
+from _collections_abc import Mapping, Sequence
 
 
 provider = os.getenv('PROVIDER', 'PlayHQ')
@@ -72,40 +74,48 @@ class Team(object):
 # map sql elements to Team object attributes
 # first in tuple is sql element, second is team object attr
 sql_attr_map = [
-    ('gender',            'gender'),
-    ('age_group',         'age_group'),
-    ('team_number',       'number'),
-    ('grade',             'grade'),
-    ('team_name',         'name'),
-    ('tm.id',             'tm_id'),
-    ('tm.dob',            'tm_dob'),
-    ('tm.name',           'tm_name'),
-    ('tm.email',          'tm_email'),
-    ('tm.mobile',         'tm_mobile'),
-    ('tm.wwc_name',       'tm_wwcname'),
-    ('tm.wwc_number',     'tm_wwcnum'),
-    ('tm.wwc_expiry',     'tm_wwcexp'),
-    ('co.id',             'co_id'),
-    ('co.dob',            'co_dob'),
-    ('co.name',           'co_name'),
-    ('co.email',          'co_email'),
-    ('co.mobile',         'co_mobile'),
-    ('co.wwc_name',       'co_wwcname'),
-    ('co.wwc_number',     'co_wwcnum'),
-    ('co.wwc_expiry',     'co_wwcexp'),
-    ('co.postal_address', 'co_address'),
-    ('ac.id',             'ac_id'),
-    ('ac.dob',            'ac_dob'),
-    ('ac.name',           'ac_name'),
-    ('ac.email',          'ac_email'),
-    ('ac.mobile',         'ac_mobile'),
-    ('ac.wwc_name',       'ac_wwcname'),
-    ('ac.wwc_number',     'ac_wwcnum'),
-    ('ac.wwc_expiry',     'ac_wwcexp'),
-    ('ac.postal_address', 'ac_address'),
-    ('compats',           'compats'),
-    ('playhq_regurl',     'regurl'),
-    ('responded',         'responded'),
+    ('gender',                'gender'),
+    ('age_group',             'age_group'),
+    ('team_number',           'number'),
+    ('grade',                 'grade'),
+    ('team_name',             'name'),
+    ('tm.id',                 'tm_id'),
+    ('tm.dob',                'tm_dob'),
+    ('tm.name',               'tm_name'),
+    ('tm.email',              'tm_email'),
+    ('tm.mobile',             'tm_mobile'),
+    ('tm.wwc_name',           'tm_wwcname'),
+    ('tm.wwc_number',         'tm_wwcnum'),
+    ('tm.wwc_expiry',         'tm_wwcexp'),
+    ('co.id',                 'co_id'),
+    ('co.dob',                'co_dob'),
+    ('co.name',               'co_name'),
+    ('co.email',              'co_email'),
+    ('co.mobile',             'co_mobile'),
+    ('co.wwc_name',           'co_wwcname'),
+    ('co.wwc_number',         'co_wwcnum'),
+    ('co.wwc_expiry',         'co_wwcexp'),
+    ('co.postal_address',     'co_address'),
+    ('ac.id',                 'ac_id'),
+    ('ac.dob',                'ac_dob'),
+    ('ac.name',               'ac_name'),
+    ('ac.email',              'ac_email'),
+    ('ac.mobile',             'ac_mobile'),
+    ('ac.wwc_name',           'ac_wwcname'),
+    ('ac.wwc_number',         'ac_wwcnum'),
+    ('ac.wwc_expiry',         'ac_wwcexp'),
+    ('ac.postal_address',     'ac_address'),
+    ('compats',               'compats'),
+    ('playhq_regurl',         'regurl'),
+    ('responded',             'responded'),
+    ('tm2.id',                'tm2_id'),
+    ('tm2.dob',               'tm2_dob'),
+    ('tm2.name',              'tm2_name'),
+    ('tm2.email',             'tm2_email'),
+    ('tm2.mobile',            'tm2_mobile'),
+    ('tm2.wwc_name',          'tm2_wwcname'),
+    ('tm2.wwc_number',        'tm2_wwcnum'),
+    ('tm2.wwc_expiry',        'tm2_wwcexp'),
 ]
 
 
@@ -114,6 +124,7 @@ sql_query = '''
     LEFT JOIN people AS tm ON teams.team_manager_id = tm.id
     LEFT JOIN people AS co ON teams.coach_id = co.id
     LEFT JOIN people AS ac ON teams.asst_coach_id = ac.id
+    LEFT JOIN people AS tm2 ON teams.extra_team_manager_id = tm2.id
     WHERE teams.active = 'true'
     ORDER BY
 '''.format(', '.join(map(lambda elem: elem[0], sql_attr_map)))
@@ -268,159 +279,226 @@ def latest_report(rtype, rdir='reports', nre=None, n2dt=None):
     return latest
 
 
-def maybe_strip(s):
-    if s is None:
-        return None
-    else:
-        return s.strip()
+Role = IntEnum('Role', ['Player', 'Coach', 'TeamManager', 'Volunteer'])
 
 
-def trykeys(d, *args, default=None):
+def trykeys(d: dict, *args: str, default=None) -> str:
     for k in args:
         try:
             return d[k]
         except KeyError:
             pass
-    return default
+    if default:
+        return default
+    raise ValueError(
+        'record: {} does not contain any of the keys: {}'.format(d, args)
+    )
+
+
+def clean_mobile(s: str) -> str:
+    s = s.strip().replace(' ', '')
+    if s.startswith('+61'):
+        s = '0' + s[3:]
+    if len(s) == 9 and s.startswith('4'):
+        s = '0' + s
+    return s
 
 
 class Participant(object):
 
-    def __init__(self, p, *args, **kwds):
+    def __init__(self, p: dict, is_program:bool=False, *args, **kwds) -> None:
         super(Participant, self).__init__(*args, **kwds)
         self.p = p
+        self.is_program = is_program
 
-    def first_name(self):
-        return maybe_strip(trykeys(self.p, 'first name', 'First Name'))
+    @property
+    def first_name(self) -> str:
+        return trykeys(self.p, 'first name', 'First Name').strip()
 
-    def last_name(self):
-        return maybe_strip(trykeys(self.p, 'last name', 'Last Name'))
+    @property
+    def parent1_first_name(self) -> str:
+        return trykeys(self.p,
+                       'parent/guardian1 first name',
+                       'Parent/Guardian1 First Name').strip()
 
-    def date_of_birth(self):
-        return maybe_strip(trykeys(self.p, 'date of birth', 'Date of Birth'))
+    @property
+    def parent2_first_name(self) -> str:
+        return trykeys(self.p,
+                       'parent/guardian2 first name',
+                       'Parent/Guardian2 First Name').strip()
 
-    def address(self):
-        return maybe_strip(trykeys(self.p, 'address', 'Participant Address'))
+    @property
+    def last_name(self) -> str:
+        return trykeys(self.p, 'last name', 'Last Name').strip()
 
-    def suburb(self):
-        return maybe_strip(trykeys(self.p,
-                                   'suburb/town',
-                                   'Participant Suburb/Town'))
+    @property
+    def parent1_last_name(self) -> str:
+        return trykeys(self.p,
+                       'parent/guardian1 last name',
+                       'Parent/Guardian1 Last Name').strip()
 
-    def state(self):
-        return maybe_strip(trykeys(self.p,
-                                   'state/province/region',
-                                   'Participant State/Province/Region'))
+    @property
+    def parent2_last_name(self) -> str:
+        return trykeys(self.p,
+                       'parent/guardian2 last name',
+                       'Parent/Guardian2 Last Name').strip()
 
-    def postcode(self):
-        return maybe_strip(trykeys(self.p, 'postcode', 'Participant Postcode'))
+    @property
+    def date_of_birth(self) -> str:
+        dob = trykeys(self.p, 'date of birth', 'Date of Birth')
+        for fmt in ('%Y-%m-%d', '%Y/%m/%d', '%d-%m-%Y', '%d/%m/%Y'):
+            try:
+                d = datetime.strptime(dob, fmt)
+            except:
+                continue
+            return str(d.date())
+        raise RuntimeError('invalid date string: {}'.format(dob))
 
-    def email(self):
-        return maybe_strip(trykeys(self.p, 'email', 'Account Holder Email'))
+    @property
+    def address(self) -> str:
+        return trykeys(self.p, 'address', 'Participant Address').strip()
 
-    def parent1_email(self):
-        return maybe_strip(trykeys(self.p,
-                                   'parent/guardian1 email',
-                                   'Parent/Guardian1 Email'))
+    @property
+    def suburb(self) -> str:
+        return trykeys(self.p, 'suburb/town', 'Participant Suburb/Town').strip()
 
-    def parent2_email(self):
-        return maybe_strip(trykeys(self.p,
-                                   'parent/guardian2 email',
-                                   'Parent/Guardian2 Email'))
+    @property
+    def state(self) -> str:
+        return trykeys(self.p,
+                       'state/province/region',
+                       'Participant State/Province/Region').strip()
 
-    def mobile(self):
-        return maybe_strip(trykeys(self.p,
-                                   'mobile number',
-                                   'Account Holder Mobile'))
+    @property
+    def postcode(self) -> str:
+        return trykeys(self.p, 'postcode', 'Participant Postcode').strip()
 
-    def parent1_mobile(self):
-        return maybe_strip(trykeys(self.p,
-                                   'parent/guardian1 mobile number',
-                                   'Parent/Guardian1 Mobile Number'))
+    @property
+    def email(self) -> str:
+        return trykeys(self.p, 'email', 'Account Holder Email').strip()
 
-    def parent2_mobile(self):
-        return maybe_strip(trykeys(self.p,
-                                   'parent/guardian2 mobile number',
-                                   'Parent/Guardian2 Mobile Number'))
+    @property
+    def parent1_email(self) -> str:
+        return trykeys(self.p,
+                       'parent/guardian1 email',
+                       'Parent/Guardian1 Email').strip()
 
-    def profile_id(self):
-        return maybe_strip(trykeys(self.p, 'profile id', 'Profile ID'))
+    @property
+    def parent2_email(self) -> str:
+        return trykeys(self.p,
+                       'parent/guardian2 email',
+                       'Parent/Guardian2 Email').strip()
 
-    def opted_in(self):
-        return maybe_strip(trykeys(self.p,
-                                   'opted-in to marketing',
-                                   'Opted In To Marketing'))
+    @property
+    def mobile(self) -> str:
+        return clean_mobile(
+            trykeys(self.p, 'mobile number', 'Account Holder Mobile').strip()
+        )
 
-    def role(self):
-        return maybe_strip(trykeys(self.p, 'role', 'Role'))
+    @property
+    def parent1_mobile(self) -> str:
+        return clean_mobile(
+            trykeys(self.p,
+                    'parent/guardian1 mobile number',
+                    'Parent/Guardian1 Mobile Number').strip()
+        )
 
-    def status(self):
-        return maybe_strip(trykeys(self.p, 'status', 'Status'))
+    @property
+    def parent2_mobile(self) -> str:
+        return clean_mobile(
+            trykeys(self.p,
+                'parent/guardian2 mobile number',
+                'Parent/Guardian2 Mobile Number').strip()
+        )
 
-    def season(self):
-        return maybe_strip(trykeys(self.p, 'season', 'Season'))
+    @property
+    def profile_id(self) -> str:
+        return trykeys(self.p, 'profile id', 'Profile ID').strip()
 
-    def team_name(self):
-        return maybe_strip(trykeys(self.p, 'team name', 'Team'))
+    @property
+    def opted_in(self) -> str:
+        return trykeys(self.p,
+                       'opted-in to marketing',
+                       'Opted In To Marketing').strip()
 
-    def atsi(self):
-        return maybe_strip(trykeys(self.p,
-                                   'atsi',
-                                   'Aboriginal/Torres Strait Islander'))
+    @property
+    def role(self) -> Role:
+        return Role[trykeys(self.p, 'role', 'Role').replace(' ', '')]
 
-    def parent_born_overseas(self):
-        return maybe_strip(trykeys(self.p,
-                                   'parent/guardian born overseas',
-                                   'Parent/Guardian Born Overseas?'))
+    @property
+    def status(self) -> str:
+        return trykeys(self.p, 'status', 'Status').strip()
 
-    def parent1_country_of_birth(self):
-        return maybe_strip(trykeys(self.p,
-                                   'parent/guardian 1 country of birth',
-                                   'Parent/Guardian1 Country Of Birth'))
+    @property
+    def season(self) -> str:
+        return trykeys(self.p, 'season', 'Season').strip()
 
-    def parent2_country_of_birth(self):
-        return maybe_strip(trykeys(self.p,
-                                   'parent/guardian 2 country of birth',
-                                   'Parent/Guardian2 Country Of Birth'))
+    @property
+    def team_name(self) -> str:
+        return trykeys(self.p, 'team name', 'Team').strip()
 
-    def disability(self):
-        return maybe_strip(trykeys(self.p, 'disability?', 'Disability'))
+    @property
+    def atsi(self) -> str:
+        return trykeys(self.p,
+                       'atsi',
+                       'Aboriginal/Torres Strait Islander').strip()
 
-    def disability_type(self):
-        return maybe_strip(trykeys(self.p,
-                                   'disability type',
-                                   'Disability Type'))
+    @property
+    def parent_born_overseas(self) -> str:
+        return trykeys(self.p,
+                       'parent/guardian born overseas',
+                       'Parent/Guardian Born Overseas?').strip()
 
-    def disability_other(self):
-        return maybe_strip(trykeys(self.p,
-                                   'disability-other',
-                                   'Disability Other'))
+    @property
+    def parent1_country_of_birth(self) -> str:
+        return trykeys(self.p,
+                       'parent/guardian 1 country of birth',
+                       'Parent/Guardian1 Country Of Birth').strip()
 
-    def disability_assistance(self):
-        return maybe_strip(trykeys(self.p,
-                                   'disability assistance',
-                                   'Disability Assistance'))
+    @property
+    def parent2_country_of_birth(self) -> str:
+        return trykeys(self.p,
+                       'parent/guardian 2 country of birth',
+                       'Parent/Guardian2 Country Of Birth').strip()
 
-    def wwcc_number(self):
-        return maybe_strip(trykeys(self.p, 'wwc number', 'WWC Number'))
+    @property
+    def disability(self) -> str:
+        return trykeys(self.p, 'disability?', 'Disability').strip()
 
-    def wwcc_expiry(self):
-        return maybe_strip(trykeys(self.p, 'wwc expiry', 'WWC Expiry Date'))
+    @property
+    def disability_type(self) -> str:
+        return trykeys(self.p, 'disability type', 'Disability Type').strip()
 
-    def full_name(self):
-        return self.last_name() + ', ' + self.first_name()
+    @property
+    def disability_other(self) -> str:
+        return trykeys(self.p, 'disability-other', 'Disability Other').strip()
 
-    def __str__(self):
-        return self.full_name()
+    @property
+    def disability_assistance(self) -> str:
+        return trykeys(self.p,
+                       'disability assistance',
+                       'Disability Assistance').strip()
+
+    @property
+    def wwcc_number(self) -> str:
+        return trykeys(self.p, 'wwc number', 'WWC Number').strip()
+
+    @property
+    def wwcc_expiry(self) -> str:
+        return trykeys(self.p, 'wwc expiry', 'WWC Expiry Date').strip()
+
+    @property
+    def full_name(self) -> str:
+        return self.last_name + ', ' + self.first_name
+
+    def __str__(self) -> str:
+        return self.full_name
 
 
-def is_dup(curlist, new):
-    nfn = new.first_name().lower()
-    nln = new.last_name().lower()
+def is_dup(curlist: Participant, new: Participant) -> bool:
+    nfn = new.full_name.lower()
     for old in curlist:
-        ofn = old.first_name().lower()
-        oln = old.last_name().lower()
-        if ofn == nfn and oln == nln:
+        ofn = old.full_name.lower()
+        if ofn == nfn:
             return True
     return False
 
@@ -429,7 +507,9 @@ def first_not_empty(*values):
     return next((v for v in values if v is not None and v.strip()), None)
 
 
-def fetch_program_participants(report_file=None, verbose=False, drop_dups=True):
+def fetch_program_participants(
+    report_file=None, verbose=False, drop_dups=True
+) -> Dict[Role, List[Participant]]:
 
     if report_file is None:
         report_file, _ = latest_report('program_participant')
@@ -440,35 +520,32 @@ def fetch_program_participants(report_file=None, verbose=False, drop_dups=True):
                 '[program participant report selected: '
                 '{} (realpath={})]'.format(
                     report_file, os.path.realpath(report_file)
-                )
+                ),
+                file=sys.stderr,
             )
 
     with open(report_file, 'r', newline='') as csvfile:
 
-        roles = {
-            'Player': [],
-            'Coach': [],
-            'Volunteer': [],
-        }
+        roles = {role: [] for role in Role}
 
         reader = DictReader(csvfile)
 
         for record in reader:
 
-            p = Participant(record)
-            p.program = True
+            p = Participant(record, is_program=True)
 
-            if p.status() != 'Active':
+            if p.status != 'Active':
                 if verbose:
-                    print('status not Active for {}!'.format(p))
+                    print('status not Active for {}!'.format(p),
+                          file=sys.stderr)
                 continue
 
-            role = p.role()
+            role = p.role
             role_list = roles[role]
 
             if is_dup(role_list, p) and drop_dups:
                 if verbose:
-                    print('dup? {}: {}'.format(role, p))
+                    print('dup? {}: {}'.format(role, p), file=sys.stderr)
             else:
                 role_list.append(p)
 
@@ -506,20 +583,19 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True,
         for record in reader:
 
             p = Participant(record)
-            p.program = False
 
-            if p.status() != 'Active':
+            if p.status != 'Active':
                 if verbose:
                     print('status not Active for {}!'.format(p))
                 continue
 
-            team_name = p.team_name()
-            move_into = player_moves.get(p.full_name(), None)
+            team_name = p.team_name
+            move_into = player_moves.get(p.full_name, None)
             if move_into:
                 if verbose:
                     print(
                         'moving {} from {} into {}'.format(
-                            p.full_name(), team_name, move_into
+                            p.full_name, team_name, move_into
                         )
                     )
                 team_name = move_into
@@ -534,20 +610,20 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True,
                     print('team name not found for {}!'.format(team_name))
                 continue
 
-            role = p.role()
-            if role == 'Player':
+            role = p.role
+            if role == Role.Player:
                 if is_dup(t.players, p) and drop_dups:
                     if verbose:
                         print('dup? player in {}: {}'.format(t.sname, p))
                 else:
                     t.players.append(p)
-            elif role == 'Coach':
+            elif role == Role.Coach:
                 if is_dup(t.coaches, p) and drop_dups:
                     if verbose:
                         print('dup? coach in {}: {}'.format(t.sname, p))
                 else:
                     t.coaches.append(p)
-            elif role == 'Team Manager':
+            elif role == Role.TeamManager:
                 if is_dup(t.managers, p) and drop_dups:
                     if verbose:
                         print('dup t/m? in {}: {}'.format(t.sname, p))

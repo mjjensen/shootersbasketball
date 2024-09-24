@@ -220,8 +220,8 @@ def main():
 
         for p in t.players:
 
-            name = to_fullname(p.first_name(), p.last_name(), args.csv)
-            dob = to_date(p.date_of_birth())
+            name = to_fullname(p.first_name, p.last_name, args.csv)
+            dob = p.date_of_birth
 
             ags = find_age_group(config['age_groups'], dob)
             if ags is None:
@@ -264,7 +264,7 @@ def main():
                     ntag = nag
 
             if args.postcodes:
-                pc = int(p.postcode())
+                pc = int(p.postcode)
                 postcodes[pc] = postcodes.get(pc, 0) + 1
 
                 cn = pc2cn.get(pc, 'Other')
@@ -281,7 +281,7 @@ def main():
                     if args.trybooking:
                         e = find_in_tb(tb, name)
                     else:
-                        k = p.first_name() + ' ' + p.last_name()
+                        k = p.first_name + ' ' + p.last_name
                         e = xacts.pop(k, None)
                     if e is None:
                         extra2 += ' [unpaid]'
@@ -322,23 +322,23 @@ def main():
                     # disability assistance
                     negatives = ('NO', 'Do not wish to disclose', 'NOT_SAYING')
 
-                    v = p.atsi()  # aboriginal/torres strait islander
+                    v = p.atsi  # aboriginal/torres strait islander
                     atsi = None if v in negatives else v
                     if atsi:
                         extra3 += ' [ATSI: "{}"]'.format(atsi)
 
-                    v = p.parent_born_overseas()
+                    v = p.parent_born_overseas
                     pos = False if v in negatives else to_bool(v)
-                    p1c = p.parent1_country_of_birth()
-                    p2c = p.parent2_country_of_birth()
+                    p1c = p.parent1_country_of_birth
+                    p2c = p.parent2_country_of_birth
                     if pos:
                         extra3 += ' [POS: "{}","{}"]'.format(p1c, p2c)
 
-                    v = p.disability()
+                    v = p.disability
                     disability = False if v in negatives else to_bool(v)
-                    distype = p.disability_type()
-                    disother = p.disability_other()
-                    disass = p.disability_assistance()
+                    distype = p.disability_type
+                    disother = p.disability_other
+                    disass = p.disability_assistance
                     if disability:
                         extra3 += ' [DISABILITY: "{}","{}","{}"]'.format(
                             distype, disother, disass

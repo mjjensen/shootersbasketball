@@ -3,7 +3,7 @@ from csv import DictWriter
 import sys
 
 from sbci import load_config, fetch_program_participants, first_not_empty, \
-    to_date, to_bool
+    to_date, to_bool, Role
 
 
 def main():
@@ -28,24 +28,24 @@ def main():
 
         def extract_emails(p):
             for a in 'email', 'parent1_email', 'parent2_email':
-                v = getattr(p, a)()
-                if v is None or len(v) == 0:
+                v = getattr(p, a)
+                if not v:
                     continue
                 e = v.lower()
                 if e not in email_list:
                     email_list.append(e)
 
-    for p in roles['Player']:
+    for p in roles[Role.Player]:
 
-        if p.season() != config['label']:
+        if p.season != config['label']:
             if args.verbose:
-                print('ignore out-of-season player: {}'.format(p.full_name()))
+                print('ignore out-of-season player: {}'.format(p.full_name))
             continue
 
         if args.email:
             extract_emails(p)
         else:
-            print('{:20}'.format(p.full_name()))
+            print('{:20}'.format(p.full_name))
 
     if args.email:
         for e in sorted(email_list):
@@ -76,38 +76,37 @@ def main():
 
             for p in roles['Player']:
 
-                if p.season() != config['label']:
+                if p.season != config['label']:
                     if args.verbose:
                         print(
                             'ignore out-of-season player: {}'.format(
-                                p.full_name()
+                                p.full_name
                             )
                         )
                     continue
 
                 outrec = dict(map(lambda k: (k, None), fieldnames))
 
-                outrec['First Name'] = p.first_name()
-                outrec['Surname'] = p.last_name()
+                outrec['First Name'] = p.first_name
+                outrec['Surname'] = p.last_name
                 outrec['Email Address'] = first_not_empty(
-                    p.email(),
-                    p.parent1_email(),
-                    p.parent2_email(),
+                    p.email,
+                    p.parent1_email,
+                    p.parent2_email,
                 )
                 outrec['Phone Number'] = first_not_empty(
-                    p.mobile(),
-                    p.parent1_mobile(),
-                    p.parent2_mobile(),
+                    p.mobile,
+                    p.parent1_mobile,
+                    p.parent2_mobile,
                 )
-                outrec['Street Address 1'] = p.address()
-                outrec['City'] = p.suburb()
-                outrec['State'] = p.state()
-                outrec['Postal Code'] = p.postcode()
-                outrec['Reference ID'] = p.profile_id()
-                outrec['Birthday'] = \
-                    to_date(p.date_of_birth()).strftime('%Y-%m-%d')
+                outrec['Street Address 1'] = p.address
+                outrec['City'] = p.suburb
+                outrec['State'] = p.state
+                outrec['Postal Code'] = p.postcode
+                outrec['Reference ID'] = p.profile_id
+                outrec['Birthday'] = p.date_of_birth().strftime('%Y-%m-%d')
                 outrec['Email Subscription Status'] = \
-                    'subscribed' if to_bool(p.opted_in()) \
+                    'subscribed' if to_bool(p.opted_in) \
                     else 'unsubscribed'
 
                 writer.writerow(outrec)
