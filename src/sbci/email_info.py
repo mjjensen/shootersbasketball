@@ -117,8 +117,8 @@ def main():
             smtp_pass = getpass('SMTP Password: ')
 
     smtp_fqdn = args.fqdn
-    if smtp_fqdn is None and 'email_fqdn' in config:
-        smtp_fqdn = config['email_fqdn']
+    if smtp_fqdn is None:
+        smtp_fqdn = config.get('email_fqdn')
 
     if args.writefiles:
         smtp_class = SMTP_dummy
@@ -195,7 +195,8 @@ def main():
             ('parent1_email', 'parent email'),
         ]
 
-        fetch_participants(teams, args.partreport, args.verbose)
+        fetch_participants(teams, args.partreport, args.verbose,
+                           player_moves=config.get('player_moves'))
 
         if args.trybooking:
             tbmap = config['tbmap']

@@ -553,7 +553,10 @@ def fetch_program_participants(
 
 
 def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True,
-                       player_moves={}):
+                       player_moves=None):
+
+    if player_moves is None:
+        player_moves = dict()
 
     if report_file is None:
         report_file1, dt1 = latest_report('participant')

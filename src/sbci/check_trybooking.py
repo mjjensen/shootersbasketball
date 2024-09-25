@@ -19,7 +19,8 @@ def main():
 
     teams = fetch_teams()
 
-    fetch_participants(teams, args.partreport, args.verbose)
+    fetch_participants(teams, args.partreport, args.verbose,
+                       player_moves=config.get('player_moves'))
 
     tb = fetch_trybooking(config['tbmap'], args.tbreport, args.verbose)
 

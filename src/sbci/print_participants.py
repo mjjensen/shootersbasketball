@@ -58,7 +58,7 @@ def main():
     teams = fetch_teams(verbose=args.verbose)
 
     fetch_participants(teams, args.partreport, args.verbose,
-                       player_moves=config.get('player_moves', {}))
+                       player_moves=config.get('player_moves'))
 
     team_list = []
     if args.teams:

@@ -19,7 +19,8 @@ def main():
 
     teams = fetch_teams()
 
-    fetch_participants(teams, args.report, args.verbose)
+    fetch_participants(teams, args.report, args.verbose,
+                       player_moves=config.get('player_moves'))
 
     def pcmp(what, sname, code, p, name, email, mobile, wwcnum, wwcexp):
 
