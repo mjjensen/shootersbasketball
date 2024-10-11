@@ -23,6 +23,8 @@ def main():
                         help='output csv file for xero pre-coded transactions')
     parser.add_argument('--pupdbfile', default=None, metavar='F',
                         help='json file for pupdb key-value store')
+    parser.add_argument('--pending', '-p', action='store_true',
+                        help='include xacts marked as DISBURSEMENT_PENDING')
     parser.add_argument('--dryrun', '-n', action='store_true',
                         help='dont make any actual changes - just run through')
     parser.add_argument('--verbose', '-v', action='store_true',
@@ -129,7 +131,11 @@ def main():
                 org != 'Shooters Basketball Club' or
                 role != 'Player' or
                 org_to != 'Shooters Basketball Club' or
-                pstatus != 'DISBURSED'
+                (
+                    pstatus != 'DISBURSED'
+                and
+                    (not args.pending or pstatus != 'DISBURSEMENT_PENDING')
+                )
             ):
                 if args.verbose:
                     print(
@@ -466,7 +472,10 @@ def main():
             if outrec['Payee'] != gov_voucher_desc:
                 amount += Decimal(outrec['Amount'])
         print(
-            '    Payment Id {} = ${:.2f}'.format(pid, amount),
+            '    Payment Id {} = ${:.2f}{}'.format(
+                pid, amount,
+                ' (excluded)' if pid in config['exclude'] else ''
+            ),
             file=sys.stderr
         )
 
@@ -480,11 +489,14 @@ def main():
         writer = DictWriter(outfile, fieldnames=fieldnames)
         writer.writeheader()
         for pid, oreclist in output_records.items():
+            if pid in config['exclude']:
+                continue
             for outrec in oreclist:
                 writer.writerow(outrec)
 
     for pid, oreclist in output_records.items():
-        db.set(pid, dumps(oreclist))
+        if pid not in config['exclude']:
+            db.set(pid, dumps(oreclist))
 
     return 0
 

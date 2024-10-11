@@ -37,6 +37,10 @@ def main():
                         help='override round number (only with --finals2)')
     parser.add_argument('--extra', '-e', action='store_true',
                         help='extra column added on the right')
+    parser.add_argument('--extra3', action='store_true',
+                        help='3 extra column added on the right')
+    parser.add_argument('--sheetnum', '-s', type=int, default=0,
+                        help='set sheet number')
     parser.add_argument('xlsxfiles', nargs='+',
                         help='xlsx file containing edjba fixtures')
     args = parser.parse_args()
@@ -59,7 +63,7 @@ def main():
 
         book = open_workbook(xlsxfile)
 
-        sheet = book.sheet_by_index(0)
+        sheet = book.sheet_by_index(args.sheetnum)
 
         rows = sheet.get_rows()
 
@@ -88,6 +92,9 @@ def main():
                 grade, rdate, rnd, home, away, venue, crt, gtime, _gtype = map(
                     lambda c: c.value, r
                 )
+            elif args.extra3:
+                grade, rdate, rnd, home, away, venue, crt, gtime, _v, _c, _g = \
+                    map(lambda c: c.value, r)
             else:
                 grade, rdate, rnd, home, away, venue, crt, gtime = map(
                     lambda c: c.value, r
