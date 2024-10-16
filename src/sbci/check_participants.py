@@ -129,7 +129,7 @@ def main():
 
         for p in t.players:
 
-            dob = to_date(p.date_of_birth, '%Y-%m-%d')
+            dob = p.date_of_birth
 
             if dob < ag_start or (args.younger and ag_end and dob > ag_end):
                 print(

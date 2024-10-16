@@ -344,14 +344,14 @@ class Participant(object):
                        'Parent/Guardian2 Last Name').strip()
 
     @property
-    def date_of_birth(self) -> str:
+    def date_of_birth(self) -> date:
         dob = trykeys(self.p, 'date of birth', 'Date of Birth')
         for fmt in ('%Y-%m-%d', '%Y/%m/%d', '%d-%m-%Y', '%d/%m/%Y'):
             try:
                 d = datetime.strptime(dob, fmt)
             except:
                 continue
-            return str(d.date())
+            return d.date()
         raise RuntimeError('invalid date string: {}'.format(dob))
 
     @property

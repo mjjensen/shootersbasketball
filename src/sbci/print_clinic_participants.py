@@ -104,7 +104,7 @@ def main():
                 outrec['State'] = p.state
                 outrec['Postal Code'] = p.postcode
                 outrec['Reference ID'] = p.profile_id
-                outrec['Birthday'] = p.date_of_birth().strftime('%Y-%m-%d')
+                outrec['Birthday'] = str(p.date_of_birth)
                 outrec['Email Subscription Status'] = \
                     'subscribed' if to_bool(p.opted_in) \
                     else 'unsubscribed'
