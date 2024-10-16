@@ -237,7 +237,7 @@ def main():
 
             email_addrs = []
             for a in 'email', 'parent1_email', 'parent2_email':
-                email_addr = getattr(p, a)()
+                email_addr = getattr(p, a)
                 if email_addr is None:
                     continue
                 email_addr = email_addr.lower()
