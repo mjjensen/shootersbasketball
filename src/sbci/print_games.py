@@ -70,27 +70,27 @@ def main():
         reader = DictReader(csvfile)
 
         for r in reader:
-            # game date,grade,round,game status,venue,playing surface,game time,
-            # home team,home team score,home team result,
-            # home team players in lineup,home team player points used,
-            # away team,away team score,away team result,
-            # away team players in lineup,away team player points used,bye,
-            # host organisation,competition,competition type,season,game alias,
-            # game code,game id,result source,result timestamp (last updated)
-            status = r['game status']
+            # Game Date,Grade,Grade Type,Round,Game Status,Venue,
+            # Playing Surface,Time,Home Team,Home Team Score,Home Team Result,
+            # Home Team Players In Lineup,Home Team Player Points,Away Team,
+            # Away Team Score,Away Team Result,Away Team Players In Lineup,
+            # Away Team Player Points,Bye,Host Organisation,Competition,
+            # Competition Type,Season,Game Alias,Game Code,Game ID,
+            # Result Source,Result Timestamp (last updated)
+            status = r['Game Status']
             if status == 'Upcoming' and not args.upcoming:
                 continue
-            _gdate = date(*strptime(r['game date'], '%d/%m/%Y')[:3])
-            _grade = r['grade']
-            roundno = r['round']
-            bye = r['bye']
-            team_a_name = r['home team']
-            team_b_name = r['away team']
-            _venue = r['venue']
-            if not r['game time']:
+            _gdate = date(*strptime(r['Game Date'], '%d/%m/%Y')[:3])
+            _grade = r['Grade']
+            roundno = r['Round']
+            bye = r['Bye']
+            team_a_name = r['Home Team']
+            team_b_name = r['Away Team']
+            _venue = r['Venue']
+            if not r['Time']:
                 _gtime = time()
             else:
-                _gtime = time(*strptime(r['game time'], '%H:%M')[3:5])
+                _gtime = time(*strptime(r['Time'], '%H:%M')[3:5])
 
             if bye:
                 result(roundno, bye, None, None)
@@ -98,10 +98,10 @@ def main():
                 if status == 'Upcoming':
                     team_a_score = team_b_score = None
                 else:
-                    team_a_score = r['home team score']
-                    _team_a_result = r['home team result']
-                    team_b_score = r['away team score']
-                    _team_b_result = r['away team result']
+                    team_a_score = r['Home Team Score']
+                    _team_a_result = r['Home Team Result']
+                    team_b_score = r['Away Team Score']
+                    _team_b_result = r['Away Team Result']
 
                 if team_a_name.startswith(args.club):
                     result(roundno, team_a_name, team_a_score, team_b_score)

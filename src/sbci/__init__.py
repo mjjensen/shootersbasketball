@@ -941,6 +941,16 @@ def is_under18(date_of_birth):
     return (diff.years < 18)
 
 
+def correct_string(string: str, corrections: Dict[str, str]) -> str:
+    for pattern, replacement in corrections.items():
+        string = re.sub(pattern, replacement, string)
+    return string
+
+
+def correct_list(strings: List[str], corrections: Dict[str, str]) -> List[str]:
+    return [correct_string(string, corrections) for string in strings]
+
+
 _wwc_url = 'https://online.justice.vic.gov.au/wwccu/checkstatus.doj'
 
 _wwc_post_data = {

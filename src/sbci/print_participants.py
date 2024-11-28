@@ -10,7 +10,8 @@ import re
 import sys
 
 from sbci import fetch_teams, fetch_participants, load_config, latest_report, \
-    fetch_trybooking, find_in_tb, to_fullname, to_date, find_age_group, to_bool
+    fetch_trybooking, find_in_tb, to_fullname, to_date, find_age_group, \
+    to_bool, correct_string
 
 
 def main():
@@ -217,6 +218,7 @@ def main():
             nags = {}
 
         lines = []
+        email_corrections = config.get('email_corrections')
 
         for p in t.players:
 
@@ -237,18 +239,23 @@ def main():
 
             email_addrs = []
             for a in 'email', 'parent1_email', 'parent2_email':
-                email_addr = getattr(p, a)
-                if email_addr is None:
+                email_attr = getattr(p, a)
+                if not email_attr:
                     continue
-                email_addr = email_addr.lower()
-                if email_addr and email_addr not in email_addrs:
-                    if not email_addr.endswith('@icoud.com'):
+                for _, email_addr in getaddresses([email_attr]):
+                    if not email_addr:
+                        continue
+                    email_addr = email_addr.lower()
+                    if email_corrections:
+                        email_addr = correct_string(email_addr,
+                                                    email_corrections)
+                    if email_addr and email_addr not in email_addrs:
                         email_addrs.append(email_addr)
 
             if args.allemail:
-                for addr in getaddresses(email_addrs):
-                    if addr not in all_email_addrs:
-                        all_email_addrs.append(addr)
+                for email_addr in email_addrs:
+                    if email_addr not in all_email_addrs:
+                        all_email_addrs.append(email_addr)
 
             if args.rollover:
                 ags = find_age_group(config['age_groups_next_season'], dob)
@@ -386,7 +393,7 @@ def main():
             print(line)
 
     if args.allemail:
-        for _, addr in sorted(all_email_addrs):
+        for addr in sorted(all_email_addrs):
             print(addr)
 
     if args.postcodes:
