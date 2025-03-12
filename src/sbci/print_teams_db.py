@@ -34,6 +34,8 @@ def main():
                         help='print list of teams and urls')
     parser.add_argument('--google', action='store_true',
                         help='print csv suitable for transfer to google sheets')
+    parser.add_argument('--compats', action='store_true',
+                        help='print csv suitable for transfer to compat sheet')
     parser.add_argument('teams', nargs='*',
                         help='limit output to the list of teams specified')
     args = parser.parse_args()
@@ -42,6 +44,10 @@ def main():
         args.csv = True
         args.terse = False
         args.both = True
+        args.altsort = True
+
+    if args.compats:
+        args.csv = True
         args.altsort = True
 
     if args.altsort:
@@ -62,7 +68,9 @@ def main():
             return sub(r' [0:\.]+$', '', s)
 
     if args.csv:
-        if args.terse:
+        if args.compats:
+            print('Gender,Club,Age,No')
+        elif args.terse:
             if args.both:
                 print(
                     'Code,Name,Team Manager,Email,Mobile,Coach,Email,Mobile'
@@ -184,7 +192,9 @@ def main():
                     )
                 )
         elif args.csv:
-            if args.both:
+            if args.compats:
+                print('{},FS,{},{}'.format(t.gender,t.age_group,t.number))
+            elif args.both:
                 print(
                     '{},{},{},{},{},{},{},{},{},{},{},{}'.format(
                         c, t.sname, t.grade or '?', t.edjba_id, t.edjba_code,
