@@ -261,7 +261,7 @@ def main():
                 ags = find_age_group(config['age_groups_next_season'], dob)
                 if ags is None:
                     print(
-                        '{} DoB {} not in any age group!'.format(name, dob),
+                        '{} DoB {} no age group next season!'.format(name, dob),
                         file=sys.stderr
                     )
                     continue
