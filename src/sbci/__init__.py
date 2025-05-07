@@ -27,8 +27,8 @@ from _collections_abc import Mapping, Sequence
 
 provider = os.getenv('PROVIDER', 'PlayHQ')
 association = os.getenv('ASSOCIATION', 'EDJBA')
-season = os.getenv('SEASON', '2025-summer')
-clinicterm = os.getenv('CLINICTERM', '2024-Term4')
+season = os.getenv('SEASON', '2025-winter')
+clinicterm = os.getenv('CLINICTERM', '2025-Term2')
 develterm = os.getenv('DEVELTERM', '2023-Term2-Friday')
 
 shootersdir = os.getenv(
@@ -1197,3 +1197,66 @@ def wwc_check(person, verbose=False, nocache=False):
         None
     )
     return _wwc_check_cache[ident]
+
+def fetch_wwc_list(teamsfile='teams.sqlite3'):
+    '''TODO - document this'''
+
+    if not os.path.exists(teamsfile):
+        teamsfile = os.path.join(seasondir, teamsfile)
+        if not os.path.exists(teamsfile):
+            raise RuntimeError('cannot locate teams sqlite database')
+
+    wwc_list = []
+
+    conn = connect(teamsfile)
+    conn.row_factory = Row
+
+    idset = set()
+
+    try:
+        cursor = conn.cursor()
+
+        rows = cursor.execute('''
+        SELECT team_manager_id, coach_id, asst_coach_id, extra_team_manager_id
+        FROM teams WHERE teams.active = 'true'
+        ''')
+
+        for row in rows:
+            for i in row:
+                if i:
+                    idset.add(str(i))
+
+        rows = cursor.execute('''
+        SELECT name, wwc_number, wwc_name FROM people
+        WHERE id IN ({}) OR (role_id NOTNULL AND role_id != 0)
+        '''.format(','.join(idset)))
+
+        for name, wwc_number, wwc_name in rows:
+            if not name:
+                raise RuntimeError('no name in record!')
+
+            if not wwc_number:
+                print(
+                    '"wwc_number" is null/empty for {}!'.format(name),
+                    file=sys.stderr
+                )
+                continue
+
+            if wwc_number.lower().startswith('vit'):
+                print(
+                    '"wwc_number" is VIT number for {}!'.format(name),
+                    file=sys.stderr
+                )
+                continue
+
+            if wwc_name:
+                surname = wwc_name.lower()
+            else:
+                surname = name.split().pop().lower()
+            wwc_base = wwc_number.split('-').pop(0)
+
+            wwc_list.append([surname, wwc_base])
+
+        return wwc_list
+    finally:
+        conn.close()

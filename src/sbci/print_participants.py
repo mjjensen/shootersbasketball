@@ -102,8 +102,12 @@ def main():
                     )
                 )
 
+        standard_fee_name = 'Standard - Most players will select this one!'
+
         # must match assignment below ...
-        Xact = namedtuple('Xact', 'oip gvamt subt phqfee netamt vnam vcod vamt')
+        Xact = namedtuple(
+            'Xact', 'oip gvamt subt phqfee netamt vnam vcod vamt feename'
+        )
 
         # price = Decimal(config['pricing']['early'])
         xacts = {}
@@ -118,14 +122,14 @@ def main():
                                 xact['First Name'] + ' ' + xact['Last Name'])
                 rtype = xact.get('Type of Registration',
                                  xact['Type of Transaction'])
-                role, rinfo, rseason, ptype, vnam, vcod, \
-                    soip, sqty, sgvamt, ssubt, sphqfee, snetamt, svamt = \
+                role, rinfo, rseason, ptype, vnam, vcod, soip, sqty, sgvamt, \
+                ssubt, sphqfee, snetamt, svamt, feename = \
                     itemgetter(
-                        'Role', 'Registration',
-                        'Season Name', 'Product Type', 'Voucher Name',
-                        'Voucher Code', 'Order Item Price', 'Quantity',
-                        'Government Voucher Amount Applied', 'Subtotal',
-                        'PlayHQ Fee', 'Net Amount', 'Voucher Amount Applied',
+                        'Role', 'Registration', 'Season Name', 'Product Type',
+                        'Voucher Name', 'Voucher Code', 'Order Item Price',
+                        'Quantity', 'Government Voucher Amount Applied',
+                        'Subtotal', 'PlayHQ Fee', 'Net Amount',
+                        'Voucher Amount Applied', 'Fee Name',
                     )(xact)
 
                 if (
@@ -172,7 +176,7 @@ def main():
 
                 # must match namedtuple definition above ...
                 xacts[name] = Xact(
-                    oip, gvamt, subt, phqfee, netamt, vnam, vcod, vamt
+                    oip, gvamt, subt, phqfee, netamt, vnam, vcod, vamt, feename
                 )
 
         if len(xacts) == 0:
@@ -308,6 +312,8 @@ def main():
                                 extra2 += ' [Govt Voucher = ${}]'.format(
                                     e.gvamt
                                 )
+                            if e.feename != standard_fee_name:
+                                extra2 += ' [{}]'.format(e.feename)
 
                 ag_start, ag_end = map(
                     to_date,
@@ -467,6 +473,10 @@ def main():
                         )
                 if args.unpaidem:
                     print(','.join(emlist))
+        if args.playhq and len(xacts) > 0:
+            print('Transactions Unaccounted For:')
+            for xact in xacts:
+                print('    {}'.format(xact))
 
     return 0
 

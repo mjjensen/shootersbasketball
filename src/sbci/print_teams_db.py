@@ -1,6 +1,8 @@
 from __future__ import print_function
 from argparse import ArgumentParser
-from sbci import fetch_teams
+from csv import DictWriter, QUOTE_ALL
+from io import TextIOWrapper
+from sbci import fetch_teams, fetch_wwc_list
 from re import sub
 import sys
 
@@ -36,6 +38,8 @@ def main():
                         help='print csv suitable for transfer to google sheets')
     parser.add_argument('--compats', action='store_true',
                         help='print csv suitable for transfer to compat sheet')
+    parser.add_argument('--wwclist', action='store_true',
+                        help='print list suitable for bulk wwc check')
     parser.add_argument('teams', nargs='*',
                         help='limit output to the list of teams specified')
     args = parser.parse_args()
@@ -49,6 +53,16 @@ def main():
     if args.compats:
         args.csv = True
         args.altsort = True
+
+    if args.wwclist:
+        wwc_list = fetch_wwc_list()
+        with TextIOWrapper(sys.stdout.buffer, newline='') as outfile:
+            writer = DictWriter(outfile, ['FamilyName', 'CardNumber'],
+                                quoting=QUOTE_ALL, quotechar='"')
+            writer.writeheader()
+            for fn, cn in wwc_list:
+                writer.writerow({'FamilyName': fn, 'CardNumber': cn})
+        return 0
 
     if args.altsort:
         teams = fetch_teams(
