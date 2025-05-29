@@ -35,10 +35,6 @@ def main():
                         help='columns are rearranged for finals (4)')
     parser.add_argument('--rnum', '-r', default=None,
                         help='override round number (only with --finals2)')
-    parser.add_argument('--extra', '-e', action='store_true',
-                        help='extra column added on the right')
-    parser.add_argument('--extra3', action='store_true',
-                        help='3 extra column added on the right')
     parser.add_argument('--sheetnum', '-s', type=int, default=0,
                         help='set sheet number')
     parser.add_argument('xlsxfiles', nargs='+',
@@ -88,15 +84,8 @@ def main():
                 grade, rdate, rnd, _gtype, home, away, venue, crt, gtime = map(
                     lambda c: c.value, r
                 )
-            elif args.extra:
-                grade, rdate, rnd, home, away, venue, crt, gtime, _gtype = map(
-                    lambda c: c.value, r
-                )
-            elif args.extra3:
-                grade, rdate, rnd, home, away, venue, crt, gtime, _v, _c, _g = \
-                    map(lambda c: c.value, r)
             else:
-                grade, rdate, rnd, home, away, venue, crt, gtime = map(
+                grade, rdate, rnd, home, away, venue, crt, gtime, *extra = map(
                     lambda c: c.value, r
                 )
 
