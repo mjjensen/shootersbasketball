@@ -1207,6 +1207,7 @@ def fetch_wwc_list(teamsfile='teams.sqlite3'):
             raise RuntimeError('cannot locate teams sqlite database')
 
     wwc_list = []
+    email_list = []
 
     conn = connect(teamsfile)
     conn.row_factory = Row
@@ -1227,19 +1228,31 @@ def fetch_wwc_list(teamsfile='teams.sqlite3'):
                     idset.add(str(i))
 
         rows = cursor.execute('''
-        SELECT name, wwc_number, wwc_name FROM people
+        SELECT name, email, wwc_number, dob, wwc_name FROM people
         WHERE id IN ({}) OR (role_id NOTNULL AND role_id != 0)
         '''.format(','.join(idset)))
 
-        for name, wwc_number, wwc_name in rows:
+        for name, email, wwc_number, dobstr, wwc_name in rows:
             if not name:
                 raise RuntimeError('no name in record!')
+            if not email:
+                raise RuntimeError('no email in record!')
+
+            if dobstr:
+                dob = to_date(dobstr, '%Y-%m-%d %H:%M:%S.%f')
+                if is_under18(dob):
+                    print(
+                        '{} is Under 18 (dob={})!'.format(name, dob),
+                        file=sys.stderr
+                    )
+                    continue
 
             if not wwc_number:
                 print(
                     '"wwc_number" is null/empty for {}!'.format(name),
                     file=sys.stderr
                 )
+                email_list.append(email)
                 continue
 
             if wwc_number.lower().startswith('vit'):
@@ -1247,6 +1260,7 @@ def fetch_wwc_list(teamsfile='teams.sqlite3'):
                     '"wwc_number" is VIT number for {}!'.format(name),
                     file=sys.stderr
                 )
+                email_list.append(email)
                 continue
 
             if wwc_name:
@@ -1257,6 +1271,6 @@ def fetch_wwc_list(teamsfile='teams.sqlite3'):
 
             wwc_list.append([surname, wwc_base])
 
-        return wwc_list
+        return wwc_list, email_list
     finally:
         conn.close()

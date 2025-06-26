@@ -55,7 +55,11 @@ def main():
         args.altsort = True
 
     if args.wwclist:
-        wwc_list = fetch_wwc_list()
+        wwc_list, email_list = fetch_wwc_list()
+        if email_list:
+            print('People >18yo without WWC info:', file=sys.stderr)
+            for email in email_list:
+                print('{}'.format(email), file=sys.stderr)
         with TextIOWrapper(sys.stdout.buffer, newline='') as outfile:
             writer = DictWriter(outfile, ['FamilyName', 'CardNumber'],
                                 quoting=QUOTE_ALL, quotechar='"')
