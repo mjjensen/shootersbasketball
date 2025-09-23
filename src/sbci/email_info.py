@@ -172,17 +172,6 @@ def main():
 
     teams = fetch_teams()
 
-    if len(args.teams) > 0:
-        teamnames = args.teams[:]
-        newteams = {}
-        for sname, t in teams.items():
-            if sname in teamnames:
-                newteams[sname] = t
-                teamnames.remove(sname)
-        if len(teamnames) > 0:
-            raise RuntimeError('Unknown team names: {}'.format(teamnames))
-        teams = newteams
-
     if args.details:
 
         player_keys = [
@@ -207,6 +196,17 @@ def main():
                 raise RuntimeError(
                     'no trybooking data in {}'.format(args.tbreport)
                 )
+
+    if len(args.teams) > 0:
+        teamnames = args.teams[:]
+        newteams = {}
+        for sname, t in teams.items():
+            if sname in teamnames:
+                newteams[sname] = t
+                teamnames.remove(sname)
+        if len(teamnames) > 0:
+            raise RuntimeError('Unknown team names: {}'.format(teamnames))
+        teams = newteams
 
     # used this:
     # https://stackoverflow.com/a/60301124
