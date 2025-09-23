@@ -138,6 +138,12 @@ def main() -> int:
                         help='output csv file')
     parser.add_argument('--xlsx', '-x', action='store_true',
                         help='output xlsx instead of csv')
+    parser.add_argument('--dobs', '-d', action='store_true',
+                        help='include Date of Birth column')
+    parser.add_argument('--width', '-w', type=float, default=2.0,
+                        help='factor to multiply no. of column chars')
+    parser.add_argument('--add', '-a', type=int, default=1,
+                        help='no. of chars to add to column len')
     args = parser.parse_args()
 
     if args.input == 'sys.stdin':
@@ -149,9 +155,15 @@ def main() -> int:
     if args.skipheader:
         _ = next(reader)  # discard header from file
 
-    header = ['Name', 'DoB']
+    header = ['Name']
+    widths = [4]
+    if args.dobs:
+        header.append('Dob')
+        widths.append(3)
     for season in all_seasons:
-        header.append(str(season))
+        s = str(season)
+        header.append(s)
+        widths.append(len(s))
 
     rows = []
 
@@ -161,13 +173,31 @@ def main() -> int:
         except:
             dob = datetime.strptime(dobstr, '%d/%m/%Y').date()
 
-        row = [name, dob]
+        wi = 0
+        s = str(name)
+        l = len(s)
+        row = [s]
+        if l > widths[wi]:
+            widths[wi] = l
+        wi += 1
+        if args.dobs:
+            s = date.strftime(dob, '%Y-%m-%d')
+            l = len(s)
+            row.append(s)
+            if l > widths[wi]:
+                widths[wi] = l
+            wi += 1
         for season in all_seasons:
             ag = season.age_group_of(dob)
             if ag is None:
-                row.append('??')
+                s = '??'
             else:
-                row.append(str(ag))
+                s = str(ag)
+            l = len(s)
+            row.append(s)
+            if l > widths[wi]:
+                widths[wi] = l
+            wi += 1
 
         rows.append(row)
 
@@ -210,15 +240,19 @@ def main() -> int:
         for hcell in header:
             worksheet.write_string(ri, ci, hcell, hfmt)
             ci += 1
+        ri += 1
         for row in rows:
-            ri += 1
             ci = 0
             for cell in row:
                 worksheet.write_string(
-                    ri, ci, cell, bold if ci == 0 else agcmap[cell]
+                    ri, ci, cell,
+                    bold if ci == 0 else hfmt if ci == 1 else agcmap[cell]
                 )
                 ci += 1
-        worksheet.autofit()
+            ri += 1
+        # worksheet.autofit() - doesn't seem to work
+        for i, w in enumerate(widths):
+            worksheet.set_column(i, i, (w + args.add) * args.width)
         workbook.close()
     else:
         if args.output == 'sys.stdout':
