@@ -587,12 +587,6 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True,
 
             p = Participant(record)
 
-            if p.status != 'Active':
-                if verbose:
-                    print('status not Active for {}!'.format(p))
-                continue
-
-            team_name = p.team_name
             move_into = player_moves.get(p.full_name, None)
             if move_into:
                 if verbose:
@@ -602,10 +596,17 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True,
                         )
                     )
                 team_name = move_into
-            if not team_name:
-                if verbose:
-                    print('no team name for {}!'.format(p))
-                continue
+            else:
+                if p.status != 'Active':
+                    if verbose:
+                        print('status not Active for {}!'.format(p))
+                    continue
+
+                team_name = p.team_name
+                if not team_name:
+                    if verbose:
+                        print('no team name for {}!'.format(p))
+                    continue
 
             t = find_team(teams, edjba_id=team_name)
             if t is None:
