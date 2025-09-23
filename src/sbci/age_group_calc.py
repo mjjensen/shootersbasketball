@@ -109,8 +109,8 @@ class Season:
         return None
 
 
-summer_seasons = [Season(year, SeasonType.Summer) for year in range(2024, 2032)]
-winter_seasons = [Season(year, SeasonType.Winter) for year in range(2023, 2031)]
+summer_seasons = [Season(year, SeasonType.Summer) for year in range(2026, 2032)]
+winter_seasons = [Season(year, SeasonType.Winter) for year in range(2026, 2031)]
 
 def season_generator() -> Generator[Season, None, None]:
     ss = list(summer_seasons)
@@ -149,7 +149,7 @@ def main() -> int:
     if args.skipheader:
         _ = next(reader)  # discard header from file
 
-    header = ['Name']
+    header = ['Name', 'DoB']
     for season in all_seasons:
         header.append(str(season))
 
@@ -161,7 +161,7 @@ def main() -> int:
         except:
             dob = datetime.strptime(dobstr, '%d/%m/%Y').date()
 
-        row = [name]
+        row = [name, dob]
         for season in all_seasons:
             ag = season.age_group_of(dob)
             if ag is None:
