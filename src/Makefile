@@ -10,15 +10,15 @@ $(distfile): sbci/*.py
 	#python3 setup.py install --prefix "$(PREFIX)" \
 	#	--single-version-externally-managed --root=/
 	rm -f $(distfile)
-	python3.8 -m build --wheel
+	python3.14 -m build --wheel
 
 install: all
-	-python3.8 -m pip uninstall --yes sbci
-	python3.8 -m pip install --force-reinstall --prefix "$(PREFIX)" $(distfile)
+	-python3.14 -m pip uninstall --yes sbci
+	python3.14 -m pip install --force-reinstall --prefix "$(PREFIX)" $(distfile)
 
 uninstall:
 	#rm -rf "$(PREFIX)/bin" "$(PREFIX)/lib"
-	python3.8 -m pip -v uninstall -y sbci
+	python3.14 -m pip -v uninstall -y sbci
 
 clean:
 	find . -name '*.pyc' -exec rm -f '{}' ';'

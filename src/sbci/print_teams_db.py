@@ -1,6 +1,6 @@
 from __future__ import print_function
 from argparse import ArgumentParser
-from csv import DictWriter, QUOTE_ALL
+from csv import DictWriter, QUOTE_NONE
 from io import TextIOWrapper
 from sbci import fetch_teams, fetch_wwc_list
 from re import sub
@@ -60,9 +60,10 @@ def main():
             print('People >18yo without WWC info:', file=sys.stderr)
             for email in email_list:
                 print('{}'.format(email), file=sys.stderr)
+            print('')
         with TextIOWrapper(sys.stdout.buffer, newline='') as outfile:
             writer = DictWriter(outfile, ['FamilyName', 'CardNumber'],
-                                quoting=QUOTE_ALL, quotechar='"')
+                                quoting=QUOTE_NONE)
             writer.writeheader()
             for fn, cn in wwc_list:
                 writer.writerow({'FamilyName': fn, 'CardNumber': cn})
@@ -178,7 +179,7 @@ def main():
                     )
                 else:
                     print(
-                        '{:7} {:12} {:25} {:40} {:10} {:25} {:40} {:10}'.format(
+                        '{:7} {:13} {:25} {:40} {:10} {:25} {:40} {:10}'.format(
                             t.edjba_code or '?',
                             t.sname or '?',
                             t.tm_name or '?',

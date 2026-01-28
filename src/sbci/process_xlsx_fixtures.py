@@ -97,7 +97,7 @@ def main():
             elif isinstance(rnd, int):
                 rnd = '{}'.format(rnd)
 
-            if rnd not in rnums and not args.finals2:
+            if rnd not in rnums and not args.finals2 and away not in bye_strs:
                 raise RuntimeError(
                     'round number ({}) not one of: {}'.format(
                         rnd, ', '.join(rnums)

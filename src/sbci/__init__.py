@@ -27,8 +27,8 @@ from _collections_abc import Mapping, Sequence
 
 provider = os.getenv('PROVIDER', 'PlayHQ')
 association = os.getenv('ASSOCIATION', 'EDJBA')
-season = os.getenv('SEASON', '2025-winter')
-clinicterm = os.getenv('CLINICTERM', '2025-Term2')
+season = os.getenv('SEASON', '2026-summer')
+clinicterm = os.getenv('CLINICTERM', '2026-Term1')
 develterm = os.getenv('DEVELTERM', '2023-Term2-Friday')
 
 shootersdir = os.getenv(
