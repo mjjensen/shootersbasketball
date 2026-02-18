@@ -109,6 +109,7 @@ class Season:
         return None
 
 
+# winter season comes first so summer year needs to be winter year + 1
 summer_seasons = [Season(year, SeasonType.Summer) for year in range(2027, 2032)]
 winter_seasons = [Season(year, SeasonType.Winter) for year in range(2026, 2031)]
 
@@ -274,20 +275,32 @@ th {
 <body>
 <table>''')
         colours = [
-            # 'blue', 'brown', 'cyan', 'gray', 'green', 'lime', 'magenta',
-            # 'navy', 'orange', 'pink', 'purple', 'red', 'silver', 'yellow',
+            # 'blue',
+            'brown',
+            'cyan',
+            'gray',
+            'green',
+            'lime',
+            'magenta',
+            # 'navy',
+            'orange',
+            'pink',
+            'purple',
+            'red',
+            'silver',
+            'yellow',
             # '#F0F8FF',
             # '#FAEBD7',
-            '#00FFFF',
-            '#7FFFD4',
-            '#00FFFF',
-            '#FFF8DC',
-            '#ADFF2F',
-            '#90EE90',
-            '#FFB6C1',
-            '#87CEFA',
-            '#F5DEB3',
-            '#FF6347',
+            # '#00FFFF',
+            # '#7FFFD4',
+            # '#00FFFF',
+            # '#FFF8DC',
+            # '#ADFF2F',
+            # '#90EE90',
+            # '#FFB6C1',
+            # '#87CEFA',
+            # '#F5DEB3',
+            # '#FF6347',
         ]
         seen = set()
         agcmap = {'??': None}
