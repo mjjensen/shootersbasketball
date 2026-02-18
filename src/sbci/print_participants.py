@@ -391,7 +391,7 @@ def main():
             print('{}'.format(t.sname))
         else:
             print(
-                '{:12} [{} {}] - {:2d} players{}'.format(
+                '{:13} [{} {}] - {:2d} players{}'.format(
                     t.sname, t.edjba_code, t.grade, len(t.players), extra
                 )
             )
