@@ -109,7 +109,7 @@ class Season:
         return None
 
 
-summer_seasons = [Season(year, SeasonType.Summer) for year in range(2026, 2032)]
+summer_seasons = [Season(year, SeasonType.Summer) for year in range(2027, 2032)]
 winter_seasons = [Season(year, SeasonType.Winter) for year in range(2026, 2031)]
 
 def season_generator() -> Generator[Season, None, None]:
