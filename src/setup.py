@@ -29,7 +29,6 @@ Copyright (C) 2018-21 Murray Jensen - All Rights Reserved.
         'Development Status :: 4 - Beta',
         'Intended Audience :: End Users/Desktop',
         'Topic :: Utilities',
-        'License :: OSI Approved :: Apache Software License',
         'Programming Language :: Python :: 2.7',
         'Natural Language :: English',
         'Operating System :: POSIX :: Linux',
