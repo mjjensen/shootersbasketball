@@ -138,6 +138,8 @@ def main() -> int:
                         help='output csv file')
     parser.add_argument('--xlsx', '-x', action='store_true',
                         help='output xlsx instead of csv')
+    parser.add_argument('--html', '-H', action='store_true',
+                        help='output html instead of csv')
     parser.add_argument('--dobs', '-d', action='store_true',
                         help='include Date of Birth column')
     parser.add_argument('--width', '-w', type=float, default=2.0,
@@ -254,6 +256,63 @@ def main() -> int:
         for i, w in enumerate(widths):
             worksheet.set_column(i, i, (w + args.add) * args.width)
         workbook.close()
+    elif args.html:
+        print('''<html>
+<head>
+<style>
+table, th, td {
+  border: 1px solid black;
+  border-collapse: collapse;
+  padding: 5px;
+}
+th {
+  text-align: center;
+  font-weight: bold;
+}
+</style>
+</head>
+<body>
+<table>''')
+        colours = [
+            # 'blue', 'brown', 'cyan', 'gray', 'green', 'lime', 'magenta',
+            # 'navy', 'orange', 'pink', 'purple', 'red', 'silver', 'yellow',
+            # '#F0F8FF',
+            # '#FAEBD7',
+            '#00FFFF',
+            '#7FFFD4',
+            '#00FFFF',
+            '#FFF8DC',
+            '#ADFF2F',
+            '#90EE90',
+            '#FFB6C1',
+            '#87CEFA',
+            '#F5DEB3',
+            '#FF6347',
+        ]
+        seen = set()
+        agcmap = {'??': None}
+        cind = 0
+        clen = len(colours)
+        for ag in all_age_groups:
+            if ag.limit not in seen:
+                seen.add(ag.limit)
+                agcmap[str(ag)] = colours[cind]
+                cind = (cind + 1) % clen
+        print('<thead><tr>')
+        for hcell in header:
+            print('<th>{}</th>'.format(hcell))
+        print('</tr></thead><tbody>')
+        for row in rows:
+            print('<tr>')
+            ci = 0
+            for cell in row:
+                if ci == 0 or (args.dobs and ci == 1) or agcmap[cell] is None:
+                    print('<td style="font-weight: bold;">{}</td>'.format(cell))
+                else:
+                    print('<td style="text-align: center; background-color: {};">{}</td>'.format(agcmap[cell], cell))
+                ci += 1
+            print('</tr>')
+        print('</tbody></table></body></html>')
     else:
         if args.output == 'sys.stdout':
             sys.stdout.reconfigure(newline='')
