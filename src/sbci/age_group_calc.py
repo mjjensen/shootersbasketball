@@ -13,7 +13,7 @@ __all__ = [
     'age_group_generator', 'season_generator',
     'summer_age_groups', 'winter_age_groups', 'all_age_groups',
     'summer_seasons', 'winter_seasons', 'all_seasons',
-    'main',
+    'OutputFormat', 'write_age_groups', 'main',
 ]
 
 
@@ -126,41 +126,28 @@ def season_generator() -> Generator[Season, None, None]:
 all_seasons = [season for season in season_generator()]
 
 
-def main() -> int:
+class OutputFormat(IntEnum):
+    xlsx = 1
+    html = 2
+    csv = 3
 
-    parser = ArgumentParser()
-    parser.add_argument('--verbose', '-v', action='store_true',
-                        help='print verbose messages')
-    parser.add_argument('--input', '-i', default='sys.stdin', metavar='F',
-                        help='input csv file containing name,dob pairs')
-    parser.add_argument('--skipheader', '-s', action='store_true',
-                        help='skip first row of input csv file')
-    parser.add_argument('--output', '-o', default='sys.stdout', metavar='F',
-                        help='output csv file')
-    parser.add_argument('--xlsx', '-x', action='store_true',
-                        help='output xlsx instead of csv')
-    parser.add_argument('--html', '-H', action='store_true',
-                        help='output html instead of csv')
-    parser.add_argument('--dobs', '-d', action='store_true',
-                        help='include Date of Birth column')
-    parser.add_argument('--width', '-w', type=float, default=2.0,
-                        help='factor to multiply no. of column chars')
-    parser.add_argument('--add', '-a', type=int, default=1,
-                        help='no. of chars to add to column len')
-    args = parser.parse_args()
+    def __str__(self):
+        return self.name
 
-    if args.input == 'sys.stdin':
-        sys.stdin.reconfigure(newline='')
-        reader = csv.reader(sys.stdin)
-    else:
-        reader = csv.reader(open(args.input, 'r', newline=''))
+    @staticmethod
+    def from_string(s):
+        try:
+            return OutputFormat[s]
+        except KeyError:
+            raise ValueError()
 
-    if args.skipheader:
-        _ = next(reader)  # discard header from file
+
+def write_age_groups(players, filename, format=OutputFormat.csv,
+                     incl_dobs=False, width=2.0, add=1):
 
     header = ['Name']
     widths = [4]
-    if args.dobs:
+    if incl_dobs:
         header.append('Dob')
         widths.append(3)
     for season in all_seasons:
@@ -170,27 +157,27 @@ def main() -> int:
 
     rows = []
 
-    for name, dobstr in reader:
-        try:
-            dob = datetime.strptime(dobstr, '%Y-%m-%d').date()
-        except:
-            dob = datetime.strptime(dobstr, '%d/%m/%Y').date()
+    for name, dob in players:
 
         wi = 0
+
         s = str(name)
         l = len(s)
         row = [s]
         if l > widths[wi]:
             widths[wi] = l
         wi += 1
-        if args.dobs:
+
+        if incl_dobs:
             s = date.strftime(dob, '%Y-%m-%d')
             l = len(s)
             row.append(s)
             if l > widths[wi]:
                 widths[wi] = l
             wi += 1
+
         for season in all_seasons:
+
             ag = season.age_group_of(dob)
             if ag is None:
                 s = '??'
@@ -204,76 +191,101 @@ def main() -> int:
 
         rows.append(row)
 
-    if args.xlsx:
-        if args.output == 'sys.stdout':
+    if format == OutputFormat.xlsx:
+
+        if filename == 'sys.stdout':
             raise RuntimeError('cannot output xlsx to sys.stdout')
-        workbook = Workbook(args.output)
-        worksheet = workbook.add_worksheet()
-        font = {
-            'font_name': 'Arial',
-            'font_size': 14,
-        }
-        norm = workbook.add_format(font)
-        bold = workbook.add_format(dict(font, bold=True))
-        hfmt = workbook.add_format(dict(font, bold=True, align='center'))
-        colours = [
-            workbook.add_format(
-                dict(
-                    font,
-                    align='center',
-                    pattern=2,
-                    fg_color=cname,
-                    bg_color='white',
-                )
-            ) for cname in [
-                'blue', 'brown', 'cyan', 'gray', 'green', 'lime', 'magenta',
-                'navy', 'orange', 'pink', 'purple', 'red', 'silver', 'yellow',
+
+        workbook = Workbook(filename)
+
+        try:
+            worksheet = workbook.add_worksheet()
+
+            font = {
+                'font_name': 'Arial',
+                'font_size': 14,
+            }
+
+            norm = workbook.add_format(font)
+            bold = workbook.add_format(dict(font, bold=True))
+            hfmt = workbook.add_format(dict(font, bold=True, align='center'))
+
+            colours = [
+                workbook.add_format(
+                    dict(
+                        font,
+                        align='center',
+                        pattern=2,
+                        fg_color=cname,
+                        bg_color='white',
+                    )
+                ) for cname in [
+                    'blue', 'brown', 'cyan', 'gray', 'green', 'lime', 'magenta',
+                    'navy', 'orange', 'pink', 'purple', 'red', 'silver', 'yellow',
+                ]
             ]
-        ]
-        seen = set()
-        agcmap = {'??': norm}
-        cind = 0
-        clen = len(colours)
-        for ag in all_age_groups:
-            if ag.limit not in seen:
-                seen.add(ag.limit)
-                agcmap[str(ag)] = colours[cind]
-                cind = (cind + 1) % clen
-        ri = ci = cc = 0
-        for hcell in header:
-            worksheet.write_string(ri, ci, hcell, hfmt)
-            ci += 1
-        ri += 1
-        for row in rows:
-            ci = 0
-            for cell in row:
-                worksheet.write_string(
-                    ri, ci, cell,
-                    bold if ci == 0 else hfmt if ci == 1 else agcmap[cell]
-                )
+
+            agcmap = {'??': norm}
+            seen = set()
+            cind = 0
+            clen = len(colours)
+            for ag in all_age_groups:
+                if ag.limit not in seen:
+                    seen.add(ag.limit)
+                    agcmap[str(ag)] = colours[cind]
+                    cind = (cind + 1) % clen
+
+            ri = ci = cc = 0
+
+            for hcell in header:
+                worksheet.write_string(ri, ci, hcell, hfmt)
                 ci += 1
             ri += 1
-        # worksheet.autofit() - doesn't seem to work
-        for i, w in enumerate(widths):
-            worksheet.set_column(i, i, (w + args.add) * args.width)
-        workbook.close()
-    elif args.html:
+
+            for row in rows:
+
+                ci = 0
+                for cell in row:
+                    worksheet.write_string(
+                        ri, ci, cell,
+                        bold if ci == 0 else hfmt if ci == 1 else agcmap[cell]
+                    )
+                    ci += 1
+                ri += 1
+
+            # worksheet.autofit() - doesn't seem to work
+            for i, w in enumerate(widths):
+                worksheet.set_column(i, i, (w + add) * width)
+
+        finally:
+            workbook.close()
+
+    elif format == OutputFormat.html:
+
+        if filename == 'sys.stdout':
+            outfile=sys.stdout
+        else:
+            outfile = open(filename, 'w')
+
         print('''<html>
 <head>
 <style>
-table, th, td {
-  border: 1px solid black;
-  border-collapse: collapse;
-  padding: 5px;
+ table, th, td {
+ border: 1px solid black;
+ border-collapse: collapse;
+ padding: 5px;
 }
 th {
-  text-align: center;
-  font-weight: bold;
+ text-align: center;
+ font-weight: bold;
 }
 </style>
 </head>
 <body>
-<table>''')
+<table>''',
+            file=outfile,
+        )
+
         colours = [
             # 'blue',
             'brown',
@@ -302,8 +314,9 @@ th {
             # '#F5DEB3',
             # '#FF6347',
         ]
-        seen = set()
+
         agcmap = {'??': None}
+        seen = set()
         cind = 0
         clen = len(colours)
         for ag in all_age_groups:
@@ -311,29 +324,96 @@ th {
                 seen.add(ag.limit)
                 agcmap[str(ag)] = colours[cind]
                 cind = (cind + 1) % clen
-        print('<thead><tr>')
+
+        print('<thead><tr>', file=outfile)
+
         for hcell in header:
-            print('<th>{}</th>'.format(hcell))
-        print('</tr></thead><tbody>')
+            print('<th>{}</th>'.format(hcell), file=outfile)
+
+        print('</tr></thead><tbody>', file=outfile)
+
         for row in rows:
-            print('<tr>')
+
+            print('<tr>', file=outfile)
+
             ci = 0
             for cell in row:
-                if ci == 0 or (args.dobs and ci == 1) or agcmap[cell] is None:
-                    print('<td style="font-weight: bold;">{}</td>'.format(cell))
+                if ci == 0 or (incl_dobs and ci == 1) or agcmap[cell] is None:
+                    print(
+                        '<td style="font-weight: bold;">{}</td>'.format(cell),
+                        file=outfile,
+                    )
                 else:
-                    print('<td style="text-align: center; background-color: {};">{}</td>'.format(agcmap[cell], cell))
+                    print(
+                        '<td style="text-align: center; background-color: {};">'
+                        '{}</td>'.format(agcmap[cell], cell), file=outfile,
+                    )
                 ci += 1
-            print('</tr>')
-        print('</tbody></table></body></html>')
-    else:
-        if args.output == 'sys.stdout':
+
+            print('</tr>', file=outfile)
+
+        print('</tbody></table></body></html>', file=outfile)
+
+    elif format == OutputFormat.csv:
+
+        if filename == 'sys.stdout':
             sys.stdout.reconfigure(newline='')
             writer = csv.writer(sys.stdout)
         else:
-            writer = csv.writer(open(args.output, 'w', newline=''))
+            writer = csv.writer(open(filename, 'w', newline=''))
+
         writer.writerow(header)
         writer.writerows(rows)
+
+    else:
+        raise RuntimeError('unknown output format: {}'.format(format))
+
+
+def main() -> int:
+
+    parser = ArgumentParser()
+    parser.add_argument('--verbose', '-v', action='store_true',
+                        help='print verbose messages')
+    parser.add_argument('--input', '-i', default='sys.stdin', metavar='F',
+                        help='input csv file containing name,dob pairs')
+    parser.add_argument('--skipheader', '-s', action='store_true',
+                        help='skip first row of input csv file')
+    parser.add_argument('--output', '-o', default='sys.stdout', metavar='F',
+                        help='output csv file')
+    parser.add_argument('--format', '-f', type=OutputFormat.from_string,
+                        choices=list(OutputFormat), default=OutputFormat.csv,
+                        help='output type')
+    parser.add_argument('--dobs', '-d', action='store_true',
+                        help='include Date of Birth column')
+    parser.add_argument('--width', '-w', type=float, default=2.0,
+                        help='factor to multiply no. of column chars')
+    parser.add_argument('--add', '-a', type=int, default=1,
+                        help='no. of chars to add to column len')
+    args = parser.parse_args()
+
+    if args.input == 'sys.stdin':
+        sys.stdin.reconfigure(newline='')
+        reader = csv.reader(sys.stdin)
+    else:
+        reader = csv.reader(open(args.input, 'r', newline=''))
+
+    if args.skipheader:
+        _ = next(reader)  # discard header from file
+
+    players = []
+
+    for name, dobstr in reader:
+        try:
+            dob = datetime.strptime(dobstr, '%Y-%m-%d').date()
+        except:
+            dob = datetime.strptime(dobstr, '%d/%m/%Y').date()
+
+        players.append((name, dob))
+
+    write_age_groups(
+        players, args.output, args.format,
+        incl_dobs=args.dobs, width=args.width, add=args.add,
+    )
 
     return 0
 
