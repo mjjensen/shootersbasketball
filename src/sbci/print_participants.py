@@ -12,6 +12,7 @@ import sys
 from sbci import fetch_teams, fetch_participants, load_config, latest_report, \
     fetch_trybooking, find_in_tb, to_fullname, to_date, find_age_group, \
     to_bool, correct_string
+from sbci.age_group_calc import OutputFormat, write_age_groups
 
 
 def main():
@@ -33,6 +34,10 @@ def main():
                         help='print an email list for unpaid players')
     parser.add_argument('--rollover', '-r', action='store_true',
                         help='print team agegroups for next season')
+    parser.add_argument('--agtables', '-a', action='store_true',
+                        help='if rollover, write age group tables')
+    parser.add_argument('--agtdir', default='agt', metavar='D',
+                        help='specify dir for writing age group tables')
     parser.add_argument('--playhq', '-p', action='store_true',
                         help='check PlayHQ payment')
     parser.add_argument('--younger', '-y', action='store_true',
@@ -204,6 +209,9 @@ def main():
     if args.allemail:
         all_email_addrs = []
 
+    if args.rollover and args.agtables:
+        agt_index = []
+
     for t in team_list:
 
         nteams += 1
@@ -220,6 +228,8 @@ def main():
         if args.rollover:
             ntag = None
             nags = {}
+            if args.agtables:
+                agt_players = []
 
         lines = []
         email_corrections = config.get('email_corrections')
@@ -273,6 +283,9 @@ def main():
                 nags[nag] = nags.setdefault(nag, 0) + 1
                 if ntag is None or nag > ntag:
                     ntag = nag
+
+                if args.agtables:
+                    agt_players.append((name, dob))
 
             if args.postcodes:
                 pc = int(p.postcode)
@@ -387,6 +400,14 @@ def main():
                 for k, v in sorted(nags.items(), key=lambda i: i[0]):
                     extra += ' {:d}xU{:02d}'.format(v, k)
 
+            if args.agtables:
+                filename = t.sname + '.html'
+                if args.agtdir:
+                    filename = os.path.join(args.agtdir, filename)
+                write_age_groups(agt_players, filename,
+                                 format=OutputFormat.html, incl_dobs=True)
+                agt_index.append(filename)
+
         if args.csv:
             print('{}'.format(t.sname))
         else:
@@ -397,6 +418,30 @@ def main():
             )
         for line in lines:
             print(line)
+
+    if args.rollover and args.agtables:
+        filename = 'index.html'
+        if args.agtdir:
+            filename = os.path.join(args.agtdir, filename)
+        with open(filename, 'w') as ifile:
+            print('''<html>
+<body>
+<h1>Age Group Tables</h1>
+<ol>''',
+                file=ifile,
+            )
+            for filename in agt_index:
+                print('<!-- filename: {} -->'.format(filename), file=ifile)
+                basename = os.path.basename(filename)
+                stemname = os.path.splitext(basename)[0]
+                print('<li><a href="{}">{}</a></li>'.format(basename, stemname),
+                    file=ifile,
+                )
+            print('''</ol>
+</body>
+</html>''',
+                file=ifile,
+            )
 
     if args.allemail:
         for addr in sorted(all_email_addrs):
