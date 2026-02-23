@@ -36,6 +36,8 @@ def main():
                         help='print team agegroups for next season')
     parser.add_argument('--agtables', '-a', action='store_true',
                         help='if rollover, write age group tables')
+    parser.add_argument('--agtdobs', action='store_true',
+                        help='if agtables, include dobs in age group tables')
     parser.add_argument('--agtdir', default='agt', metavar='D',
                         help='specify dir for writing age group tables')
     parser.add_argument('--playhq', '-p', action='store_true',
@@ -405,7 +407,8 @@ def main():
                 if args.agtdir:
                     filename = os.path.join(args.agtdir, filename)
                 write_age_groups(agt_players, filename,
-                                 format=OutputFormat.html, incl_dobs=True)
+                                 format=OutputFormat.html,
+                                 incl_dobs=args.agtdobs)
                 agt_index.append(filename)
 
         if args.csv:
