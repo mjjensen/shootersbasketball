@@ -15,6 +15,8 @@ def main():
                         help='write csv upload file of Square customers')
     parser.add_argument('--email', '-e', action='store_true',
                         help='print email list')
+    parser.add_argument('--csv', '-c', action='store_true',
+                        help='print csv for age group tables')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
     args = parser.parse_args()
@@ -45,7 +47,15 @@ def main():
         if args.email:
             extract_emails(p)
         else:
-            print('{:20}'.format(p.full_name))
+            if args.csv:
+                print(
+                    '{} {},{}'.format(
+                        p.first_name, p.last_name,
+                        p.date_of_birth.strftime('%Y-%m-%d'),
+                    )
+                )
+            else:
+                print('{:20}'.format(p.full_name))
 
     if args.email:
         for e in sorted(email_list):
