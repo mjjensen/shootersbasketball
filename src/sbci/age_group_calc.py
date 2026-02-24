@@ -148,7 +148,7 @@ def write_age_groups(players, filename, format=OutputFormat.csv,
     header = ['Name']
     widths = [4]
     if incl_dobs:
-        header.append('Dob')
+        header.append('DoB')
         widths.append(3)
     for season in all_seasons:
         s = str(season)
@@ -169,7 +169,8 @@ def write_age_groups(players, filename, format=OutputFormat.csv,
         wi += 1
 
         if incl_dobs:
-            s = date.strftime(dob, '%Y-%m-%d')
+            # s = date.strftime(dob, '%Y-%m-%d')
+            s = '{} {}'.format(dob.year, 'early' if dob.month <= 6 else 'late')
             l = len(s)
             row.append(s)
             if l > widths[wi]:
