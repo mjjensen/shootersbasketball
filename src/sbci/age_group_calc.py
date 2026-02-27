@@ -170,7 +170,7 @@ def write_age_groups(players, filename, format=OutputFormat.csv,
 
         if incl_dobs:
             # s = date.strftime(dob, '%Y-%m-%d')
-            s = '{} {}'.format(dob.year, 'early' if dob.month <= 6 else 'late')
+            s = '{} {} ½yr'.format(dob.year, '1st' if dob.month <= 6 else '2nd')
             l = len(s)
             row.append(s)
             if l > widths[wi]:
