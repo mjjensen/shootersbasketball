@@ -56,6 +56,7 @@ Copyright (C) 2018-21 Murray Jensen - All Rights Reserved.
             'process_csv_clinic = sbci.process_csv_clinic:main',
             'process_csv_devteams_tb = sbci.process_csv_devteams_tb:main',
             'process_csv_training_forms = sbci.process_csv_training_forms:main',
+            'process_csv_transfers = sbci.process_csv_transfers:main',
             'process_csv_xacts_tb = sbci.process_csv_xacts_tb:main',
             'process_csv_xero_upload = sbci.process_csv_xero_upload:main',
             'process_xls_clinic = sbci.process_xls_clinic:main',
