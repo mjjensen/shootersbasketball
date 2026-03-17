@@ -218,7 +218,7 @@ def main():
         ) in sorted(games, key=itemgetter(7)):
             n += 1
 
-            if rdate1 != rdate:
+            if rdate1 != rdate and gtime is not bye:
                 raise RuntimeError(
                     'differing Round dates ({}!={})'.format(rdate, rdate1)
                 )
