@@ -145,14 +145,14 @@ class OutputFormat(IntEnum):
 def write_age_groups(players, filename, format=OutputFormat.csv,
                      incl_dobs=False, width=2.0, add=1):
 
-    header = ['Name']
+    heading = ['Name']
     widths = [4]
     if incl_dobs:
-        header.append('DoB')
+        heading.append('DoB')
         widths.append(3)
     for season in all_seasons:
         s = str(season)
-        header.append(s)
+        heading.append(s)
         widths.append(len(s))
 
     rows = []
@@ -240,7 +240,7 @@ def write_age_groups(players, filename, format=OutputFormat.csv,
 
             ri = ci = cc = 0
 
-            for hcell in header:
+            for hcell in heading:
                 worksheet.write_string(ri, ci, hcell, hfmt)
                 ci += 1
             ri += 1
@@ -266,14 +266,15 @@ def write_age_groups(players, filename, format=OutputFormat.csv,
     elif format == OutputFormat.html:
 
         if filename == 'sys.stdout':
-            outfile=sys.stdout
+            outfile = sys.stdout
         else:
             outfile = open(filename, 'w')
 
-        print('''<html>
+        print('''\
+<html>
 <head>
 <style>
- table, th, td {
+table, th, td {
  border: 1px solid black;
  border-collapse: collapse;
  padding: 5px;
@@ -330,7 +331,7 @@ th {
 
         print('<thead><tr>', file=outfile)
 
-        for hcell in header:
+        for hcell in heading:
             print('<th>{}</th>'.format(hcell), file=outfile)
 
         print('</tr></thead><tbody>', file=outfile)
@@ -365,7 +366,7 @@ th {
         else:
             writer = csv.writer(open(filename, 'w', newline=''))
 
-        writer.writerow(header)
+        writer.writerow(heading)
         writer.writerows(rows)
 
     else:
