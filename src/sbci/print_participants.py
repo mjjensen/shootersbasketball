@@ -12,8 +12,77 @@ import sys
 from sbci import fetch_teams, fetch_participants, load_config, latest_report, \
     fetch_trybooking, find_in_tb, to_fullname, to_date, find_age_group, \
     to_bool, correct_string
-from sbci.age_group_calc import OutputFormat, write_age_groups
+from sbci.age_group_calc import OutputFormat, write_age_groups, all_seasons
 
+
+html_doc_header = '''\
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{season} Teams</title>
+    <style>
+      .section {{ width: 100%; display: none; }}
+    </style>
+  </head>
+  <body>
+    <table>
+      <thead>
+        <tr>
+          <th>Team</th>
+          <th>EDJBA Name</th>
+          <th>&nbsp;</th>
+        </tr>
+      </thead>
+      <tbody>'''
+
+html_team_header = '''\
+        <!-- SECTION {n} -->
+        <tr>
+          <td>{name}</td>
+          <td>{edjba_team}</td>
+          <td><button onclick="toggle('section{n}')">players</button></td>
+        </tr>
+        <tr>
+          <td colspan="3">
+            <table class="section" id="section{n}">
+              <thead>
+                <th>Name</th>
+                <th>DoB</th>
+                <th>{seasons}</th>
+              </thead>
+              <tbody>'''
+
+html_player = '''\
+                <tr>
+                  <td>{name}</td>
+                  <td>{dob}</td>
+                  <td>{seasons}</td>
+                </tr>'''
+
+html_team_footer = '''\
+              </tbody>
+            </table>
+          </td>
+        </tr>
+        <!-- END SECTION {n} -->'''
+
+html_doc_footer = '''\
+      </tbody>
+    </table>
+    <script>
+      function toggle(sectionid) {{
+        var content = document.getElementById(sectionid);
+        if (!content.style.display || content.style.display === 'none') {{
+          content.style.display = 'table';
+        }} else {{
+          content.style.display = 'none';
+        }}
+      }}
+    </script>
+  </body>
+</html>'''
 
 def main():
 
@@ -52,6 +121,8 @@ def main():
                         help='dump a list of all email addresses')
     parser.add_argument('--csv', '-C', action='store_true',
                         help='output in CSV format')
+    parser.add_argument('--html', '-H', action='store_true',
+                        help='write a html page to display teams')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
     parser.add_argument('teams', nargs='*',
@@ -214,6 +285,9 @@ def main():
     if args.rollover and args.agtables:
         agt_index = []
 
+    if args.html:
+        print(html_doc_header.format(season=config['season']))
+
     for t in team_list:
 
         nteams += 1
@@ -236,10 +310,38 @@ def main():
         lines = []
         email_corrections = config.get('email_corrections')
 
+        if args.html:
+            edjba_team = t.edjba_id
+            seasons = []
+            for s in all_seasons[:8]:
+                seasons.append(str(s))
+            print(
+                html_team_header.format(
+                    n=nteams, name=t.sname,
+                    edjba_team='U{:02d} {} {:02d}'.format(
+                        t.age_group, t.gender, t.number
+                    ),
+                    seasons='</th><th>'.join(seasons),
+                )
+            )
+
         for p in t.players:
 
             name = to_fullname(p.first_name, p.last_name, args.csv)
             dob = p.date_of_birth
+
+            if args.html:
+                seasons = []
+                for s in all_seasons[:8]:
+                    ag = s.age_group_of(dob)
+                    seasons.append('??' if ag is None else str(ag))
+                print(
+                    html_player.format(
+                        name='{} {}'.format(p.first_name, p.last_name),
+                        dob=dob.strftime('%Y-%m-%d'),
+                        seasons='</td><td>'.join(seasons),
+                    )
+                )
 
             ags = find_age_group(config['age_groups'], dob)
             if ags is None:
@@ -411,7 +513,9 @@ def main():
                                  incl_dobs=args.agtdobs)
                 agt_index.append(filename)
 
-        if args.csv:
+        if args.html:
+            print(html_team_footer.format(n=nteams))
+        elif args.csv:
             print('{}'.format(t.sname))
         else:
             print(
@@ -421,6 +525,9 @@ def main():
             )
         for line in lines:
             print(line)
+
+    if args.html:
+        print(html_doc_footer.format())
 
     if args.rollover and args.agtables:
         filename = 'index.html'
