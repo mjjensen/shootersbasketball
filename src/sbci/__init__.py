@@ -1,19 +1,16 @@
 from collections import OrderedDict
 from csv import DictReader
+from dataclasses import dataclass, field
 from datetime import datetime, date
 from enum import IntEnum
-from glob import glob
 from json import loads
 import os
 import re
 from sqlite3 import connect, Row
-from ssl import create_default_context, PROTOCOL_TLS
 import sys
 from threading import Lock
-from time import strftime
 import time
-from urllib.parse import urlencode
-from urllib.request import urlopen
+from typing import Dict, List, Tuple, Optional, Generator
 
 from dateutil.relativedelta import relativedelta
 from requests import Session
@@ -21,8 +18,6 @@ from requests.adapters import HTTPAdapter
 from six import string_types, binary_type, text_type, ensure_text
 from urllib3 import PoolManager
 from urllib3.util.ssl_ import create_urllib3_context
-from typing import Dict, List
-from _collections_abc import Mapping, Sequence
 
 
 provider = os.getenv('PROVIDER', 'PlayHQ')
@@ -55,6 +50,186 @@ develdir = os.getenv(
     'DEVELDIR',
     os.path.join(shootersdir, provider, 'Devel', develterm)
 )
+
+
+class SeasonType(IntEnum):
+    Summer = 1
+    Winter = 2
+
+
+@dataclass(order=True, frozen=True)
+class AgeGroup:
+
+    limit: int
+    stype: SeasonType
+
+    index: int = field(init=False)
+    duration: int = field(init=False, repr=False, hash=False, compare=False)
+
+    counter: ClassVar[int] = 0
+
+    def __post_init__(self) -> None:
+        AgeGroup.counter += 1
+        object.__setattr__(self, 'index', AgeGroup.counter)
+        if (
+            self.limit < 10
+        or
+            (self.stype == SeasonType.Summer and self.limit == 21)
+        ):
+            object.__setattr__(self, 'duration', 3)
+        else:
+            object.__setattr__(self, 'duration', 2)
+
+    def __str__(self) -> str:
+        return 'U{:02d}'.format(self.limit)
+
+    @property
+    def label(self) -> str:
+        return 'Under {:02d}'.format(self.limit)
+
+    def dates(self, year: int) -> Tuple[date, date]:
+        if self.stype == SeasonType.Summer:
+            base = year - 1 - self.limit
+            return date(base, 7, 1), date(base + self.duration, 6, 30)
+        else:
+            base = year - self.limit
+            return date(base, 1, 1), date(base + self.duration - 1, 12, 31)
+
+    def date_is_in(self, year: int, d: date) -> bool:
+        ds, de = self.dates(year)
+        return d >= ds and d <= de
+
+
+summer_age_groups = [
+    AgeGroup(value, SeasonType.Summer) for value in (8, 10, 12, 14, 16, 18, 21)
+]
+
+
+winter_age_groups = [
+    AgeGroup(value, SeasonType.Winter) for value in (9, 11, 13, 15, 17, 19, 21)
+]
+
+
+def age_group_generator() -> Generator[AgeGroup, None, None]:
+    sag = list(summer_age_groups)
+    wag = list(winter_age_groups)
+    while True:
+        try:
+            yield sag.pop(0)  # summer first
+            yield wag.pop(0)
+        except IndexError:
+            break
+
+
+all_age_groups = [ag for ag in age_group_generator()]
+
+
+@dataclass(order=True, frozen=True)
+class Season:
+
+    year: int  # for Summer this is the year of the end of the season
+    stype: SeasonType
+
+    index: int = field(init=False)
+
+    counter: ClassVar[int] = 0
+
+    def __post_init__(self) -> None:
+        Season.counter += 1
+        object.__setattr__(self, 'index', Season.counter)
+
+    def __str__(self) -> str:
+        return '{}{:02d}'.format(self.stype.name[0], self.year % 100)
+
+    @property
+    def label(self) -> str:
+        if self.stype is SeasonType.Summer:
+            return '{:04d}/{:02d} {}'.format(
+                self.year - 1, self.year % 100, self.stype.name
+            )
+        else:
+            return '{:04d} {}'.format(self.year, self.stype.name)
+
+    def age_group_of(self, d: date) -> Optional[AgeGroup]:
+        if self.stype is SeasonType.Summer:
+            age_groups = summer_age_groups
+        else:
+            age_groups = winter_age_groups
+        for ag in age_groups:
+            if ag.date_is_in(self.year, d):
+                return ag
+        return None
+
+
+# winter season comes first so summer year needs to be winter year + 1
+summer_seasons = [Season(year, SeasonType.Summer) for year in range(2027, 2032)]
+winter_seasons = [Season(year, SeasonType.Winter) for year in range(2026, 2031)]
+
+
+def season_generator() -> Generator[Season, None, None]:
+    ss = list(summer_seasons)
+    ws = list(winter_seasons)
+    while True:
+        try:
+            yield ws.pop(0)  # winter first
+            yield ss.pop(0)
+        except IndexError:
+            break
+
+
+all_seasons = [season for season in season_generator()]
+
+
+class OutputFormat(IntEnum):
+    xlsx = 1
+    html = 2
+    csv = 3
+
+    def __str__(self):
+        return self.name
+
+    @staticmethod
+    def from_string(s):
+        try:
+            return OutputFormat[s]
+        except KeyError:
+            raise ValueError()
+
+
+excel_colours = [
+    'blue', 'brown', 'cyan', 'gray', 'green', 'lime', 'magenta',
+    'navy', 'orange', 'pink', 'purple', 'red', 'silver', 'yellow',
+]
+
+
+html_colours = [
+    # 'blue',
+    'brown',
+    'cyan',
+    'gray',
+    'green',
+    'lime',
+    'magenta',
+    # 'navy',
+    'orange',
+    'pink',
+    'purple',
+    'red',
+    'silver',
+    'yellow',
+    # '#F0F8FF',
+    # '#FAEBD7',
+    # '#00FFFF',
+    # '#7FFFD4',
+    # '#00FFFF',
+    # '#FFF8DC',
+    # '#ADFF2F',
+    # '#90EE90',
+    # '#FFB6C1',
+    # '#87CEFA',
+    # '#F5DEB3',
+    # '#FF6347',
+]
 
 
 class Team(object):

@@ -1,18 +1,16 @@
 from argparse import ArgumentParser
 from collections import namedtuple
 from csv import DictReader
-from datetime import datetime
 from decimal import Decimal
 from email.utils import getaddresses
 from operator import itemgetter
 import os
-import re
 import sys
 
 from sbci import fetch_teams, fetch_participants, load_config, latest_report, \
     fetch_trybooking, find_in_tb, to_fullname, to_date, find_age_group, \
-    to_bool, correct_string
-from sbci.age_group_calc import OutputFormat, write_age_groups, all_seasons
+    to_bool, correct_string, OutputFormat, all_seasons, html_colours
+from sbci.age_group_calc import write_age_groups
 
 
 html_doc_header = '''\
@@ -23,57 +21,85 @@ html_doc_header = '''\
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{season} Teams</title>
     <style>
-      .section {{ width: 100%; display: none; }}
+      th.teams {{
+        text-align: center;
+        font-weight: bold;
+      }}
+      table.players {{
+        width: 100%;
+        display: none;
+      }}
+      table.players, th.players, td.players {{
+        padding: 5px;
+      }}
+      td.seasons {{
+        text-align: center;
+      }}
+      th.players {{
+        text-align: center;
+        font-weight: bold;
+      }}
     </style>
   </head>
   <body>
-    <table>
-      <thead>
-        <tr>
-          <th>Team</th>
-          <th>EDJBA Name</th>
-          <th>&nbsp;</th>
+    <h1>{season} Teams</h1>
+    <table class="teams">
+      <thead class="teams">
+        <tr class="teams">
+          <th class="teams">#</th>
+          <th class="teams">Team</th>
+          <th class="teams">EDJBA Name</th>
+          <th class="teams">&nbsp;</th>
         </tr>
       </thead>
-      <tbody>'''
+      <tbody class="teams">'''
+
 
 html_team_header = '''\
-        <!-- SECTION {n} -->
-        <tr>
-          <td>{name}</td>
-          <td>{edjba_team}</td>
-          <td><button onclick="toggle('section{n}')">players</button></td>
+        <!-- TEAM {n} -->
+        <tr class="teams">
+          <td class="teams">{n}.</td>
+          <td class="teams">{name}</td>
+          <td class="teams">{edjba_team}</td>
+          <td class="teams">
+            <button class="teams" onclick="toggle('team{n}')">
+              {nplayers} players
+            </button>
+          </td>
         </tr>
-        <tr>
-          <td colspan="3">
-            <table class="section" id="section{n}">
-              <thead>
-                <th>Name</th>
-                <th>DoB</th>
-                <th>{seasons}</th>
+        <tr class="teams">
+          <td class="teams" colspan="4">
+            <table class="players" id="team{n}">
+              <thead class="players">
+                <th class="players">Name</th>
+                <th class="players">DoB</th>
+                {seasons}
               </thead>
-              <tbody>'''
+              <tbody class="players">'''
 
-html_player = '''\
-                <tr>
-                  <td>{name}</td>
-                  <td>{dob}</td>
-                  <td>{seasons}</td>
+
+html_player_body = '''\
+                <tr class="players">
+                  <td class="players">{name}</td>
+                  <td class="players">{dob}</td>
+                  {seasons}
                 </tr>'''
+
 
 html_team_footer = '''\
               </tbody>
             </table>
           </td>
         </tr>
-        <!-- END SECTION {n} -->'''
+        <!-- END TEAM {n} -->'''
+
 
 html_doc_footer = '''\
       </tbody>
     </table>
     <script>
-      function toggle(sectionid) {{
-        var content = document.getElementById(sectionid);
+      function toggle(teamid) {{
+        var content = document.getElementById(teamid);
         if (!content.style.display || content.style.display === 'none') {{
           content.style.display = 'table';
         }} else {{
@@ -81,8 +107,16 @@ html_doc_footer = '''\
         }}
       }}
     </script>
+    <h1>Summary</h1>
+    <p class="summary">
+      Total of {nteams} teams ({nbteams} boys, {ngteams} girls)
+    </p>
+    <p class="summary">
+      Total of {nplayers} players ({nboys} boys, {ngirls} girls)
+    </p>
   </body>
 </html>'''
+
 
 def main():
 
@@ -123,6 +157,8 @@ def main():
                         help='output in CSV format')
     parser.add_argument('--html', '-H', action='store_true',
                         help='write a html page to display teams')
+    parser.add_argument('--altsort', action='store_true',
+                        help='use alternate sorting (age/gender/number)')
     parser.add_argument('--verbose', '-v', action='store_true',
                         help='print verbose messages')
     parser.add_argument('teams', nargs='*',
@@ -134,7 +170,13 @@ def main():
 
     config = load_config(verbose=args.verbose)
 
-    teams = fetch_teams(verbose=args.verbose)
+    if args.altsort:
+        teams = fetch_teams(
+            order_by='age_group, gender, team_number, team_name',
+            verbose=args.verbose
+        )
+    else:
+        teams = fetch_teams(verbose=args.verbose)
 
     fetch_participants(teams, args.partreport, args.verbose,
                        player_moves=config.get('player_moves'))
@@ -286,6 +328,8 @@ def main():
         agt_index = []
 
     if args.html:
+        seasons = all_seasons[:8]
+        colours = html_colours[:]
         print(html_doc_header.format(season=config['season']))
 
     for t in team_list:
@@ -312,16 +356,19 @@ def main():
 
         if args.html:
             edjba_team = t.edjba_id
-            seasons = []
-            for s in all_seasons[:8]:
-                seasons.append(str(s))
+            sstrs = []
+            for season in seasons:
+                sstrs.append(
+                    '<th class="players agegroups">{}</th>'.format(str(season))
+                )
             print(
                 html_team_header.format(
                     n=nteams, name=t.sname,
                     edjba_team='U{:02d} {} {:02d}'.format(
                         t.age_group, t.gender, t.number
                     ),
-                    seasons='</th><th>'.join(seasons),
+                    nplayers=len(t.players),
+                    seasons=''.join(sstrs),
                 )
             )
 
@@ -331,15 +378,25 @@ def main():
             dob = p.date_of_birth
 
             if args.html:
-                seasons = []
-                for s in all_seasons[:8]:
-                    ag = s.age_group_of(dob)
-                    seasons.append('??' if ag is None else str(ag))
+                sstrs = []
+                for season in seasons:
+                    sstrs.append('<td class="players agegroups"')
+                    ag = season.age_group_of(dob)
+                    if ag:
+                        sstrs.append(
+                            ' style="background-color: {};"'.format(
+                                html_colours[ag.index % len(html_colours)]
+                            )
+                        )
+                        agstr = str(ag)
+                    else:
+                        agstr = '???'
+                    sstrs.append('>{}</td>'.format(agstr))
                 print(
-                    html_player.format(
+                    html_player_body.format(
                         name='{} {}'.format(p.first_name, p.last_name),
                         dob=dob.strftime('%Y-%m-%d'),
-                        seasons='</td><td>'.join(seasons),
+                        seasons=''.join(sstrs),
                     )
                 )
 
@@ -527,7 +584,12 @@ def main():
             print(line)
 
     if args.html:
-        print(html_doc_footer.format())
+        print(
+            html_doc_footer.format(
+                nteams=nteams, nbteams=nbteams, ngteams=ngteams,
+                nplayers=nplayers, nboys=nboys, ngirls=ngirls,
+            )
+        )
 
     if args.rollover and args.agtables:
         filename = 'index.html'

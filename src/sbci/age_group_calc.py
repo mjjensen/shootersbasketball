@@ -1,149 +1,18 @@
 from argparse import ArgumentParser
 import csv
-from dataclasses import dataclass, field
 from datetime import date, datetime
-from enum import IntEnum
 import sys
-from typing import Tuple, Optional, Generator
+
 from xlsxwriter.workbook import Workbook
 
-
-__all__ = [
-    'SeasonType', 'AgeGroup', 'Season',
-    'age_group_generator', 'season_generator',
-    'summer_age_groups', 'winter_age_groups', 'all_age_groups',
-    'summer_seasons', 'winter_seasons', 'all_seasons',
-    'OutputFormat', 'write_age_groups', 'main',
-]
+from sbci import all_seasons, excel_colours, html_colours, OutputFormat
 
 
-class SeasonType(IntEnum):
-    Summer = 1
-    Winter = 2
-
-
-@dataclass(order=True, frozen=True)
-class AgeGroup:
-
-    limit: int
-    stype: SeasonType
-
-    duration: int = field(init=False, repr=False, hash=False, compare=False)
-
-    def __post_init__(self) -> None:
-        if (
-            self.limit < 10
-        or
-            (self.stype == SeasonType.Summer and self.limit == 21)
-        ):
-            object.__setattr__(self, 'duration', 3)
-        else:
-            object.__setattr__(self, 'duration', 2)
-
-    def __str__(self) -> str:
-        return 'U{:02d}'.format(self.limit)
-
-    @property
-    def label(self) -> str:
-        return 'Under {:02d}'.format(self.limit)
-
-    def dates(self, year: int) -> Tuple[date, date]:
-        if self.stype == SeasonType.Summer:
-            base = year - 1 - self.limit
-            return date(base, 7, 1), date(base + self.duration, 6, 30)
-        else:
-            base = year - self.limit
-            return date(base, 1, 1), date(base + self.duration - 1, 12, 31)
-
-    def date_is_in(self, year: int, d: date) -> bool:
-        ds, de = self.dates(year)
-        return d >= ds and d <= de
-
-
-summer_age_groups = [
-    AgeGroup(value, SeasonType.Summer) for value in (8, 10, 12, 14, 16, 18, 21)
-]
-winter_age_groups = [
-    AgeGroup(value, SeasonType.Winter) for value in (9, 11, 13, 15, 17, 19, 21)
-]
-
-def age_group_generator() -> Generator[AgeGroup, None, None]:
-    sag = list(summer_age_groups)
-    wag = list(winter_age_groups)
-    while True:
-        try:
-            yield sag.pop(0)  # summer first
-            yield wag.pop(0)
-        except IndexError:
-            break
-
-all_age_groups = [ag for ag in age_group_generator()]
-
-
-@dataclass(order=True, frozen=True)
-class Season:
-
-    year: int  # for Summer this is the year of the end of the season
-    stype: SeasonType
-
-    def __str__(self) -> str:
-        return '{}{:02d}'.format(self.stype.name[0], self.year % 100)
-
-    @property
-    def label(self) -> str:
-        if self.stype is SeasonType.Summer:
-            return '{:04d}/{:02d} {}'.format(
-                self.year - 1, self.year % 100, self.stype.name
-            )
-        else:
-            return '{:04d} {}'.format(self.year, self.stype.name)
-
-    def age_group_of(self, d: date) -> Optional[AgeGroup]:
-        if self.stype is SeasonType.Summer:
-            age_groups = summer_age_groups
-        else:
-            age_groups = winter_age_groups
-        for ag in age_groups:
-            if ag.date_is_in(self.year, d):
-                return ag
-        return None
-
-
-# winter season comes first so summer year needs to be winter year + 1
-summer_seasons = [Season(year, SeasonType.Summer) for year in range(2027, 2032)]
-winter_seasons = [Season(year, SeasonType.Winter) for year in range(2026, 2031)]
-
-def season_generator() -> Generator[Season, None, None]:
-    ss = list(summer_seasons)
-    ws = list(winter_seasons)
-    while True:
-        try:
-            yield ws.pop(0)  # winter first
-            yield ss.pop(0)
-        except IndexError:
-            break
-
-all_seasons = [season for season in season_generator()]
-
-
-class OutputFormat(IntEnum):
-    xlsx = 1
-    html = 2
-    csv = 3
-
-    def __str__(self):
-        return self.name
-
-    @staticmethod
-    def from_string(s):
-        try:
-            return OutputFormat[s]
-        except KeyError:
-            raise ValueError()
-
-
-def write_age_groups(players, filename, format=OutputFormat.csv,
-                     incl_dobs=False, width=2.0, add=1):
+def write_age_groups(
+    players: list[tuple[str, date]], filename: str,
+    format: OutputFormat = OutputFormat.csv, incl_dobs: bool = False,
+    width: flaot = 2.0, add: int = 1
+) -> None:
 
     heading = ['Name']
     widths = [4]
@@ -163,18 +32,17 @@ def write_age_groups(players, filename, format=OutputFormat.csv,
 
         s = str(name)
         l = len(s)
-        row = [s]
+        row = [(s, -1)]
         if l > widths[wi]:
             widths[wi] = l
         wi += 1
 
         if incl_dobs:
-            # s = date.strftime(dob, '%Y-%m-%d')
             s = '{} {} &frac12;'.format(
                 dob.year, '1st' if dob.month <= 6 else '2nd'
             )
             l = len(s)
-            row.append(s)
+            row.append((s, -1))
             if l > widths[wi]:
                 widths[wi] = l
             wi += 1
@@ -183,11 +51,13 @@ def write_age_groups(players, filename, format=OutputFormat.csv,
 
             ag = season.age_group_of(dob)
             if ag is None:
-                s = '??'
+                s = '???'
+                i = -1
             else:
                 s = str(ag)
+                i = ag.index
             l = len(s)
-            row.append(s)
+            row.append((s, i))
             if l > widths[wi]:
                 widths[wi] = l
             wi += 1
@@ -222,21 +92,9 @@ def write_age_groups(players, filename, format=OutputFormat.csv,
                         fg_color=cname,
                         bg_color='white',
                     )
-                ) for cname in [
-                    'blue', 'brown', 'cyan', 'gray', 'green', 'lime', 'magenta',
-                    'navy', 'orange', 'pink', 'purple', 'red', 'silver', 'yellow',
-                ]
+                ) for cname in excel_colours
             ]
-
-            agcmap = {'??': norm}
-            seen = set()
-            cind = 0
-            clen = len(colours)
-            for ag in all_age_groups:
-                if ag.limit not in seen:
-                    seen.add(ag.limit)
-                    agcmap[str(ag)] = colours[cind]
-                    cind = (cind + 1) % clen
+            ncolours = len(colours)
 
             ri = ci = cc = 0
 
@@ -248,11 +106,17 @@ def write_age_groups(players, filename, format=OutputFormat.csv,
             for row in rows:
 
                 ci = 0
-                for cell in row:
-                    worksheet.write_string(
-                        ri, ci, cell,
-                        bold if ci == 0 else hfmt if ci == 1 else agcmap[cell]
-                    )
+                for s, i in row:
+                    if i < 0:  # no colour
+                        if ci == 0:
+                            fmt = bold
+                        elif incl_dobs and ci == 1:
+                            fmt = hfmt
+                        else:
+                            fmt = norm
+                    else:
+                        fmt = colours[i % ncolours]
+                    worksheet.write_string(ri, ci, s, fmt)
                     ci += 1
                 ri += 1
 
@@ -270,10 +134,10 @@ def write_age_groups(players, filename, format=OutputFormat.csv,
         else:
             outfile = open(filename, 'w')
 
-        print('''\
-<html>
-<head>
-<style>
+        ncolours = len(html_colours)
+
+        print(
+            '''<html><head><style>
 table, th, td {
  border: 1px solid black;
  border-collapse: collapse;
@@ -283,53 +147,9 @@ th {
  text-align: center;
  font-weight: bold;
 }
-</style>
-</head>
-<body>
-<table>''',
+</style></head><body><table><thead><tr>''',
             file=outfile,
         )
-
-        colours = [
-            # 'blue',
-            'brown',
-            'cyan',
-            'gray',
-            'green',
-            'lime',
-            'magenta',
-            # 'navy',
-            'orange',
-            'pink',
-            'purple',
-            'red',
-            'silver',
-            'yellow',
-            # '#F0F8FF',
-            # '#FAEBD7',
-            # '#00FFFF',
-            # '#7FFFD4',
-            # '#00FFFF',
-            # '#FFF8DC',
-            # '#ADFF2F',
-            # '#90EE90',
-            # '#FFB6C1',
-            # '#87CEFA',
-            # '#F5DEB3',
-            # '#FF6347',
-        ]
-
-        agcmap = {'??': None}
-        seen = set()
-        cind = 0
-        clen = len(colours)
-        for ag in all_age_groups:
-            if ag.limit not in seen:
-                seen.add(ag.limit)
-                agcmap[str(ag)] = colours[cind]
-                cind = (cind + 1) % clen
-
-        print('<thead><tr>', file=outfile)
 
         for hcell in heading:
             print('<th>{}</th>'.format(hcell), file=outfile)
@@ -341,16 +161,20 @@ th {
             print('<tr>', file=outfile)
 
             ci = 0
-            for cell in row:
-                if ci == 0 or (incl_dobs and ci == 1) or agcmap[cell] is None:
-                    print(
-                        '<td style="font-weight: bold;">{}</td>'.format(cell),
-                        file=outfile,
-                    )
+            for s, i in row:
+                if i < 0:  # no colour
+                    if ci == 0 or (incl_dobs and ci == 1):
+                        print(
+                            '<td style="font-weight: bold;">{}</td>'.format(s),
+                            file=outfile,
+                        )
+                    else:
+                        print('<td">{}</td>'.format(s), file=outfile)
                 else:
                     print(
                         '<td style="text-align: center; background-color: {};">'
-                        '{}</td>'.format(agcmap[cell], cell), file=outfile,
+                        '{}</td>'.format(html_colours[i % ncolours], s),
+                        file=outfile,
                     )
                 ci += 1
 
@@ -362,12 +186,17 @@ th {
 
         if filename == 'sys.stdout':
             sys.stdout.reconfigure(newline='')
-            writer = csv.writer(sys.stdout)
+            outfd = sys.stdout
         else:
-            writer = csv.writer(open(filename, 'w', newline=''))
+            outfd = open(filename, 'w', newline='')
 
-        writer.writerow(heading)
-        writer.writerows(rows)
+        try:
+            writer = csv.writer(outfd)
+            writer.writerow(heading)
+            writer.writerows(rows)
+        finally:
+            if filename != 'sys.stdout':
+                outfd.close()
 
     else:
         raise RuntimeError('unknown output format: {}'.format(format))
