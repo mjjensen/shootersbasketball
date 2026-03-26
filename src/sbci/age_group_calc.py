@@ -5,7 +5,8 @@ import sys
 
 from xlsxwriter.workbook import Workbook
 
-from sbci import all_seasons, excel_colours, html_colours, OutputFormat
+from sbci import all_seasons, excel_colours, html_colours, OutputFormat, \
+    dob_to_str
 
 
 def write_age_groups(
@@ -38,9 +39,7 @@ def write_age_groups(
         wi += 1
 
         if incl_dobs:
-            s = '{} {} &frac12;'.format(
-                dob.year, '1st' if dob.month <= 6 else '2nd'
-            )
+            s = dob_to_str(dob, html=True)
             l = len(s)
             row.append((s, -1))
             if l > widths[wi]:

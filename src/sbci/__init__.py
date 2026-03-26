@@ -1022,6 +1022,14 @@ def find_age_group(age_groups, dob):
     return result
 
 
+def dob_to_str(dob: date, html: bool = False):
+    '''return a string for a date-of-birth that doesn't give too much away'''
+    return '{} {} {}'.format(
+        dob.year, '1st' if dob.month <= 6 else '2nd',
+        '&frac12;' if html else '½'
+    )
+
+
 _POPATTR_NO_DEFAULT = object()  # so that None could be used as a default value
 
 

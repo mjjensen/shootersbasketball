@@ -9,7 +9,8 @@ import sys
 
 from sbci import fetch_teams, fetch_participants, load_config, latest_report, \
     fetch_trybooking, find_in_tb, to_fullname, to_date, find_age_group, \
-    to_bool, correct_string, OutputFormat, all_seasons, html_colours
+    to_bool, correct_string, OutputFormat, all_seasons, html_colours, \
+    dob_to_str
 from sbci.age_group_calc import write_age_groups
 
 
@@ -395,7 +396,7 @@ def main():
                 print(
                     html_player_body.format(
                         name='{} {}'.format(p.first_name, p.last_name),
-                        dob=dob.strftime('%Y-%m-%d'),
+                        dob=dob_to_str(dob, html=True),
                         seasons=''.join(sstrs),
                     )
                 )
@@ -531,7 +532,7 @@ def main():
                             distype, disother, disass
                         )
 
-                dobs = dob.strftime('%d/%m/%Y')
+                dobs = dob_to_str(dob)
                 if args.csv:
                     lines.append('{},{}'.format(name, dobs))
                 else:
