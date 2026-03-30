@@ -811,6 +811,8 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True,
             else:
                 raise RuntimeError('Unknown role: {}'.format(role))
 
+    return report_file
+
 
 def find_in_tb(tb, want_name):
 

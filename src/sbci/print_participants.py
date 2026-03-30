@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 from collections import namedtuple
 from csv import DictReader
+from datetime import datetime
 from decimal import Decimal
 from email.utils import getaddresses
 from operator import itemgetter
@@ -44,6 +45,7 @@ html_doc_header = '''\
   </head>
   <body>
     <h1>{season} Teams</h1>
+    <h2><i>(as at: {as_at})</i></h2>
     <table class="teams">
       <thead class="teams">
         <tr class="teams">
@@ -179,8 +181,10 @@ def main():
     else:
         teams = fetch_teams(verbose=args.verbose)
 
-    fetch_participants(teams, args.partreport, args.verbose,
-                       player_moves=config.get('player_moves'))
+    partreport_file_used = fetch_participants(
+        teams, args.partreport, args.verbose,
+        player_moves=config.get('player_moves')
+    )
 
     team_list = []
     if args.teams:
@@ -331,7 +335,15 @@ def main():
     if args.html:
         seasons = all_seasons[:8]
         colours = html_colours[:]
-        print(html_doc_header.format(season=config['season']))
+        as_at = datetime.fromtimestamp(os.path.getmtime(partreport_file_used))
+        aad = as_at.strftime('%d')
+        if aad[0] == '0':
+            aad = aad[1:]
+        aaI = as_at.strftime('%I')
+        if aaI[0] == '0':
+            aaI = aaI[1:]
+        aastr = as_at.strftime('{}:%M%p %A, %B {}, %Y').format(aaI, aad)
+        print(html_doc_header.format(season=config['season'], as_at=aastr))
 
     for t in team_list:
 
