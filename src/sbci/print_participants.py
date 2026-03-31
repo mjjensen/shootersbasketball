@@ -15,7 +15,7 @@ from sbci import fetch_teams, fetch_participants, load_config, latest_report, \
 from sbci.age_group_calc import write_age_groups
 
 
-html_doc_header = '''\
+html_doc_begin = '''\
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -24,6 +24,17 @@ html_doc_header = '''\
     <title>{season} Teams</title>
     <style>
       th.teams {{
+        text-align: center;
+        font-weight: bold;
+      }}
+      table.info {{
+        width: 100%;
+        display: none;
+      }}
+      table.info, th.info, td.info {{
+        padding: 5px;
+      }}
+      th.info {{
         text-align: center;
         font-weight: bold;
       }}
@@ -53,26 +64,73 @@ html_doc_header = '''\
           <th class="teams">Team</th>
           <th class="teams">EDJBA Name</th>
           <th class="teams">&nbsp;</th>
+          <th class="teams">&nbsp;</th>
         </tr>
       </thead>
       <tbody class="teams">'''
 
 
-html_team_header = '''\
+html_teams_begin = '''\
         <!-- TEAM {n} -->
         <tr class="teams">
           <td class="teams">{n}.</td>
           <td class="teams">{name}</td>
           <td class="teams">{edjba_team}</td>
           <td class="teams">
-            <button class="teams" onclick="toggle('team{n}')">
-              {nplayers} players
+            <button class="teams" onclick="toggle('info{n}')">
+              <b>info</b>
             </button>
           </td>
-        </tr>
+          <td class="teams">
+            <button class="teams" onclick="toggle('players{n}')">
+              <b>{nplayers} players</b>
+            </button>
+          </td>
+        </tr>'''
+
+
+html_info_begin = '''\
         <tr class="teams">
-          <td class="teams" colspan="4">
-            <table class="players" id="team{n}">
+          <td class="teams" colspan="5">
+            <table class="info" id="info{n}">
+              <thead class="info">
+                <th class="info">&nbsp;</th>
+                <th class="info">Name</th>
+                <th class="info">Email</th>
+                <th class="info">Mobile</th>
+              </thead>
+              <tbody class="info">'''
+
+
+html_info_row = '''\
+                <tr class="info">
+                  <td class="info">{what}:&nbsp;</td>
+                  <td class="info">{name}</td>
+                  <td class="info">{email}</td>
+                  <td class="info">{mobile}</td>
+                </tr>'''
+
+
+html_info_link = '''\
+                <tr class="info">
+                  <td class="info">Link:&nbsp;</td>
+                  <td class="info" colspan="3">
+                    <a class="info" href="{link}" target="_blank">{link}</a>
+                  </td>
+                </tr>'''
+
+
+html_info_end = '''\
+              </tbody>
+            </table>
+          </td>
+        </tr>'''
+
+
+html_players_begin = '''\
+        <tr class="teams">
+          <td class="teams" colspan="5">
+            <table class="players" id="players{n}">
               <thead class="players">
                 <th class="players">Name</th>
                 <th class="players">DoB</th>
@@ -81,7 +139,7 @@ html_team_header = '''\
               <tbody class="players">'''
 
 
-html_player_body = '''\
+html_players_row = '''\
                 <tr class="players">
                   <td class="players">{name}</td>
                   <td class="players">{dob}</td>
@@ -89,15 +147,18 @@ html_player_body = '''\
                 </tr>'''
 
 
-html_team_footer = '''\
+html_players_end = '''\
               </tbody>
             </table>
           </td>
-        </tr>
+        </tr>'''
+
+
+html_teams_end = '''\
         <!-- END TEAM {n} -->'''
 
 
-html_doc_footer = '''\
+html_doc_end = '''\
       </tbody>
     </table>
     <script>
@@ -343,7 +404,7 @@ def main():
         if aaI[0] == '0':
             aaI = aaI[1:]
         aastr = as_at.strftime('{}:%M%p %A, %B {}, %Y').format(aaI, aad)
-        print(html_doc_header.format(season=config['season'], as_at=aastr))
+        print(html_doc_begin.format(season=config['season'], as_at=aastr))
 
     for t in team_list:
 
@@ -375,13 +436,44 @@ def main():
                     '<th class="players agegroups">{}</th>'.format(str(season))
                 )
             print(
-                html_team_header.format(
+                html_teams_begin.format(
                     n=nteams, name=t.sname,
                     edjba_team='U{:02d} {} {:02d}'.format(
                         t.age_group, t.gender, t.number
                     ),
                     nplayers=len(t.players),
-                    seasons=''.join(sstrs),
+                )
+            )
+            print(html_info_begin.format(n=nteams))
+            if t.tm_id:
+                print(
+                    html_info_row.format(
+                        what='T/M',
+                        name=t.tm_name, email=t.tm_email, mobile=t.tm_mobile,
+                    )
+                )
+            if t.co_id:
+                print(
+                    html_info_row.format(
+                        what='Coach',
+                        name=t.co_name, email=t.co_email, mobile=t.co_mobile,
+                    )
+                )
+            if t.ac_id:
+                print(
+                    html_info_row.format(
+                        what='Coach2',
+                        name=t.ac_name, email=t.ac_email, mobile=t.ac_mobile,
+                    )
+                )
+            if t.regurl:
+                print(
+                    html_info_link.format(link=t.regurl)
+                )
+            print(html_info_end)
+            print(
+                html_players_begin.format(
+                    n=nteams, seasons=''.join(sstrs),
                 )
             )
 
@@ -406,7 +498,7 @@ def main():
                         agstr = '???'
                     sstrs.append('>{}</td>'.format(agstr))
                 print(
-                    html_player_body.format(
+                    html_players_row.format(
                         name='{} {}'.format(p.first_name, p.last_name),
                         dob=dob_to_str(dob, html=True),
                         seasons=''.join(sstrs),
@@ -584,7 +676,8 @@ def main():
                 agt_index.append(filename)
 
         if args.html:
-            print(html_team_footer.format(n=nteams))
+            print(html_players_end)
+            print(html_teams_end.format(n=nteams))
         elif args.csv:
             print('{}'.format(t.sname))
         else:
@@ -598,7 +691,7 @@ def main():
 
     if args.html:
         print(
-            html_doc_footer.format(
+            html_doc_end.format(
                 nteams=nteams, nbteams=nbteams, ngteams=ngteams,
                 nplayers=nplayers, nboys=nboys, ngirls=ngirls,
             )
