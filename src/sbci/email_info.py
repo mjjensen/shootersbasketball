@@ -176,7 +176,7 @@ def main():
     if args.details:
 
         player_keys = [
-            ('singlet_number', 'singlet number'),
+            ('singlet_number', '#'),
             ('last_name', 'surname'),
             ('first_name', 'firstname'),
             ('date_of_birth', 'd.o.b'),
@@ -260,7 +260,7 @@ def main():
                 pt.append('  <table class="pt">\n')
                 pt.append('   <thead>\n')
                 pt.append('    <tr>\n')
-                pt.append('     <th class="pt">#</th>\n')
+                # pt.append('     <th class="pt">#</th>\n')
                 for _, h in player_keys:
                     pt.append(
                         '     <th class="pt">{}</th>\n'.format(nesc(h.title()))
@@ -274,7 +274,7 @@ def main():
                 pt.append('   <tbody>\n')
                 for n, p in enumerate(t.players):
                     pt.append('    <tr>\n')
-                    pt.append('     <td class="pt">{}</td>\n'.format(n + 1))
+                    # pt.append('     <td class="pt">{}</td>\n'.format(n + 1))
                     for k, _ in player_keys:
                         pt.append(
                             '     <td class="pt">{}</td>\n'.format(
