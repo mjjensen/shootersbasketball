@@ -135,6 +135,7 @@ def main():
   <style>
    .pt {}
     border: 1px solid black;
+    border-collapse: collapse;
     margin-top: 1em;
    {}
   </style>
@@ -175,6 +176,7 @@ def main():
     if args.details:
 
         player_keys = [
+            ('singlet_number', 'singlet number'),
             ('last_name', 'surname'),
             ('first_name', 'firstname'),
             ('date_of_birth', 'd.o.b'),

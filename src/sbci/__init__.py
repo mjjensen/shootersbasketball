@@ -662,6 +662,10 @@ class Participant(object):
         return trykeys(self.p, 'wwc expiry', 'WWC Expiry Date').strip()
 
     @property
+    def singlet_number(self) -> str:
+        return trykeys(self.p, 'Player Number').strip()
+
+    @property
     def full_name(self) -> str:
         return self.last_name + ', ' + self.first_name
 
