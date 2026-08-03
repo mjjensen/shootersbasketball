@@ -666,6 +666,14 @@ class Participant(object):
         return trykeys(self.p, 'Player Number').strip()
 
     @property
+    def school_details(self) -> str:
+        return trykeys(self.p, 'School Details').strip()
+
+    @property
+    def school_year(self) -> str:
+        return trykeys(self.p, 'School Year').strip()
+
+    @property
     def full_name(self) -> str:
         return self.last_name + ', ' + self.first_name
 
@@ -771,21 +779,22 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True,
                 if verbose:
                     print(
                         'moving {} from {} into {}'.format(
-                            p.full_name, team_name, move_into
+                            p.full_name, p.team_name, move_into
                         )
                     )
+                    if p.status != 'Active':
+                        print('(status not Active for {})'.format(p))
                 team_name = move_into
             else:
                 if p.status != 'Active':
                     if verbose:
                         print('status not Active for {}!'.format(p))
                     continue
-
-                team_name = p.team_name
-                if not team_name:
+                if not p.team_name:
                     if verbose:
                         print('no team name for {}!'.format(p))
                     continue
+                team_name = p.team_name
 
             t = find_team(teams, edjba_id=team_name)
             if t is None:

@@ -215,6 +215,8 @@ def main():
                         help='include diversity details')
     parser.add_argument('--postcodes', '-P', action='store_true',
                         help='include postcode summary')
+    parser.add_argument('--schools', '-S', action='store_true',
+                        help='include schools summary')
     parser.add_argument('--allemail', '-A', action='store_true',
                         help='dump a list of all email addresses')
     parser.add_argument('--csv', '-C', action='store_true',
@@ -386,6 +388,9 @@ def main():
             'Banyule': (3079, 3081, 3084, 3085, 3087, 3088, 3093, 3094),
         }
         pc2cn = {pc: cn for cn in cn2pc for pc in cn2pc[cn]}
+
+    if args.schools:
+        schools = {}
 
     if args.allemail:
         all_email_addrs = []
@@ -560,6 +565,21 @@ def main():
                 cn = pc2cn.get(pc, 'Other')
                 councils[cn] = councils.get(cn, 0) + 1
 
+            if args.schools and p.school_details:
+                school_name = p.school_details.split(',')[0]
+                school_year = p.school_year or '?'
+                if school_name not in schools:
+                    schools[school_name] = {
+                        'count': 0,
+                        'years': {},
+                        'members': [],
+                    }
+                schools[school_name]['count'] += 1
+                if school_year not in schools[school_name]['years']:
+                    schools[school_name]['years'][school_year] = 0
+                schools[school_name]['years'][school_year] += 1
+                schools[school_name]['members'].append(p)
+
             if args.details:
 
                 extra1 = extra2 = extra3 = ''
@@ -733,6 +753,19 @@ def main():
         print('Council Summary:')
         for cn, n in sorted(councils.items()):
             print('\t{}: {}'.format(cn, n))
+
+    if args.schools:
+        print('Schools Summary:')
+        n = p = 0
+        for s, v in schools.items():
+            c = v['count']
+            y = v['years']
+            m = v['members']
+            p += len(m)
+            x = ', '.join(f'{a}:{b}' for a, b in y.items())
+            print(f'\t{s}: {c} [{x}]')
+            n += 1
+        print(f'Total of {n} schools, {p} players')
 
     if args.details and not args.csv:
         print(
