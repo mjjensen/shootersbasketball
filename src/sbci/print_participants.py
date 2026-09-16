@@ -57,6 +57,14 @@ html_doc_begin = '''\
   <body>
     <h1>{season} Teams</h1>
     <h2><i>(as at: {as_at})</i></h2>
+    <p>
+      <button onclick="setdisplay('table.info', 'table')">Expand Info</button>
+      <button onclick="setdisplay('table.players', 'table')">Expand Players</button>
+      <button onclick="setdisplay('table.info,table.players', 'table')">Expand All</button>
+      <button onclick="setdisplay('table.info', 'none')">Collapse Info</button>
+      <button onclick="setdisplay('table.players', 'none')">Collapse Players</button>
+      <button onclick="setdisplay('table.info,table.players', 'none')">Collapse All</button>
+    </p>
     <table class="teams">
       <thead class="teams">
         <tr class="teams">
@@ -162,13 +170,18 @@ html_doc_end = '''\
       </tbody>
     </table>
     <script>
-      function toggle(teamid) {{
-        var content = document.getElementById(teamid);
-        if (!content.style.display || content.style.display === 'none') {{
-          content.style.display = 'table';
+      function toggle(table_id) {{
+        var table_elem = document.getElementById(table_id);
+        if (!table_elem.style.display || table_elem.style.display === 'none') {{
+          table_elem.style.display = 'table';
         }} else {{
-          content.style.display = 'none';
+          table_elem.style.display = 'none';
         }}
+      }}
+      function setdisplay(selector, value) {{
+        document.querySelectorAll(selector).forEach(
+          element => {{ element.style.display = value; }}
+        )
       }}
     </script>
     <h1>Summary</h1>
