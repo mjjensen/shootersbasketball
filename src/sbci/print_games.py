@@ -137,7 +137,7 @@ def main():
                         s = 'L'
                     else:
                         s = 'D'
-                    e.append('{}{:02d}-{:02d}'.format(s, f, a))
+                    e.append('{}{:02d}&#8209;{:02d}'.format(s, f, a))
                     totfor += f
                     totag += a
                     totmarg += f - a
@@ -159,13 +159,16 @@ def main():
     text-align: center;
    }
    table {
-    margin-left: auto;
-    margin-right: auto;
+    width: 100%;
    }
    table, th, td {
     border: 1px solid black;
     border-collapse: collapse;
     padding: 5px;
+    white-space: nowrap;
+   }
+   th:nth-child(9), td:nth-child(9) {
+    border-right-width: 3px;
    }
    td.center {
     text-align: center;
