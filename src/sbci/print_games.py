@@ -159,7 +159,8 @@ def main():
     text-align: center;
    }
    table {
-    width: 100%;
+    margin-left: auto;
+    margin-right: auto
    }
    table, th, td {
     border: 1px solid black;
