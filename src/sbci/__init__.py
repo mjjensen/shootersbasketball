@@ -821,6 +821,10 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True,
                         print('dup t/m? in {}: {}'.format(t.sname, p))
                 else:
                     t.managers.append(p)
+            elif role == Role.Volunteer:
+                if verbose:
+                    print('ignore volunteer in {}: {}'.format(t.sname, p))
+                continue
             else:
                 raise RuntimeError('Unknown role: {}'.format(role))
 
