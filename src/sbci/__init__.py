@@ -485,6 +485,8 @@ class Participant(object):
         super(Participant, self).__init__(*args, **kwds)
         self.p = p
         self.is_program = is_program
+        self._singlet_number = trykeys(p, 'Player Number').strip()
+
 
     @property
     def first_name(self) -> str:
@@ -663,7 +665,11 @@ class Participant(object):
 
     @property
     def singlet_number(self) -> str:
-        return trykeys(self.p, 'Player Number').strip()
+        return self._singlet_number
+
+    @singlet_number.setter
+    def singlet_number(self, value: str) -> None:
+        self._singlet_number = value
 
     @property
     def school_details(self) -> str:
@@ -784,7 +790,10 @@ def fetch_participants(teams, report_file=None, verbose=False, drop_dups=True,
                     )
                     if p.status != 'Active':
                         print('(status not Active for {})'.format(p))
-                team_name = move_into
+                if isinstance(move_into, list):
+                    team_name, p.singlet_number = move_into
+                else:
+                    team_name = move_into
             else:
                 if p.status != 'Active':
                     if verbose:
