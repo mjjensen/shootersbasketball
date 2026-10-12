@@ -1,7 +1,9 @@
 from argparse import ArgumentParser
 from csv import DictReader
-from sbci import latest_report, fetch_teams, find_team, load_config
 import sys
+
+from sbci import latest_report, fetch_teams, find_team, \
+    load_config, age_is_under, dobstr_to_date
 
 
 def main():
@@ -92,6 +94,8 @@ def main():
             else:
                 for err in tm_errs:
                     print(err)
+                if age_is_under(dobstr_to_date(t.tm_dob), 13):
+                    print('    ***** team manager is under 13!')
 
             tm2info = [tent.get(
                 'team manager2 ' + k, tent['Team Manager2 ' + k.capitalize()]
