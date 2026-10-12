@@ -1058,6 +1058,10 @@ def dob_to_str(dob: date, html: bool = False):
     )
 
 
+def dobstr_to_date(dobstr: str) -> date:
+    return to_date(dobstr, '%Y-%m-%d %H:%M:%S.%f')
+
+
 _POPATTR_NO_DEFAULT = object()  # so that None could be used as a default value
 
 
@@ -1148,9 +1152,13 @@ def end_of_season():
     return date(today.year + 1, 3, 31)
 
 
-def is_under18(date_of_birth):
+def age_is_under(date_of_birth, numyears):
     diff = relativedelta(end_of_season(), date_of_birth)
-    return (diff.years < 18)
+    return (diff.years < numyears)
+
+
+def is_under18(date_of_birth):
+    return age_is_under(date_of_birth, 18)
 
 
 def correct_string(string: str, corrections: Dict[str, str]) -> str:
