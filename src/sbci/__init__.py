@@ -10,7 +10,7 @@ from sqlite3 import connect, Row
 import sys
 from threading import Lock
 import time
-from typing import Dict, List, Tuple, Optional, Generator
+from typing import Dict, List, Tuple, Optional, Generator, ClassVar
 
 from dateutil.relativedelta import relativedelta
 from requests import Session
